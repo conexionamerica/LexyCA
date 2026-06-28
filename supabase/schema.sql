@@ -5,10 +5,31 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =========================================================================
--- TABLA: teachers (Perfiles de Profesores con Aprobación Manual)
+-- TABLA: profiles (Perfiles de Usuario Unificados vinculados a Auth.Users)
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'admin')) DEFAULT 'student',
+    avatar_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Habilitar RLS en profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Lectura pública de perfiles" ON public.profiles
+    FOR SELECT USING (true);
+
+CREATE POLICY "Modificación de perfil propio" ON public.profiles
+    FOR ALL USING (auth.uid() = id);
+
+-- =========================================================================
+-- TABLA: teachers (Perfiles de Profesores vinculados a Profiles)
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.teachers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     bio TEXT,
@@ -16,33 +37,33 @@ CREATE TABLE IF NOT EXISTS public.teachers (
     hourly_rate NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     rating NUMERIC(3, 2) DEFAULT 5.00 CHECK (rating >= 0 AND rating <= 5),
     commission_tier NUMERIC(5, 2) DEFAULT 0.20, -- Retención de la plataforma (ej. 0.20 = 20%)
-    status TEXT NOT NULL CHECK (status IN ('pending_approval', 'active')) DEFAULT 'pending_approval', -- Fase 10
+    status TEXT NOT NULL CHECK (status IN ('pending_approval', 'active')) DEFAULT 'pending_approval',
     timezone TEXT DEFAULT 'UTC',
     avatar_url TEXT,
     meeting_link TEXT DEFAULT 'https://meet.google.com/tmi-xwmg-kua',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Habilitar seguridad a nivel de fila (RLS) en teachers
+-- Habilitar RLS en teachers
 ALTER TABLE public.teachers ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para teachers
-CREATE POLICY "Permitir lectura pública de profesores activos" ON public.teachers
-    FOR SELECT USING (status = 'active' OR auth.uid() = id);
+CREATE POLICY "Lectura pública de profesores" ON public.teachers
+    FOR SELECT USING (true);
 
--- Para propósitos de desarrollo/admin, permitiremos consultas de administración
-CREATE POLICY "Permitir lectura completa para administradores" ON public.teachers
-    FOR ALL USING (true);
+CREATE POLICY "Modificación de perfiles de profesores" ON public.teachers
+    FOR ALL USING (auth.uid() = id);
 
 -- =========================================================================
--- TABLA: students (Billetera Virtual y Datos del Alumno)
+-- TABLA: students (Billetera Virtual vinculada a Profiles)
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.students (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     wallet_balance NUMERIC(10, 2) NOT NULL DEFAULT 0.00 CHECK (wallet_balance >= 0.00),
     timezone TEXT DEFAULT 'America/Sao_Paulo',
+    phone TEXT DEFAULT '+5511999999999',
     avatar_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -50,14 +71,14 @@ CREATE TABLE IF NOT EXISTS public.students (
 -- Habilitar RLS en students
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Permitir a estudiantes ver su propio perfil" ON public.students
-    FOR SELECT USING (true); -- Simplificado para desarrollo/demo
+CREATE POLICY "Lectura pública de estudiantes" ON public.students
+    FOR SELECT USING (true);
 
-CREATE POLICY "Permitir actualizaciones de saldo y perfil" ON public.students
-    FOR ALL USING (true);
+CREATE POLICY "Modificación de perfiles de estudiantes" ON public.students
+    FOR ALL USING (auth.uid() = id);
 
 -- =========================================================================
--- TABLA: payouts (Historial de Liquidaciones de Profesores - Fase 8)
+-- TABLA: payouts (Historial de Liquidaciones de Profesores)
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.payouts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -70,7 +91,7 @@ CREATE TABLE IF NOT EXISTS public.payouts (
 -- Habilitar RLS en payouts
 ALTER TABLE public.payouts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Permitir todo a administradores" ON public.payouts
+CREATE POLICY "Lectura y creación completa de liquidaciones" ON public.payouts
     FOR ALL USING (true);
 
 -- =========================================================================
@@ -80,7 +101,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_teacher UUID NOT NULL REFERENCES public.teachers(id) ON DELETE CASCADE,
     id_student UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
-    payout_id UUID REFERENCES public.payouts(id) ON DELETE SET NULL, -- Enlazar a liquidación (Fase 8)
+    payout_id UUID REFERENCES public.payouts(id) ON DELETE SET NULL,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('pending', 'completed', 'cancelled')) DEFAULT 'pending',
@@ -92,7 +113,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 -- Habilitar RLS en bookings
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Permitir todo a bookings" ON public.bookings
+CREATE POLICY "Lectura y escritura completa de reservas" ON public.bookings
     FOR ALL USING (true);
 
 -- =========================================================================
@@ -101,7 +122,7 @@ CREATE POLICY "Permitir todo a bookings" ON public.bookings
 CREATE TABLE IF NOT EXISTS public.wallet_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_student UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
-    amount NUMERIC(10, 2) NOT NULL, -- Positivo para recargas, negativo para débitos de clases
+    amount NUMERIC(10, 2) NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('top-up', 'class-booking', 'class-refund')),
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -110,14 +131,11 @@ CREATE TABLE IF NOT EXISTS public.wallet_transactions (
 -- Habilitar RLS en wallet_transactions
 ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Permitir lectura de transacciones" ON public.wallet_transactions
-    FOR SELECT USING (true);
-
-CREATE POLICY "Permitir crear transacciones" ON public.wallet_transactions
-    FOR INSERT WITH CHECK (true);
+CREATE POLICY "Lectura y escritura completa de transacciones" ON public.wallet_transactions
+    FOR ALL USING (true);
 
 -- =========================================================================
--- FUNCIONES Y TRIGGERS DE BASE DE DATOS (Transacciones automáticas)
+-- FUNCIONES Y TRIGGERS DE BASE DE DATOS
 -- =========================================================================
 
 -- Función para procesar la reserva y restar créditos
@@ -133,31 +151,24 @@ DECLARE
     v_booking_id UUID;
     v_meet_link TEXT;
 BEGIN
-    -- Obtener el meeting link del profesor
     SELECT meeting_link INTO v_meet_link FROM public.teachers WHERE id = p_teacher_id;
-    
-    -- Obtener saldo del alumno
     SELECT wallet_balance INTO v_balance FROM public.students WHERE id = p_student_id FOR UPDATE;
     
     IF v_balance IS NULL THEN
         RAISE EXCEPTION 'Estudiante no encontrado.';
     END IF;
 
-    -- Validar saldo suficiente
     IF v_balance < p_cost THEN
         RAISE EXCEPTION 'Saldo insuficiente en billetera virtual (R$ %, costo: R$ %).', v_balance, p_cost;
     END IF;
 
-    -- Descontar créditos de la billetera
     UPDATE public.students 
     SET wallet_balance = wallet_balance - p_cost 
     WHERE id = p_student_id;
 
-    -- Registrar la transacción
     INSERT INTO public.wallet_transactions (id_student, amount, type, description)
     VALUES (p_student_id, -p_cost, 'class-booking', 'Débito por clase agendada');
 
-    -- Crear la reserva
     INSERT INTO public.bookings (id_teacher, id_student, start_time, end_time, credit_cost, status, meeting_link)
     VALUES (p_teacher_id, p_student_id, p_start_time, p_end_time, p_cost, 'pending', v_meet_link)
     RETURNING id INTO v_booking_id;
@@ -175,7 +186,6 @@ DECLARE
     v_cost NUMERIC(10, 2);
     v_status TEXT;
 BEGIN
-    -- Obtener detalles de la reserva
     SELECT id_student, credit_cost, status INTO v_student_id, v_cost, v_status
     FROM public.bookings WHERE id = p_booking_id FOR UPDATE;
 
@@ -191,15 +201,12 @@ BEGIN
         RAISE EXCEPTION 'No se puede cancelar una clase ya completada.';
     END IF;
 
-    -- Actualizar estado a cancelado
     UPDATE public.bookings SET status = 'cancelled' WHERE id = p_booking_id;
 
-    -- Devolver créditos a la billetera
     UPDATE public.students 
     SET wallet_balance = wallet_balance + v_cost 
     WHERE id = v_student_id;
 
-    -- Registrar transacción de reembolso
     INSERT INTO public.wallet_transactions (id_student, amount, type, description)
     VALUES (v_student_id, v_cost, 'class-refund', 'Reembolso por clase cancelada');
 END;
