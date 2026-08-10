@@ -1,16 +1,42 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { BookOpen, Key, Mail, User, Shield, Sparkles, UserCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Mail, Key, User, UserCheck, GraduationCap, AlertTriangle, CreditCard as CpfIcon } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { validateCPF, formatCPF } from '../lib/cpfValidator';
 
 export default function LoginPage({ onLoginSuccess }) {
-  const { signIn, signUp, isDemoMode } = useAuth();
+  const { signIn, signUp, isDemoMode, profile } = useAuth();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [role, setRole] = useState('student'); // student or teacher
+  const [role, setRole] = useState('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cpfError, setCpfError] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleCpfChange = (e) => {
+    const raw = e.target.value;
+    const formatted = formatCPF(raw);
+    setCpf(formatted);
+
+    const clean = raw.replace(/\D/g, '');
+    if (clean.length === 11) {
+      if (!validateCPF(clean)) {
+        setCpfError('CPF inválido. Verifique os dígitos.');
+      } else {
+        setCpfError('');
+      }
+    } else {
+      setCpfError('');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +52,14 @@ export default function LoginPage({ onLoginSuccess }) {
           onLoginSuccess();
         }
       } else {
+        const cleanCPF = cpf.replace(/\D/g, '');
+        if (!validateCPF(cleanCPF)) {
+          setErrorMsg('Por favor, informe um CPF verdadeiro e válido.');
+          setCpfError('CPF verdadero y válido es obligatorio.');
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await signUp(email, password, name, role);
         if (error) {
           setErrorMsg(error.message);
@@ -39,195 +73,246 @@ export default function LoginPage({ onLoginSuccess }) {
         }
       }
     } catch (err) {
-      setErrorMsg("Ocurrió un error inesperado.");
+      setErrorMsg('Ocurrió un error inesperado.');
     } finally {
       setLoading(false);
     }
   };
 
+  const switchTab = (toLogin) => {
+    setIsLogin(toLogin);
+    setErrorMsg('');
+  };
+
+  React.useEffect(() => {
+    if (profile) {
+      if (profile.role === 'student') navigate('/dashboard/student');
+      else if (profile.role === 'teacher') navigate('/dashboard/teacher');
+      else if (profile.role === 'admin' || profile.role === 'superadmin') navigate('/admin');
+    }
+  }, [profile, navigate]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-400 via-teal-300 to-emerald-400 p-4 relative overflow-hidden font-sans">
-      
-      {/* Esferas orgánicas flotantes - Estilo Frutiger Aero */}
-      <div className="absolute top-[-10%] left-[-10%] w-[350px] h-[350px] bg-white/20 rounded-full border border-white/30 backdrop-blur-[2px] pointer-events-none animate-pulse"></div>
-      <div className="absolute bottom-[-15%] right-[-5%] w-[400px] h-[400px] bg-white/10 rounded-full border border-white/20 pointer-events-none"></div>
-      <div className="absolute bottom-[20%] left-[5%] w-24 h-24 bg-gradient-to-tr from-cyan-200/40 to-white/20 rounded-full border border-white/25 pointer-events-none"></div>
 
-      {/* Tarjeta de Cristal Templado (Glassmorphism) */}
-      <div className="w-full max-w-md bg-white/60 backdrop-blur-xl rounded-3xl p-8 border border-white/40 shadow-2xl relative z-10 overflow-hidden group">
-        
-        {/* Destello glossy superior típico */}
-        <div className="absolute top-1 left-1 w-[98%] h-[30%] bg-white/30 rounded-t-3xl blur-[0.5px]"></div>
+      {/* ── Esferas orgánicas flotantes · Frutiger Aero ── */}
+      <div className="absolute -top-20 -left-20 w-[360px] h-[360px] bg-white/20 rounded-full border border-white/30 backdrop-blur-[2px] pointer-events-none animate-pulse" />
+      <div className="absolute -bottom-28 -right-12 w-[420px] h-[420px] bg-white/10 rounded-full border border-white/20 pointer-events-none" />
+      <div className="absolute bottom-[18%] left-[4%] w-28 h-28 bg-gradient-to-tr from-cyan-200/40 to-white/20 rounded-full border border-white/25 pointer-events-none" />
+      <div className="absolute top-[12%] right-[8%] w-16 h-16 bg-white/15 rounded-full border border-white/25 pointer-events-none animate-bounce" style={{ animationDuration: '6s' }} />
+      <div className="absolute top-[55%] right-[15%] w-10 h-10 bg-gradient-to-bl from-emerald-200/30 to-white/15 rounded-full border border-white/20 pointer-events-none" />
 
-        <div className="text-center space-y-3 relative z-10 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-teal-400 to-emerald-400 flex items-center justify-center text-white shadow-lg shadow-teal-300/40 mx-auto relative overflow-hidden">
-            <div className="absolute top-0.5 left-0.5 w-6 h-3 bg-white/35 rounded-full blur-[0.5px]"></div>
-            <BookOpen className="w-6 h-6" />
+      {/* ── Tarjeta principal · Glassmorphism ── */}
+      <Card className="w-full max-w-md bg-white/60 backdrop-blur-xl rounded-3xl border-white/40 shadow-2xl relative z-10 overflow-hidden">
+
+        {/* Destello glossy superior */}
+        <div className="absolute top-1 left-1 w-[98%] h-[28%] bg-white/30 rounded-t-3xl blur-[0.5px] pointer-events-none" />
+
+        {/* ── Encabezado con logo ── */}
+        <CardHeader className="text-center space-y-3 relative z-10 pb-2">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-teal-400 to-emerald-400 flex items-center justify-center text-white shadow-lg shadow-teal-300/40 relative overflow-hidden">
+            <div className="absolute top-0.5 left-0.5 w-6 h-3 bg-white/35 rounded-full blur-[0.5px]" />
+            <BookOpen className="w-6 h-6 relative z-10" />
           </div>
           <div>
-            <h2 className="text-2xl font-black bg-gradient-to-r from-cyan-700 to-teal-700 bg-clip-text text-transparent tracking-tight">TUTORMARKET 2.0</h2>
-            <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Aprende, Enseña y Crece</p>
-          </div>
-        </div>
-
-        {/* Selector de Pestañas (Login / Registro) */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/40 rounded-2xl border border-white/20 mb-6">
-          <button
-            type="button"
-            onClick={() => { setIsLogin(true); setErrorMsg(''); }}
-            className={`py-2 rounded-xl text-xs font-bold transition-all ${
-              isLogin 
-                ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md' 
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
-          >
-            Iniciar Sesión
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsLogin(false); setErrorMsg(''); }}
-            className={`py-2 rounded-xl text-xs font-bold transition-all ${
-              !isLogin 
-                ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md' 
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
-          >
-            Crear Cuenta
-          </button>
-        </div>
-
-        {/* Mensajes de error */}
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs font-semibold text-center flex items-center justify-center gap-1.5 mb-4 animate-shake">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
-          {!isLogin && (
-            <>
-              {/* Campo Nombre */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Nombre Completo</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej. Tiago Barbosa"
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200/60 rounded-xl outline-none focus:border-cyan-500 text-xs bg-white/80"
-                  />
-                </div>
-              </div>
-
-              {/* Selector de Rol */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">¿Qué deseas hacer?</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRole('student')}
-                    className={`py-2 border rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 ${
-                      role === 'student'
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                        : 'border-slate-200 bg-white/50 text-slate-600 hover:bg-white'
-                    }`}
-                  >
-                    <UserCheck className="w-3.5 h-3.5" />
-                    Estudiar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('teacher')}
-                    className={`py-2 border rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 ${
-                      role === 'teacher'
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                        : 'border-slate-200 bg-white/50 text-slate-600 hover:bg-white'
-                    }`}
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Dar Clases
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Campo Correo */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Correo Electrónico</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ejemplo@correo.com"
-                className="w-full pl-10 pr-4 py-2 border border-slate-200/60 rounded-xl outline-none focus:border-cyan-500 text-xs bg-white/80"
-              />
-            </div>
-          </div>
-
-          {/* Campo Contraseña */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">Contraseña</label>
-            <div className="relative">
-              <Key className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 border border-slate-200/60 rounded-xl outline-none focus:border-cyan-500 text-xs bg-white/80"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-500 text-white rounded-xl font-bold text-xs shadow hover:from-cyan-700 hover:to-teal-600 transition flex items-center justify-center gap-1.5"
-          >
-            {loading ? "Cargando..." : isLogin ? "Ingresar" : "Crear Cuenta"}
-          </button>
-        </form>
-
-        {isDemoMode && (
-          <div className="mt-6 pt-4 border-t border-slate-200/50 text-center space-y-2">
-            <span className="text-[9px] bg-amber-500/10 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200/50">
-              Modo Sandbox Activo
-            </span>
-            <p className="text-[9px] text-slate-500">
-              Cuentas demo (contraseña: **password**):<br/>
-              Alumno: **tiago.barbosa@example.com** | Tutor: **alexandre.silva@example.com**
+            <CardTitle className="text-2xl font-black bg-gradient-to-r from-cyan-700 to-teal-700 bg-clip-text text-transparent tracking-tight">
+              TUTORMARKET 2.0
+            </CardTitle>
+            <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider mt-1">
+              Aprende, Enseña y Crece
             </p>
           </div>
-        )}
+        </CardHeader>
 
-      </div>
+        <CardContent className="relative z-10 space-y-5">
+
+          {/* ── Selector de pestañas ── */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/40 rounded-2xl border border-white/20">
+            <button
+              type="button"
+              onClick={() => switchTab(true)}
+              className={cn(
+                'py-2.5 rounded-xl text-xs font-bold transition-all duration-200',
+                isLogin
+                  ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-white/40'
+              )}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              type="button"
+              onClick={() => switchTab(false)}
+              className={cn(
+                'py-2.5 rounded-xl text-xs font-bold transition-all duration-200',
+                !isLogin
+                  ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-white/40'
+              )}
+            >
+              Crear Cuenta
+            </button>
+          </div>
+
+          {/* ── Mensaje de error ── */}
+          {errorMsg && (
+            <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl p-3 text-red-700 text-xs font-semibold text-center flex items-center justify-center gap-1.5 animate-[shake_0.3s_ease-in-out]">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* ── Formulario ── */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Campos exclusivos del registro */}
+            {!isLogin && (
+              <>
+                {/* Nombre completo */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
+                    Nombre Completo
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Ej. Tiago Barbosa"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                {/* CPF Verdadero */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1 flex items-center gap-1">
+                    <CpfIcon className="w-3.5 h-3.5 text-teal-600" /> CPF (Verdadero)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      required
+                      maxLength={14}
+                      value={cpf}
+                      onChange={handleCpfChange}
+                      placeholder="000.000.000-00"
+                      className={cn("pl-4", cpfError && "border-red-500 focus:ring-red-500")}
+                    />
+                  </div>
+                  {cpfError && <p className="text-[10px] font-bold text-red-500 ml-1">{cpfError}</p>}
+                </div>
+
+                {/* Selector de rol */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
+                    ¿Qué deseas hacer?
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={role === 'student' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRole('student')}
+                      className={cn(
+                        'flex items-center justify-center gap-1.5 transition-all',
+                        role === 'student'
+                          ? 'ring-2 ring-cyan-300 ring-offset-1'
+                          : ''
+                      )}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Estudiar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={role === 'teacher' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRole('teacher')}
+                      className={cn(
+                        'flex items-center justify-center gap-1.5 transition-all',
+                        role === 'teacher'
+                          ? 'ring-2 ring-cyan-300 ring-offset-1'
+                          : ''
+                      )}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      Dar Clases
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Correo electrónico */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
+                Correo Electrónico
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Contraseña */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
+                Contraseña
+              </label>
+              <div className="relative">
+                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Botón de envío */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+              size="lg"
+            >
+              {loading
+                ? 'Cargando...'
+                : isLogin
+                  ? 'Ingresar'
+                  : 'Crear Cuenta'}
+            </Button>
+          </form>
+
+          {/* ── Aviso de modo demo ── */}
+          {isDemoMode && (
+            <div className="pt-4 border-t border-slate-200/50 text-center space-y-2">
+              <span className="inline-block text-[9px] bg-amber-500/10 text-amber-700 font-bold px-2.5 py-0.5 rounded-full border border-amber-200/50">
+                Modo Sandbox Activo
+              </span>
+              <p className="text-[9px] text-slate-500 leading-relaxed">
+                Cuentas demo (contraseña: <strong>password</strong>):<br />
+                Alumno: <strong>tiago.barbosa@example.com</strong><br />
+                Tutor: <strong>alexandre.silva@example.com</strong>
+              </p>
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
     </div>
-  );
-}
-
-// Icono auxiliar de alerta
-function AlertCircle(props) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-    </svg>
-  );
-}
-
-// Icono auxiliar de plus
-function UserPlus(props) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.647-6.374-1.765z" />
-    </svg>
   );
 }
