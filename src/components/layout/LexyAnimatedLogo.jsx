@@ -1,73 +1,92 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true }) {
   const isLarge = size === 'large';
 
   return (
-    <div className="group relative flex flex-col justify-center cursor-pointer select-none py-1">
+    <div className="group flex items-center gap-3 cursor-pointer select-none py-1">
       
-      {/* ── 1. LOGO PRINCIPAL (LEXY + IDIOMAS) ── */}
-      <div className="flex items-center gap-2 relative z-10">
-        <span className={`${
-          isLarge ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
-        } font-black tracking-tight brand-text-shimmer group-hover:from-cyan-300 group-hover:to-emerald-300 transition-all duration-500`}>
-          Lexy
-        </span>
+      {/* 1. MASCOTE DA LEXY ESTÁTICO AO LADO (SEM CORTE, SEM NENHUM QUADRADO/FUNDO NEGRO) */}
+      <div className="relative flex-shrink-0">
+        <svg
+          className={`${isLarge ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-10 h-10 sm:w-11 sm:h-11'} filter drop-shadow-[0_0_12px_rgba(56,189,248,0.7)] group-hover:scale-105 transition-transform duration-300`}
+          viewBox="0 0 100 100"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Sombrinha de Luz nos pézinhos */}
+          <ellipse cx="50" cy="88" rx="20" ry="4" fill="#0284c7" opacity="0.4" />
 
-        <span className="bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 border border-cyan-400/50 text-cyan-300 font-black text-[10px] sm:text-[11px] uppercase px-2.5 py-0.5 rounded-full shadow-lg shadow-cyan-500/20 tracking-widest group-hover:border-cyan-300 group-hover:scale-105 transition-all">
-          IDIOMAS
-        </span>
+          {/* Pézinhos */}
+          <ellipse cx="38" cy="84" rx="7" ry="4.5" fill="#0284c7" />
+          <ellipse cx="62" cy="84" rx="7" ry="4.5" fill="#0284c7" />
+
+          {/* Corpo Redondinho Azul Gradiente */}
+          <circle cx="50" cy="48" r="32" fill="url(#lexyBodyGradStatic)" />
+
+          {/* Barriguinha Azul Claro */}
+          <circle cx="50" cy="52" r="20" fill="url(#lexyBellyGradStatic)" opacity="0.85" />
+
+          {/* Olhos Brilhantes Expressivos */}
+          <circle cx="41" cy="40" r="5" fill="#0f172a" />
+          <circle cx="59" cy="40" r="5" fill="#0f172a" />
+          <circle cx="43" cy="38" r="2" fill="#ffffff" />
+          <circle cx="61" cy="38" r="2" fill="#ffffff" />
+
+          {/* Sorriso Fofo */}
+          <path d="M 44 52 Q 50 60 56 52" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" fill="none" />
+
+          {/* Bochechas Rosadinhas */}
+          <circle cx="35" cy="47" r="3.5" fill="#f43f5e" opacity="0.5" />
+          <circle cx="65" cy="47" r="3.5" fill="#f43f5e" opacity="0.5" />
+
+          {/* Mãozinha Esquerda */}
+          <circle cx="18" cy="50" r="5" fill="#38bdf8" />
+
+          {/* Mãozinha Direita com Varita Mágica */}
+          <g>
+            <circle cx="80" cy="40" r="5.5" fill="#38bdf8" />
+            <line x1="78" y1="43" x2="94" y2="18" stroke="#fbbf24" strokeWidth="3.5" strokeLinecap="round" />
+            <polygon points="94,12 96,17 101,18 97,21 98,26 94,23 90,26 91,21 87,18 92,17" fill="#f59e0b" />
+            <circle cx="94" cy="18" r="3.5" fill="#ffffff" opacity="0.9" />
+          </g>
+
+          {/* Gradientes SVG */}
+          <defs>
+            <linearGradient id="lexyBodyGradStatic" x1="18" y1="16" x2="82" y2="80" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#38bdf8" />
+              <stop offset="1" stopColor="#0284c7" />
+            </linearGradient>
+            <linearGradient id="lexyBellyGradStatic" x1="30" y1="32" x2="70" y2="72" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#e0f2fe" />
+              <stop offset="1" stopColor="#bae6fd" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* ── 2. ESLOGAN COM O BONEQUINHO 3D ORIGINAL MAIOR CAMINHANDO SOBRE AS LETRAS (CERO CAJA NEGRA) ── */}
-      {showSlogan && (
-        <div className="relative pt-9 sm:pt-10 pb-0.5">
-          
-          {/* MASCOTE 3D ORIGINAL CAMINHANDO SOBRE O ESLOGAN */}
-          <div className="absolute top-0 left-0 z-20 pointer-events-none animate-mascot-walk-slogan flex items-center">
-            <div className="relative flex items-center justify-center">
-              
-              {/* Aura Mágica Brilhante de Luz */}
-              <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-md animate-pulse" />
+      {/* 2. MARCA E ESLOGAN LIMPOS Y ELEGANTES */}
+      <div className="flex flex-col">
+        {/* Título Lexy + Badge IDIOMAS */}
+        <div className="flex items-center gap-1.5">
+          <span className={`${
+            isLarge ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
+          } font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-300 bg-clip-text text-transparent`}>
+            Lexy
+          </span>
 
-              {/* IMAGEM 3D DO BONEQUINHO ORIGINAL MAIOR (SEM CAIXA NEGRA GRACIAS A MIX-BLEND-SCREEN) */}
-              <img
-                src="/lexy_mascot_3d.png"
-                alt="Mascote Lexy 3D"
-                className={`${
-                  isLarge ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-10 h-10 sm:w-12 sm:h-12'
-                } object-cover mix-blend-screen drop-shadow-[0_0_18px_rgba(56,189,248,0.9)] transition-transform duration-300 group-hover:scale-115`}
-              />
-
-              {/* Estrelinha Mágica na ponta da varinha */}
-              <div className="absolute -top-1 -right-1 z-30 animate-wand-wave">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,1)]" />
-              </div>
-            </div>
-          </div>
-
-          {/* LETRAS DEL ESLOGAN SOBRE LAS CUALES CAMINA LA MASCOTA 3D */}
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs font-black tracking-wide text-slate-100 relative z-10 pt-1">
-            <span className="hover:text-cyan-300 transition-colors">Aprende</span>
-            
-            {/* Estrelinha Mágica 1 (Caindo da Varinha entre Aprende e Fala) */}
-            <span className="inline-flex items-center text-amber-400 animate-star-drop-1">
-              ✨
-            </span>
-
-            <span className="hover:text-emerald-300 transition-colors">Fala</span>
-            
-            {/* Estrelinha Mágica 2 (Caindo da Varinha entre Fala e Conecta) */}
-            <span className="inline-flex items-center text-cyan-400 animate-star-drop-2">
-              ✨
-            </span>
-
-            <span className="hover:text-sky-300 transition-colors">Conecta</span>
-          </div>
-
+          <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-black text-[10px] uppercase px-2 py-0.5 rounded-full tracking-wider">
+            IDIOMAS
+          </span>
         </div>
-      )}
+
+        {/* Eslogan Oficial Estático */}
+        {showSlogan && (
+          <span className="text-[10px] sm:text-[11px] text-cyan-300/90 font-extrabold tracking-wide mt-0.5">
+            Aprende • Fala • Conecta
+          </span>
+        )}
+      </div>
 
     </div>
   );
