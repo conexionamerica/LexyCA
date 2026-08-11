@@ -27,23 +27,23 @@ export default function Navbar() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Logo & Brand Lexy Idiomas */}
+          {/* Logo & Brand Lexy Idiomas com Transições Animadas */}
           <Link to="/" className="flex items-center gap-3 group">
             <img
               src="/lexy_logo.png"
               alt="Lexy Idiomas"
-              className="w-11 h-11 rounded-2xl object-cover border border-cyan-400/40 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform"
+              className="w-12 h-12 rounded-2xl object-cover border-2 border-cyan-400/60 logo-mascot-animated"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent">
+                <span className="font-black text-xl sm:text-2xl tracking-tight brand-text-shimmer">
                   Lexy
                 </span>
-                <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full">
+                <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-black text-[10px] uppercase px-2 py-0.5 rounded-full shadow-md shadow-cyan-500/10">
                   IDIOMAS
                 </span>
               </div>
-              <span className="text-[10px] text-cyan-300/90 block -mt-0.5 font-bold tracking-wide">
+              <span className="text-[10px] text-cyan-300/90 block -mt-0.5 font-extrabold tracking-wide">
                 Aprende • Fala • Conecta
               </span>
             </div>
