@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
+import LexyAnimatedLogo from '../components/layout/LexyAnimatedLogo';
 import { 
   Sparkles, ArrowRight, Play, Star, CheckCircle2, 
   Globe, ShieldCheck, UserCheck, GraduationCap, Clock, LogIn, Heart 
@@ -89,12 +90,8 @@ export default function LandingPage() {
           {/* Lado Derecho: Acceso Rápido de Login / Sandbox */}
           <div className="lg:col-span-5">
             <div className="glass-panel rounded-3xl p-6 border border-cyan-500/40 space-y-4 shadow-2xl">
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-                <img src="/lexy_logo.png" alt="Lexy Mascot Logo" className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400/60 logo-mascot-animated" />
-                <div>
-                  <h2 className="text-lg font-black brand-text-shimmer">Lexy Idiomas</h2>
-                  <span className="text-xs text-cyan-300 font-extrabold tracking-wide">Aprende • Fala • Conecta</span>
-                </div>
+              <div className="border-b border-slate-800 pb-3">
+                <LexyAnimatedLogo size="large" showSlogan={true} />
               </div>
 
               <p className="text-xs text-slate-400">

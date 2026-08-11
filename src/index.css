@@ -129,6 +129,19 @@ body {
   animation: shimmerGradient 6s linear infinite;
 }
 
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3.5s ease-in-out infinite;
+}
+
 /* Preply Style Tutor Video Overlay */
 .video-preview-overlay {
   position: absolute;
