@@ -26,7 +26,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+        <div className="flex items-center justify-between min-h-[90px] py-2">
           
           {/* Logo & Brand Lexy Idiomas com Varinha Mágica e Transições */}
           <Link to="/">
