@@ -47,7 +47,7 @@ export default function AdminDashboard() {
     {
       id: 'pay-201',
       tutorName: 'María Fernández',
-      tutorEmail: 'maria.tutor@preply.com',
+      tutorEmail: 'maria.tutor@lexyca.com',
       tutorAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
       date: new Date().toLocaleDateString(),
       requestedAmount: 100.00,
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     {
       id: 'pay-202',
       tutorName: 'Prof. Carlos Rivera',
-      tutorEmail: 'carlos.rivera@preply.com',
+      tutorEmail: 'carlos.rivera@lexyca.com',
       tutorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
       date: '10/08/2026',
       requestedAmount: 150.00,
