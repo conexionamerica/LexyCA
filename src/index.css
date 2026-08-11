@@ -129,36 +129,33 @@ body {
   animation: shimmerGradient 6s linear infinite;
 }
 
-@keyframes floatGentle {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-6px) rotate(2deg);
-  }
-}
-
-.animate-float-gentle {
-  animation: floatGentle 3.5s ease-in-out infinite;
-}
-
-/* ── ANIMACIÓN MÁGICA: BONEQUINHO CAMINHANDO POR CIMA DAS LETRAS (CERO CAJA/QUADRADO NEGRO) ── */
-@keyframes mascotWalkLetters {
+/* ── ANIMACIÓN MÁGICA: BONEQUINHO COM PATICAS CAMINHANDO SOBRE O ESLOGAN (CERO CAJA/QUADRADO NEGRO) ── */
+@keyframes mascotWalkSlogan {
   0% {
-    transform: translateX(0px) translateY(0px) rotate(-4deg);
+    transform: translateX(0px) translateY(0px) rotate(-3deg);
   }
   25% {
-    transform: translateX(35px) translateY(-4px) rotate(4deg);
+    transform: translateX(55px) translateY(-2px) rotate(3deg);
   }
   50% {
-    transform: translateX(80px) translateY(0px) rotate(-3deg);
+    transform: translateX(115px) translateY(0px) rotate(-3deg);
   }
   75% {
-    transform: translateX(130px) translateY(-4px) rotate(4deg);
+    transform: translateX(175px) translateY(-2px) rotate(3deg);
   }
   100% {
-    transform: translateX(0px) translateY(0px) rotate(-4deg);
+    transform: translateX(0px) translateY(0px) rotate(-3deg);
   }
+}
+
+@keyframes footStepLeft {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes footStepRight {
+  0%, 100% { transform: translateY(-4px); }
+  50% { transform: translateY(0px); }
 }
 
 @keyframes wandWave {
@@ -166,7 +163,7 @@ body {
     transform: rotate(0deg);
   }
   50% {
-    transform: rotate(-15deg);
+    transform: rotate(-18deg);
   }
 }
 
@@ -202,12 +199,22 @@ body {
   }
 }
 
-.animate-mascot-walk-letters {
-  animation: mascotWalkLetters 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+.animate-mascot-walk-slogan {
+  animation: mascotWalkSlogan 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-foot-left {
+  animation: footStepLeft 0.35s ease-in-out infinite;
+  transform-origin: 40px 84px;
+}
+
+.animate-foot-right {
+  animation: footStepRight 0.35s ease-in-out infinite;
+  transform-origin: 60px 84px;
 }
 
 .animate-wand-wave {
-  animation: wandWave 1.5s ease-in-out infinite;
+  animation: wandWave 1.2s ease-in-out infinite;
   transform-origin: 80px 42px;
 }
 
