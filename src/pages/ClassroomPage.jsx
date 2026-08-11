@@ -373,7 +373,7 @@ export default function ClassroomPage() {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold text-white">Avaliação Enviada!</h3>
-                <p className="text-xs text-slate-300">Obrigado por avaliar seu professor no Preply.</p>
+                <p className="text-xs text-slate-300">Obrigado por avaliar seu professor na Lexy.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmitReview} className="space-y-4">

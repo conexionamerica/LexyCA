@@ -74,7 +74,7 @@ export const MarketplaceProvider = ({ children }) => {
       {
         id: 'ann-1',
         target: 'all',
-        title: '🎉 Bem-vindo à Plataforma LexyCA PRO!',
+        title: '🎉 Bem-vindo à Plataforma Lexy PRO!',
         content: 'Aproveite nossa garantia de satisfação nas aulas experimentais e faça seu agendamento direto com os professores nativos.',
         level: 'info',
         createdAt: new Date().toLocaleDateString()

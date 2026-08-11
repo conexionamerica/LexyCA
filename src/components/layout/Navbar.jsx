@@ -35,7 +35,7 @@ export default function Navbar() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent">
-                  LexyCA
+                  Lexy
                 </span>
                 <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-extrabold text-[10px] uppercase px-1.5 py-0.5 rounded">
                   PRO
