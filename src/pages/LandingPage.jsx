@@ -29,7 +29,7 @@ export default function LandingPage() {
             
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-extrabold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>Plataforma de Aulas Particulares de Idiomas</span>
+              <span>Lexy Idiomas • Aprende. Fala. Conecta</span>
             </div>
 
             <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.1]">
@@ -89,9 +89,12 @@ export default function LandingPage() {
           {/* Lado Derecho: Acceso Rápido de Login / Sandbox */}
           <div className="lg:col-span-5">
             <div className="glass-panel rounded-3xl p-6 border border-cyan-500/40 space-y-4 shadow-2xl">
-              <div className="flex items-center gap-2 text-white font-extrabold text-sm border-b border-slate-800 pb-3">
-                <LogIn className="w-4 h-4 text-cyan-400" />
-                <span>Acesso Rápido ao Sistema</span>
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                <img src="/lexy_logo.png" alt="Lexy Mascot Logo" className="w-12 h-12 rounded-2xl object-cover border border-cyan-400/50 shadow-md" />
+                <div>
+                  <h2 className="text-base font-black text-white">Lexy Idiomas</h2>
+                  <span className="text-xs text-cyan-300 font-bold">Aprende • Fala • Conecta</span>
+                </div>
               </div>
 
               <p className="text-xs text-slate-400">

@@ -27,21 +27,25 @@ export default function Navbar() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Logo & Brand */}
+          {/* Logo & Brand Lexy Idiomas */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
-              <Globe className="w-6 h-6 stroke-[2.5]" />
-            </div>
+            <img
+              src="/lexy_logo.png"
+              alt="Lexy Idiomas"
+              className="w-11 h-11 rounded-2xl object-cover border border-cyan-400/40 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform"
+            />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent">
+                <span className="font-black text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent">
                   Lexy
                 </span>
-                <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-extrabold text-[10px] uppercase px-1.5 py-0.5 rounded">
-                  PRO
+                <span className="bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full">
+                  IDIOMAS
                 </span>
               </div>
-              <span className="text-[10px] text-slate-400 block -mt-1 font-medium">Aulas Particulares de Idiomas</span>
+              <span className="text-[10px] text-cyan-300/90 block -mt-0.5 font-bold tracking-wide">
+                Aprende • Fala • Conecta
+              </span>
             </div>
           </Link>
 
