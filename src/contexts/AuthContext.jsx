@@ -1,184 +1,105 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(undefined);
 
+const LOCAL_STORAGE_KEY_AUTH = 'preply_market_auth_user_v3';
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(true);
-
-  // Base de datos de usuarios simulada (para modo local sin Supabase configurado)
-  const [localUsers, setLocalUsers] = useState(() => {
-    const saved = localStorage.getItem('local_demo_users');
-    if (saved) return JSON.parse(saved);
-    
-    // Cuentas por defecto para pruebas rápidas
-    return [
-      {
-        id: "s1-uuid-value",
-        email: "tiago.barbosa@example.com",
-        password: "password",
-        name: "Tiago Barbosa",
-        role: "student",
-        wallet_balance: 100.00
-      },
-      {
-        id: "t3-uuid-value",
-        email: "alexandre.silva@example.com",
-        password: "password",
-        name: "Alexandre Silva",
-        role: "teacher"
-      },
-      {
-        id: "admin-uuid",
-        email: "admin@conexionamerica.com",
-        password: "password",
-        name: "Director Admin",
-        role: "admin"
+  // Estado do Usuário Autenticado (Aluno, Tutor ou Admin)
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_AUTH);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error cargando usuario de localStorage', e);
       }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('local_demo_users', JSON.stringify(localUsers));
-  }, [localUsers]);
-
-  // Cargar perfil real desde Supabase
-  const fetchProfile = useCallback(async (userId) => {
-    if (!userId) return null;
-    try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-      if (!error && data) {
-        setProfile(data);
-        return data;
-      }
-    } catch (e) {
-      console.log("Supabase profile read offline.");
     }
     return null;
-  }, []);
+  });
 
-  const handleSession = useCallback(async (currentSession) => {
-    setSession(currentSession);
-    const currentUser = currentSession?.user ?? null;
-    setUser(currentUser);
-    if (currentUser) {
-      setIsDemoMode(false);
-      await fetchProfile(currentUser.id);
-    } else {
-      // Si no hay sesión de Supabase, ver si hay sesión simulada guardada
-      const savedUser = sessionStorage.getItem('simulated_user');
-      if (savedUser) {
-        const u = JSON.parse(savedUser);
-        setUser({ id: u.id, email: u.email });
-        setProfile({ id: u.id, name: u.name, email: u.email, role: u.role });
-      } else {
-        setProfile(null);
-      }
-    }
-    setLoading(false);
-  }, [fetchProfile]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Detectar si Supabase está activo
-    async function checkSupabase() {
-      try {
-        const { data, error } = await supabase.from('teachers').select('id').limit(1);
-        if (!error) {
-          setIsDemoMode(false);
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            handleSession(session);
-          });
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            handleSession(session);
-          });
-          return () => subscription.unsubscribe();
-        } else {
-          // Supabase no responde o es placeholder
-          setIsDemoMode(true);
-          handleSession(null);
-        }
-      } catch (e) {
-        setIsDemoMode(true);
-        handleSession(null);
-      }
-    }
-    checkSupabase();
-  }, [handleSession]);
-
-  // Iniciar Sesión
-  const signIn = async (email, password) => {
-    if (isDemoMode) {
-      const found = localUsers.find(u => u.email === email && u.password === password);
-      if (found) {
-        const simulatedUser = { id: found.id, email: found.email, name: found.name, role: found.role };
-        sessionStorage.setItem('simulated_user', JSON.stringify(simulatedUser));
-        setUser({ id: found.id, email: found.email });
-        setProfile({ id: found.id, name: found.name, email: found.email, role: found.role });
-        return { data: { user: { id: found.id, email: found.email } }, error: null };
-      }
-      return { data: null, error: { message: "Credenciales de demostración inválidas." } };
+    if (profile) {
+      localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, JSON.stringify(profile));
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      return { data, error };
+      localStorage.removeItem(LOCAL_STORAGE_KEY_AUTH);
+    }
+  }, [profile]);
+
+  // Iniciar Sesión / Registrar Usuario Real
+  const loginUser = ({ name, email, role, documentNumber, residenceCountry, avatarUrl, hourlyRate }) => {
+    const userProfile = {
+      id: `user-${Date.now()}`,
+      full_name: name || (role === 'teacher' ? 'Prof. Maria Silva' : 'Gabriel Alumno'),
+      email: email || 'usuario@preply.com',
+      role: role || 'student', // 'student' | 'teacher' | 'admin'
+      documentNumber: documentNumber || '',
+      residenceCountry: residenceCountry || 'Brasil 🇧🇷',
+      avatar_url: avatarUrl || (role === 'teacher' 
+        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+      hourly_rate: hourlyRate || 20
+    };
+
+    setProfile(userProfile);
+    return userProfile;
+  };
+
+  // Iniciar Sesión como Super Admin Invisível
+  const loginAdmin = (email, password) => {
+    if (email === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
+      const adminUser = {
+        id: 'admin-super-1',
+        full_name: 'Super Administrador (Conexión América)',
+        email: 'emaildeconexionamerica@gmail.com',
+        role: 'admin',
+        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+      };
+      setProfile(adminUser);
+      return { success: true, user: adminUser };
+    }
+    return { success: false, error: '❌ Credenciais inválidas de Administrador. Acesso restrito.' };
+  };
+
+  // Función para cambiar de rol rápidamente en modo demostración
+  const setDemoRole = (role) => {
+    if (role === 'teacher') {
+      loginUser({
+        name: 'María Fernández',
+        email: 'maria.tutor@preply.com',
+        role: 'teacher',
+        hourlyRate: 28
+      });
+    } else if (role === 'admin') {
+      loginAdmin('emaildeconexionamerica@gmail.com', 'AlyRoberto2026*');
+    } else {
+      loginUser({
+        name: 'Gabriel Alumno Silva',
+        email: 'aluno@preply.com',
+        role: 'student',
+        documentNumber: '123.456.789-00'
+      });
     }
   };
 
-  // Registrarse
-  const signUp = async (email, password, name, role) => {
-    if (isDemoMode) {
-      const exists = localUsers.some(u => u.email === email);
-      if (exists) {
-        return { data: null, error: { message: "El correo electrónico ya está registrado." } };
-      }
-
-      const newId = `u-${Date.now()}`;
-      const newUser = { id: newId, email, password, name, role };
-      setLocalUsers(prev => [...prev, newUser]);
-
-      // Iniciar sesión inmediatamente en modo simulación
-      sessionStorage.setItem('simulated_user', JSON.stringify(newUser));
-      setUser({ id: newId, email });
-      setProfile({ id: newId, name, email, role });
-
-      return { data: { user: { id: newId, email } }, error: null };
-    } else {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) return { data: null, error };
-
-      const newUser = data?.user;
-      if (newUser) {
-        // Registrar en profiles
-        await supabase.from('profiles').insert([{ id: newUser.id, name, email, role }]);
-        
-        if (role === 'student') {
-          await supabase.from('students').insert([{ id: newUser.id, name, email, wallet_balance: 100.00 }]);
-        } else if (role === 'teacher') {
-          await supabase.from('teachers').insert([{ id: newUser.id, name, email, hourly_rate: 60.00, bio: 'Tutor de idiomas.', status: 'pending_approval' }]);
-        }
-      }
-      return { data, error: null };
-    }
-  };
-
-  // Cerrar Sesión
-  const signOut = async () => {
-    if (isDemoMode) {
-      sessionStorage.removeItem('simulated_user');
-      setUser(null);
-      setProfile(null);
-    } else {
-      await supabase.auth.signOut();
-      setUser(null);
-      setProfile(null);
-    }
+  // Cerrar Sesión (Logout)
+  const signOut = () => {
+    setProfile(null);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_AUTH);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, isDemoMode, signIn, signUp, signOut, fetchProfile }}>
+    <AuthContext.Provider value={{
+      user: profile,
+      profile,
+      loading,
+      loginUser,
+      loginAdmin,
+      setDemoRole,
+      signOut
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -186,6 +107,8 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
   return context;
 };

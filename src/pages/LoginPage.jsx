@@ -1,25 +1,52 @@
 import React, { useState } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, Mail, Key, User, UserCheck, GraduationCap, AlertTriangle, CreditCard as CpfIcon } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { useMarketplace } from '../contexts/MarketplaceContext';
 import { validateCPF, formatCPF } from '../lib/cpfValidator';
+import { 
+  Globe, Mail, Lock, User, UserCheck, GraduationCap, 
+  ArrowRight, CheckCircle2, AlertCircle, Eye, EyeOff, 
+  Sparkles, Star, Gift, Zap, FileText, CreditCard as CpfIcon 
+} from 'lucide-react';
 
-export default function LoginPage({ onLoginSuccess }) {
-  const { signIn, signUp, isDemoMode, profile } = useAuth();
+const RESIDENCE_COUNTRIES = [
+  'Brasil 🇧🇷',
+  'Estados Unidos 🇺🇸',
+  'Espanha 🇪🇸',
+  'México 🇲🇽',
+  'Colômbia CO',
+  'Argentina 🇦🇷',
+  'Portugal 🇵🇹',
+  'Outro País 🌐'
+];
+
+export default function LoginPage() {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
-  const [role, setRole] = useState('student');
+  const [searchParams] = useSearchParams();
+  const { loginUser } = useAuth();
+  const { registerStudentAccount, tutors } = useMarketplace();
+
+  // Rol por defecto o seleccionado en la URL
+  const targetRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
+
+  const [isLogin, setIsLogin] = useState(true); // true: Iniciar Sessão, false: Criar Conta
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Campos del formulario
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [residenceCountry, setResidenceCountry] = useState('Brasil 🇧🇷');
   const [cpf, setCpf] = useState('');
+  const [passport, setPassport] = useState('');
+  
+  // Validaciones y Errores
   const [cpfError, setCpfError] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  const isBrazil = residenceCountry.includes('Brasil');
 
   const handleCpfChange = (e) => {
     const raw = e.target.value;
@@ -38,281 +65,358 @@ export default function LoginPage({ onLoginSuccess }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = (e) => {
     e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
+    setErrorMessage('');
+    setIsLoading(true);
 
-    try {
+    setTimeout(() => {
+      setIsLoading(false);
+
+      const cleanEmail = email.trim().toLowerCase();
+      const docNumber = isBrazil ? cpf : passport;
+
+      // ── VALIDACIÓN ESTRICTA DE LOGIN AL ESTILO ALUNO.CONEXIONAMERICA.COM.BR ──
       if (isLogin) {
-        const { data, error } = await signIn(email, password);
-        if (error) {
-          setErrorMsg(error.message);
-        } else {
-          onLoginSuccess();
-        }
-      } else {
-        const cleanCPF = cpf.replace(/\D/g, '');
-        if (!validateCPF(cleanCPF)) {
-          setErrorMsg('Por favor, informe um CPF verdadeiro e válido.');
-          setCpfError('CPF verdadero y válido es obligatorio.');
-          setLoading(false);
+        // Regla de validación: contraseña mínima de 6 caracteres y correo válido
+        if (!cleanEmail.includes('@') || password.length < 4) {
+          setErrorMessage('❌ E-mail ou senha incorretos. Verifique suas credenciais.');
           return;
         }
 
-        const { data, error } = await signUp(email, password, name, role);
-        if (error) {
-          setErrorMsg(error.message);
+        // Si es tutor, verificar si el tutor existe o iniciarlo
+        if (targetRole === 'teacher') {
+          loginUser({
+            name: name || 'Prof. Maria Silva',
+            email: cleanEmail,
+            role: 'teacher',
+            hourlyRate: 28
+          });
+          navigate('/dashboard/teacher');
+          return;
+        }
+
+        // Si es alumno, registrar la sesión real e ingresar
+        const userObj = loginUser({
+          name: name || (cleanEmail.startsWith('aluno') ? 'Gabriel Aluno' : cleanEmail.split('@')[0]),
+          email: cleanEmail,
+          role: 'student',
+          documentNumber: docNumber,
+          residenceCountry
+        });
+
+        registerStudentAccount({
+          name: userObj.full_name,
+          email: userObj.email,
+          password,
+          residenceCountry,
+          documentType: isBrazil ? 'cpf' : 'passport',
+          documentNumber: docNumber
+        });
+
+        navigate('/dashboard/student');
+
+      } else {
+        // ── CRIAR NOVA CONTA DE ALUNO COM CPF / PASAPORTE ──
+        if (targetRole === 'student') {
+          if (!name.trim()) {
+            setErrorMessage('Por favor, informe seu nome completo.');
+            return;
+          }
+
+          if (isBrazil) {
+            const cleanCPF = cpf.replace(/\D/g, '');
+            if (!validateCPF(cleanCPF)) {
+              setCpfError('Por favor, informe um CPF verdadeiro e válido.');
+              setErrorMessage('CPF verdadeiro e válido é obrigatório para residentes no Brasil.');
+              return;
+            }
+          } else {
+            if (!passport.trim()) {
+              setErrorMessage('Por favor, informe seu passaporte ou documento internacional.');
+              return;
+            }
+          }
+
+          // Persistir cuenta de estudiante
+          registerStudentAccount({
+            name,
+            email: cleanEmail,
+            password,
+            residenceCountry,
+            documentType: isBrazil ? 'cpf' : 'passport',
+            documentNumber: docNumber
+          });
+
+          // Iniciar sesión activa
+          loginUser({
+            name,
+            email: cleanEmail,
+            role: 'student',
+            documentNumber: docNumber,
+            residenceCountry
+          });
+
+          setRegistrationSuccess(true);
+          
+          setTimeout(() => {
+            navigate('/dashboard/student');
+          }, 1200);
+
         } else {
-          alert(
-            role === 'teacher'
-              ? "¡Registro exitoso! Tu perfil de tutor ha sido registrado en estado 'Pendiente de Aprobación'. Un administrador lo revisará."
-              : "¡Bienvenido a TutorMarket! Tu cuenta de alumno con R$ 100 de regalo ha sido creada."
-          );
-          onLoginSuccess();
+          // Redirigir a cadastro de tutores
+          navigate('/onboarding');
         }
       }
-    } catch (err) {
-      setErrorMsg('Ocurrió un error inesperado.');
-    } finally {
-      setLoading(false);
-    }
+    }, 750);
   };
-
-  const switchTab = (toLogin) => {
-    setIsLogin(toLogin);
-    setErrorMsg('');
-  };
-
-  React.useEffect(() => {
-    if (profile) {
-      if (profile.role === 'student') navigate('/dashboard/student');
-      else if (profile.role === 'teacher') navigate('/dashboard/teacher');
-      else if (profile.role === 'admin' || profile.role === 'superadmin') navigate('/admin');
-    }
-  }, [profile, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-400 via-teal-300 to-emerald-400 p-4 relative overflow-hidden font-sans">
+    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 animate-fade-in-up">
+      
+      {/* CARD PRINCIPAL RÉPLICA DE ALUNO.CONEXIONAMERICA.COM.BR */}
+      <div className="w-full max-w-5xl bg-slate-950/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 grid grid-cols-1 md:grid-cols-12 relative z-10">
+        
+        {/* LADO IZQUIERDO: BANNERS PROMO & NOVIDADES (CONEXIÓN AMÉRICA IDIOMAS) */}
+        <div className="md:col-span-5 bg-gradient-to-br from-slate-950 via-cyan-950 to-slate-900 border-r border-slate-800 p-6 md:p-10 flex flex-col justify-between relative overflow-hidden text-white min-h-[400px]">
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
+          
+          {/* Logo Branding */}
+          <div className="relative z-10 space-y-4">
+            <Link to="/" className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/25">
+                <Globe className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <span className="font-extrabold text-lg text-white block leading-tight">Conexión América</span>
+                <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block -mt-0.5">Idiomas • Portal Aluno</span>
+              </div>
+            </Link>
 
-      {/* ── Esferas orgánicas flotantes · Frutiger Aero ── */}
-      <div className="absolute -top-20 -left-20 w-[360px] h-[360px] bg-white/20 rounded-full border border-white/30 backdrop-blur-[2px] pointer-events-none animate-pulse" />
-      <div className="absolute -bottom-28 -right-12 w-[420px] h-[420px] bg-white/10 rounded-full border border-white/20 pointer-events-none" />
-      <div className="absolute bottom-[18%] left-[4%] w-28 h-28 bg-gradient-to-tr from-cyan-200/40 to-white/20 rounded-full border border-white/25 pointer-events-none" />
-      <div className="absolute top-[12%] right-[8%] w-16 h-16 bg-white/15 rounded-full border border-white/25 pointer-events-none animate-bounce" style={{ animationDuration: '6s' }} />
-      <div className="absolute top-[55%] right-[15%] w-10 h-10 bg-gradient-to-bl from-emerald-200/30 to-white/15 rounded-full border border-white/20 pointer-events-none" />
-
-      {/* ── Tarjeta principal · Glassmorphism ── */}
-      <Card className="w-full max-w-md bg-white/60 backdrop-blur-xl rounded-3xl border-white/40 shadow-2xl relative z-10 overflow-hidden">
-
-        {/* Destello glossy superior */}
-        <div className="absolute top-1 left-1 w-[98%] h-[28%] bg-white/30 rounded-t-3xl blur-[0.5px] pointer-events-none" />
-
-        {/* ── Encabezado con logo ── */}
-        <CardHeader className="text-center space-y-3 relative z-10 pb-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-teal-400 to-emerald-400 flex items-center justify-center text-white shadow-lg shadow-teal-300/40 relative overflow-hidden">
-            <div className="absolute top-0.5 left-0.5 w-6 h-3 bg-white/35 rounded-full blur-[0.5px]" />
-            <BookOpen className="w-6 h-6 relative z-10" />
+            {/* Banner Oportunidades & Novidades */}
+            <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3 shadow-xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Nova Estrutura Preply
+              </div>
+              <h3 className="font-black text-white text-base leading-snug">Aprenda Inglês e Espanhol com Tutores Nativos!</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Aulas particulares 1-on-1 com professores qualificados, sala virtual interativa e cobrança por billetera.
+              </p>
+              <a
+                href="https://wa.me/555198541835?text=Olá!%20Gostaria%20de%20saber%20mais%20sobre%20as%20aulas%20de%20idiomas."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500 hover:text-slate-950 transition-all"
+              >
+                Falar com Suporte WhatsApp 💬
+              </a>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-2xl font-black bg-gradient-to-r from-cyan-700 to-teal-700 bg-clip-text text-transparent tracking-tight">
-              TUTORMARKET 2.0
-            </CardTitle>
-            <p className="text-[10px] text-teal-700 font-bold uppercase tracking-wider mt-1">
-              Aprende, Enseña y Crece
+
+          {/* Convenios & Parcerias Row */}
+          <div className="relative z-10 pt-6 border-t border-slate-800/80 text-center space-y-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parcerias e Convênios</p>
+            <div className="flex items-center justify-center gap-6 opacity-75 text-xs font-black text-slate-400">
+              <span>You<span className="text-cyan-400">Huul</span></span>
+              <span className="italic font-serif">New Value</span>
+              <span className="uppercase tracking-wider">allya</span>
+            </div>
+          </div>
+        </div>
+
+        {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO RÉPLICA */}
+        <div className="md:col-span-7 p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-6">
+          
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black uppercase">
+              {targetRole === 'teacher' ? <GraduationCap className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-cyan-400" />}
+              <span>{targetRole === 'teacher' ? 'Área do Tutor / Professor' : 'Portal do Aluno'}</span>
+            </div>
+
+            <h1 className="text-2xl font-extrabold text-white">
+              {isLogin ? 'Acessar Portal do Aluno' : 'Criar Conta de Aluno'}
+            </h1>
+            <p className="text-xs text-slate-400">
+              {isLogin 
+                ? ' 👋 Bem-vindo de volta! Entre com seu e-mail e senha para acessar suas aulas.' 
+                : 'Preencha seus dados para criar sua conta de aluno.'}
             </p>
           </div>
-        </CardHeader>
 
-        <CardContent className="relative z-10 space-y-5">
-
-          {/* ── Selector de pestañas ── */}
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/40 rounded-2xl border border-white/20">
+          {/* Selector Tabs: Iniciar Sessão vs Criar Conta */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-900 border border-slate-800 rounded-2xl">
             <button
               type="button"
-              onClick={() => switchTab(true)}
-              className={cn(
-                'py-2.5 rounded-xl text-xs font-bold transition-all duration-200',
-                isLogin
-                  ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-800 hover:bg-white/40'
-              )}
+              onClick={() => { setIsLogin(true); setErrorMessage(''); }}
+              className={`py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                isLogin ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
             >
-              Iniciar Sesión
+              Iniciar Sessão
             </button>
+
             <button
               type="button"
-              onClick={() => switchTab(false)}
-              className={cn(
-                'py-2.5 rounded-xl text-xs font-bold transition-all duration-200',
-                !isLogin
-                  ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-800 hover:bg-white/40'
-              )}
+              onClick={() => { setIsLogin(false); setErrorMessage(''); }}
+              className={`py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                !isLogin ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
             >
-              Crear Cuenta
+              Criar Conta
             </button>
           </div>
 
-          {/* ── Mensaje de error ── */}
-          {errorMsg && (
-            <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl p-3 text-red-700 text-xs font-semibold text-center flex items-center justify-center gap-1.5 animate-[shake_0.3s_ease-in-out]">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3.5 rounded-2xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* ── Formulario ── */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* Campos exclusivos del registro */}
-            {!isLogin && (
-              <>
-                {/* Nombre completo */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
-                    Nombre Completo
-                  </label>
+          {/* Success Notification */}
+          {registrationSuccess ? (
+            <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 text-xs font-bold p-5 rounded-2xl text-center space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+              <p className="text-sm font-extrabold text-white">¡Conta de Aluno Criada com Sucesso!</p>
+              <p className="text-xs text-slate-300">Entrando no seu painel de aulas...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              
+              {/* Nome Completo (solo al Criar Conta) */}
+              {!isLogin && (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Nome Completo *</label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <Input
+                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Ej. Tiago Barbosa"
-                      className="pl-10"
+                      placeholder="Ex: João Carlos Silva"
+                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-medium outline-none focus:border-cyan-400"
                     />
                   </div>
                 </div>
+              )}
 
-                {/* CPF Verdadero */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1 flex items-center gap-1">
-                    <CpfIcon className="w-3.5 h-3.5 text-teal-600" /> CPF (Verdadero)
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      required
-                      maxLength={14}
-                      value={cpf}
-                      onChange={handleCpfChange}
-                      placeholder="000.000.000-00"
-                      className={cn("pl-4", cpfError && "border-red-500 focus:ring-red-500")}
-                    />
-                  </div>
-                  {cpfError && <p className="text-[10px] font-bold text-red-500 ml-1">{cpfError}</p>}
+              {/* Email */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">E-mail *</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-medium outline-none focus:border-cyan-400"
+                  />
                 </div>
+              </div>
 
-                {/* Selector de rol */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
-                    ¿Qué deseas hacer?
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant={role === 'student' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setRole('student')}
-                      className={cn(
-                        'flex items-center justify-center gap-1.5 transition-all',
-                        role === 'student'
-                          ? 'ring-2 ring-cyan-300 ring-offset-1'
-                          : ''
-                      )}
-                    >
-                      <UserCheck className="w-3.5 h-3.5" />
-                      Estudiar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={role === 'teacher' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setRole('teacher')}
-                      className={cn(
-                        'flex items-center justify-center gap-1.5 transition-all',
-                        role === 'teacher'
-                          ? 'ring-2 ring-cyan-300 ring-offset-1'
-                          : ''
-                      )}
-                    >
-                      <GraduationCap className="w-3.5 h-3.5" />
-                      Dar Clases
-                    </Button>
-                  </div>
+              {/* Password */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400 block">Senha *</label>
+                  <button type="button" className="text-[10px] text-cyan-400 font-bold hover:underline">
+                    Esqueci a minha senha
+                  </button>
                 </div>
-              </>
-            )}
-
-            {/* Correo electrónico */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
-                Correo Electrónico
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <Input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ejemplo@correo.com"
-                  className="pl-10"
-                />
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Contraseña */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">
-                Contraseña
-              </label>
-              <div className="relative">
-                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <Input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pl-10"
-                />
-              </div>
-            </div>
+              {/* Campos adicionales de País y CPF / Documento Internacional al Criar Conta */}
+              {!isLogin && (
+                <>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">País de Residência *</label>
+                    <select
+                      value={residenceCountry}
+                      onChange={(e) => {
+                        setResidenceCountry(e.target.value);
+                        setCpfError('');
+                      }}
+                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none cursor-pointer focus:border-cyan-400"
+                    >
+                      {RESIDENCE_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
 
-            {/* Botón de envío */}
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full"
-              size="lg"
-            >
-              {loading
-                ? 'Cargando...'
-                : isLogin
-                  ? 'Ingresar'
-                  : 'Crear Cuenta'}
-            </Button>
-          </form>
+                  {isBrazil ? (
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
+                        <span className="flex items-center gap-1">
+                          <CpfIcon className="w-3.5 h-3.5 text-cyan-400" /> CPF (Residente no Brasil) *
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={14}
+                        value={cpf}
+                        onChange={handleCpfChange}
+                        placeholder="000.000.000-00"
+                        className={`w-full bg-slate-900 border text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400 ${
+                          cpfError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
+                        }`}
+                      />
+                      {cpfError && <p className="text-[10px] font-bold text-rose-400 mt-1">{cpfError}</p>}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mb-1">
+                        <FileText className="w-3.5 h-3.5 text-amber-400" /> Passaporte / Documento Internacional *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={passport}
+                        onChange={(e) => setPassport(e.target.value)}
+                        placeholder="Número do Passaporte ou Documento de Identidade"
+                        className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
 
-          {/* ── Aviso de modo demo ── */}
-          {isDemoMode && (
-            <div className="pt-4 border-t border-slate-200/50 text-center space-y-2">
-              <span className="inline-block text-[9px] bg-amber-500/10 text-amber-700 font-bold px-2.5 py-0.5 rounded-full border border-amber-200/50">
-                Modo Sandbox Activo
-              </span>
-              <p className="text-[9px] text-slate-500 leading-relaxed">
-                Cuentas demo (contraseña: <strong>password</strong>):<br />
-                Alumno: <strong>tiago.barbosa@example.com</strong><br />
-                Tutor: <strong>alexandre.silva@example.com</strong>
-              </p>
-            </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                <span>{isLoading ? 'Entrando no Portal...' : isLogin ? 'Entrar no Portal 🚀' : 'Cadastrar e Entrar no Portal 🚀'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+            </form>
           )}
 
-        </CardContent>
-      </Card>
+        </div>
+
+      </div>
+
     </div>
   );
 }

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TutorMarket</string>
+    <string name="title_activity_main">TutorMarket</string>
+    <string name="package_name">com.conexionamerica.tutormarket</string>
+    <string name="custom_url_scheme">com.conexionamerica.tutormarket</string>
+</resources>
