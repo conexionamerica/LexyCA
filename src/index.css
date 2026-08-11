@@ -142,39 +142,31 @@ body {
   animation: floatGentle 3.5s ease-in-out infinite;
 }
 
-/* ── ANIMACIÓN MÁGICA: BONEQUINHO CAMINHANDO POR CIMA E COLOCANDO ESTRELAS NO ESLOGAN ── */
-@keyframes mascotWalkTop {
+/* ── ANIMACIÓN MÁGICA: BONEQUINHO CAMINHANDO POR CIMA DAS LETRAS (CERO CAJA/QUADRADO NEGRO) ── */
+@keyframes mascotWalkLetters {
   0% {
-    transform: translateX(-5px) translateY(0px) rotate(-4deg);
+    transform: translateX(0px) translateY(0px) rotate(-4deg);
   }
   25% {
-    transform: translateX(40px) translateY(-5px) rotate(5deg);
+    transform: translateX(35px) translateY(-4px) rotate(4deg);
   }
   50% {
-    transform: translateX(95px) translateY(-2px) rotate(-3deg);
+    transform: translateX(80px) translateY(0px) rotate(-3deg);
   }
   75% {
-    transform: translateX(145px) translateY(-5px) rotate(4deg);
+    transform: translateX(130px) translateY(-4px) rotate(4deg);
   }
   100% {
-    transform: translateX(-5px) translateY(0px) rotate(-4deg);
+    transform: translateX(0px) translateY(0px) rotate(-4deg);
   }
 }
 
-@keyframes wandSparkleBurst {
+@keyframes wandWave {
   0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.8) rotate(0deg);
-  }
-  25%, 75% {
-    opacity: 1;
-    transform: scale(1.4) rotate(180deg);
-    filter: drop-shadow(0 0 12px #f59e0b);
+    transform: rotate(0deg);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1.2) rotate(90deg);
-    filter: drop-shadow(0 0 15px #38bdf8);
+    transform: rotate(-15deg);
   }
 }
 
@@ -210,12 +202,13 @@ body {
   }
 }
 
-.animate-mascot-walk {
-  animation: mascotWalkTop 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+.animate-mascot-walk-letters {
+  animation: mascotWalkLetters 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-.animate-wand-burst {
-  animation: wandSparkleBurst 2s ease-in-out infinite;
+.animate-wand-wave {
+  animation: wandWave 1.5s ease-in-out infinite;
+  transform-origin: 80px 42px;
 }
 
 .animate-star-drop-1 {
