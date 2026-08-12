@@ -6,18 +6,23 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
   return (
     <div className="group inline-flex flex-col items-center justify-center cursor-pointer select-none py-1">
       
-      {/* ── FILA SUPERIOR: MASCOTA 3D + ESTRELLA DORADA ✦ + "Lexy IDIOMAS" CON TRANSICIÓN DE COLOR ── */}
+      {/* ── FILA SUPERIOR: MASCOTA 3D (CERO FONDO NEGRO CON MÁSCARA RADIAL) + ESTRELLA ✦ + "Lexy IDIOMAS" ── */}
       <div className="flex items-center gap-2.5 relative">
         
-        {/* Mascota 3D de la Foto con Aura de Luz */}
-        <div className="relative flex-shrink-0">
+        {/* Mascota 3D de la Foto sin Fondo Negro (Máscara Radial Transparente + Mix-Blend-Screen) */}
+        <div className="relative flex-shrink-0 flex items-center justify-center">
           <div className="absolute inset-0 bg-cyan-400/30 rounded-full blur-md animate-pulse" />
+          
           <img
             src="/lexy_mascot_3d.png"
             alt="Mascote Lexy 3D"
+            style={{
+              maskImage: 'radial-gradient(circle at center, black 55%, transparent 85%)',
+              WebkitMaskImage: 'radial-gradient(circle at center, black 55%, transparent 85%)',
+            }}
             className={`${
               isLarge ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-11 h-11 sm:w-13 sm:h-13'
-            } object-cover mix-blend-screen drop-shadow-[0_0_18px_rgba(56,189,248,0.8)] transition-transform duration-300 group-hover:scale-110`}
+            } object-cover mix-blend-screen drop-shadow-[0_0_20px_rgba(56,189,248,0.9)] transition-transform duration-300 group-hover:scale-110`}
           />
         </div>
 
