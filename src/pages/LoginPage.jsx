@@ -23,7 +23,7 @@ const RESIDENCE_COUNTRIES = [
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { loginUser } = useAuth();
+  const { loginUser, signInWithSupabase, signUpWithSupabase } = useAuth();
   const { registerStudentAccount, tutors } = useMarketplace();
 
   // Rol por defecto o seleccionado en la URL
@@ -65,80 +65,78 @@ export default function LoginPage() {
     }
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    const cleanEmail = email.trim().toLowerCase();
+    const docNumber = isBrazil ? cpf : passport;
+
+    // ── AUTENTICACIÓN SEGURA DE USUARIOS REGISTRADOS EN SUPABASE ──
+    if (isLogin) {
+      if (!cleanEmail.includes('@') || password.length < 4) {
+        setIsLoading(false);
+        setErrorMessage('❌ E-mail ou senha incorretos. Verifique suas credenciais.');
+        return;
+      }
+
+      const res = await signInWithSupabase({ email: cleanEmail, password });
       setIsLoading(false);
 
-      const cleanEmail = email.trim().toLowerCase();
-      const docNumber = isBrazil ? cpf : passport;
+      if (!res.success) {
+        setErrorMessage(res.error || '❌ Credenciais inválidas. Verifique seu e-mail e senha.');
+        return;
+      }
 
-      // ── VALIDACIÓN ESTRICTA DE LOGIN AL ESTILO ALUNO.CONEXIONAMERICA.COM.BR ──
-      if (isLogin) {
-        // Regla de validación: contraseña mínima de 6 caracteres y correo válido
-        if (!cleanEmail.includes('@') || password.length < 4) {
-          setErrorMessage('❌ E-mail ou senha incorretos. Verifique suas credenciais.');
-          return;
-        }
-
-        // Si es tutor, verificar si el tutor existe o iniciarlo
-        if (targetRole === 'teacher') {
-          loginUser({
-            name: name || 'Prof. Maria Silva',
-            email: cleanEmail,
-            role: 'teacher',
-            hourlyRate: 28
-          });
-          navigate('/dashboard/teacher');
-          return;
-        }
-
-        // Si es alumno, registrar la sesión real e ingresar
-        const userObj = loginUser({
-          name: name || (cleanEmail.startsWith('aluno') ? 'Gabriel Aluno' : cleanEmail.split('@')[0]),
-          email: cleanEmail,
-          role: 'student',
-          documentNumber: docNumber,
-          residenceCountry
-        });
-
-        registerStudentAccount({
-          name: userObj.full_name,
-          email: userObj.email,
-          password,
-          residenceCountry,
-          documentType: isBrazil ? 'cpf' : 'passport',
-          documentNumber: docNumber
-        });
-
-        navigate('/dashboard/student');
-
+      const userRole = res.user?.role || targetRole;
+      if (userRole === 'teacher') {
+        navigate('/dashboard/teacher');
+      } else if (userRole === 'admin') {
+        navigate('/admin');
       } else {
-        // ── CRIAR NOVA CONTA DE ALUNO COM CPF / PASAPORTE ──
-        if (targetRole === 'student') {
-          if (!name.trim()) {
-            setErrorMessage('Por favor, informe seu nome completo.');
+        navigate('/dashboard/student');
+      }
+    } else {
+      // ── CRIAR NOVA CONTA REAL REGISTRADA NA SUPABASE ──
+      if (!name.trim()) {
+        setIsLoading(false);
+        setErrorMessage('Por favor, informe seu nome completo.');
+        return;
+      }
+
+      if (targetRole === 'student') {
+        if (isBrazil) {
+          const cleanCPF = cpf.replace(/\D/g, '');
+          if (!validateCPF(cleanCPF)) {
+            setIsLoading(false);
+            setCpfError('Por favor, informe um CPF verdadeiro e válido.');
+            setErrorMessage('CPF verdadeiro e válido é obrigatório para residentes no Brasil.');
             return;
           }
-
-          if (isBrazil) {
-            const cleanCPF = cpf.replace(/\D/g, '');
-            if (!validateCPF(cleanCPF)) {
-              setCpfError('Por favor, informe um CPF verdadeiro e válido.');
-              setErrorMessage('CPF verdadeiro e válido é obrigatório para residentes no Brasil.');
-              return;
-            }
-          } else {
-            if (!passport.trim()) {
-              setErrorMessage('Por favor, informe seu passaporte ou documento internacional.');
-              return;
-            }
+        } else {
+          if (!passport.trim()) {
+            setIsLoading(false);
+            setErrorMessage('Por favor, informe seu passaporte ou documento internacional.');
+            return;
           }
+        }
+      }
 
-          // Persistir cuenta de estudiante
+      const res = await signUpWithSupabase({
+        name,
+        email: cleanEmail,
+        password,
+        role: targetRole,
+        documentNumber: docNumber,
+        residenceCountry
+      });
+
+      setIsLoading(false);
+
+      if (res.success) {
+        setRegistrationSuccess(true);
+        if (targetRole === 'student') {
           registerStudentAccount({
             name,
             email: cleanEmail,
@@ -147,28 +145,14 @@ export default function LoginPage() {
             documentType: isBrazil ? 'cpf' : 'passport',
             documentNumber: docNumber
           });
-
-          // Iniciar sesión activa
-          loginUser({
-            name,
-            email: cleanEmail,
-            role: 'student',
-            documentNumber: docNumber,
-            residenceCountry
-          });
-
-          setRegistrationSuccess(true);
-          
-          setTimeout(() => {
-            navigate('/dashboard/student');
-          }, 1200);
-
-        } else {
-          // Redirigir a cadastro de tutores
-          navigate('/onboarding');
         }
+        setTimeout(() => {
+          navigate(targetRole === 'teacher' ? '/dashboard/teacher' : '/dashboard/student');
+        }, 1000);
+      } else {
+        setErrorMessage(res.error || '❌ Erro ao criar conta na Supabase. Tente novamente.');
       }
-    }, 750);
+    }
   };
 
   return (
