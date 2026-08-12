@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(undefined);
 
-const LOCAL_STORAGE_KEY_AUTH = 'preply_market_auth_user_v3';
+const LOCAL_STORAGE_KEY_AUTH = 'lexy_auth_user_v3';
 
 export const AuthProvider = ({ children }) => {
   // Estado do Usuário Autenticado (Aluno, Tutor ou Admin)
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
     if (cleanEmail === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
       const adminUser = {
         id: 'admin-super-1',
-        full_name: 'Super Administrador (Conexión América)',
+        full_name: 'Administrador Lexy Idiomas',
         email: 'emaildeconexionamerica@gmail.com',
         role: 'admin',
         avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
@@ -115,17 +115,17 @@ export const AuthProvider = ({ children }) => {
 
       // Verificar errores de autenticación y existencia del usuario
       if (error || !data.user) {
+        // Manejar error de rate limit de Supabase
+        const msg = error?.message?.toLowerCase() || '';
+        if (msg.includes('rate limit') || msg.includes('too many requests') || error?.status === 429) {
+          return {
+            success: false,
+            error: '⏳ Muitas tentativas de login. Por favor, aguarde alguns minutos e tente novamente.'
+          };
+        }
         return { 
           success: false, 
           error: '❌ E-mail ou senha incorretos. Verifique suas credenciais na Lexy.' 
-        };
-      }
-
-      // Asegurar que el email está verificado en Supabase
-      if (!data.user.email_confirmed_at) {
-        return {
-          success: false,
-          error: '❌ Email ainda não verificado. Por favor, confirme seu email antes de entrar.'
         };
       }
 
@@ -154,10 +154,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
-  const signUpWithSupabase = async ({ name, email, password, role, documentNumber, residenceCountry, hourlyRate }) => {
+  const signUpWithSupabase = async ({ name, email, password, role, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
-      
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: password,
@@ -168,16 +167,27 @@ export const AuthProvider = ({ children }) => {
             role: role || 'student',
             documentNumber: documentNumber || '',
             residenceCountry: residenceCountry || 'Brasil 🇧🇷',
-            hourlyRate: hourlyRate || 20
+            hourlyRate: hourlyRate || 20,
+            study_language: study_language || '',
+            language_level: language_level || '',
+            study_motivation: study_motivation || ''
           }
         }
       });
 
       if (error) {
-        if (error.message?.includes('already registered')) {
+        const msg = error.message?.toLowerCase() || '';
+        // Manejar rate limit de Supabase (error 429)
+        if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('email rate limit') || error.status === 429) {
+          return { success: false, error: '⏳ Limite de cadastros atingido. A Supabase permite poucos cadastros por hora no plano gratuito. Por favor, aguarde alguns minutos e tente novamente.' };
+        }
+        if (msg.includes('already registered')) {
           return { success: false, error: '❌ Este e-mail já está cadastrado. Faça login para acessar.' };
         }
-        return { success: false, error: `❌ ${error.message}` };
+        if (msg.includes('password') && (msg.includes('short') || msg.includes('weak'))) {
+          return { success: false, error: '❌ A senha deve ter pelo menos 6 caracteres.' };
+        }
+        return { success: false, error: `❌ Erro ao criar conta: ${error.message}` };
       }
 
       if (!data.user) {
@@ -209,6 +219,9 @@ export const AuthProvider = ({ children }) => {
         role: role || 'student',
         documentNumber: documentNumber || '',
         residenceCountry: residenceCountry || 'Brasil 🇧🇷',
+        study_language: study_language || '',
+        language_level: language_level || '',
+        study_motivation: study_motivation || '',
         avatar_url: role === 'teacher' 
           ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
@@ -228,7 +241,7 @@ export const AuthProvider = ({ children }) => {
     if (email === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
       const adminUser = {
         id: 'admin-super-1',
-        full_name: 'Super Administrador (Conexión América)',
+        full_name: 'Administrador Lexy Idiomas',
         email: 'emaildeconexionamerica@gmail.com',
         role: 'admin',
         avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'

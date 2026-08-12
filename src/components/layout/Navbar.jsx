@@ -147,16 +147,6 @@ export default function Navbar() {
                   <GraduationCap className="w-4 h-4 text-amber-400" />
                   <span>Quero Dar Aulas</span>
                 </Link>
-
-                {/* BOTÓN 3: DIRECTO AL PAINEL ADMIN */}
-                <Link
-                  to="/admin"
-                  className="bg-slate-900/80 hover:bg-slate-900 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 hover:scale-105 shadow-md shadow-emerald-500/10"
-                  title="Acessar Painel do Administrador"
-                >
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Admin</span>
-                </Link>
               </>
             )}
 

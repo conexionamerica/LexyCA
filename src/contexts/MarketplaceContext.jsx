@@ -3,15 +3,15 @@ import { mockTutors as initialMockTutors } from '../data/mockTutors';
 
 const MarketplaceContext = createContext(undefined);
 
-const LOCAL_STORAGE_KEY_TUTORS = 'preply_market_tutors_v2';
-const LOCAL_STORAGE_KEY_BOOKINGS = 'preply_market_bookings_v2';
-const LOCAL_STORAGE_KEY_STUDENT = 'preply_market_student_v2';
-const LOCAL_STORAGE_KEY_TRIALS = 'preply_market_used_trials_v2';
-const LOCAL_STORAGE_KEY_SUBSCRIPTIONS = 'preply_market_subscriptions_v2';
-const LOCAL_STORAGE_KEY_FEE = 'preply_market_platform_fee_v2';
-const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'preply_market_announcements_v2';
-const LOCAL_STORAGE_KEY_DIRECT_CHAT = 'preply_market_direct_chat_v2';
-const LOCAL_STORAGE_KEY_TIER_RATES = 'preply_market_tier_rates_v2';
+const LOCAL_STORAGE_KEY_TUTORS = 'lexy_market_tutors_v2';
+const LOCAL_STORAGE_KEY_BOOKINGS = 'lexy_market_bookings_v2';
+const LOCAL_STORAGE_KEY_STUDENT = 'lexy_market_student_v2';
+const LOCAL_STORAGE_KEY_TRIALS = 'lexy_market_used_trials_v2';
+const LOCAL_STORAGE_KEY_SUBSCRIPTIONS = 'lexy_market_subscriptions_v2';
+const LOCAL_STORAGE_KEY_FEE = 'lexy_market_platform_fee_v2';
+const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'lexy_market_announcements_v2';
+const LOCAL_STORAGE_KEY_DIRECT_CHAT = 'lexy_market_direct_chat_v2';
+const LOCAL_STORAGE_KEY_TIER_RATES = 'lexy_market_tier_rates_v2';
 
 export const DEFAULT_TIER_RATES = {
   trial: 75, // Aula Experimental: 75% Ganho
@@ -173,7 +173,7 @@ export const MarketplaceProvider = ({ children }) => {
     return {
       id: 'student-demo-1',
       name: 'Gabriel Alumno',
-      email: 'aluno@preply.com',
+      email: 'aluno@lexy.com',
       walletBalance: 0.00
     };
   });

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Calendar, Clock, DollarSign, Users, Star, 
   CheckCircle2, Video, Sparkles, Settings, Save, AlertCircle, 
-  MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User 
+  MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home 
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -15,17 +15,15 @@ export default function TeacherDashboard() {
   
   const { profile } = useAuth();
 
-  // Limites e Recomendação de Tarifa por Hora (R$ BRL)
   const MIN_RATE = 13;
   const MAX_RATE = 40;
   const RECOMMENDED_RATE = 23;
 
-  // Lista Completa de Alunos do Professor para Seleção de Chat
   const myStudentsList = [
     {
       id: 'stud-1',
       name: 'Gabriel Alumno Silva',
-      email: 'aluno@preply.com',
+      email: 'aluno@lexy.com',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
       level: 'B2 Intermediário',
       lessonsCount: 6,
@@ -51,19 +49,15 @@ export default function TeacherDashboard() {
     }
   ];
 
-  // Estado do Aluno Selecionado no Chat
   const [selectedStudentId, setSelectedStudentId] = useState('stud-1');
   const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0];
 
-  // Mensagens filtradas para o aluno selecionado
   const activeStudentMessages = directChatMessages.filter(msg => 
     msg.studentId === selectedStudentId || (!msg.studentId && selectedStudentId === 'stud-1')
   );
 
-  // Anúncios globais direcionados a professores
   const teacherAnnouncements = announcements.filter(a => a.target === 'all' || a.target === 'teachers');
 
-  // Obtener el tutor activo logueado o el primero de la lista
   const tutor = tutors.find(t => t.email === profile?.email || t.id === profile?.id) || tutors[0] || {
     id: 'tutor-1',
     name: 'María Fernández',
@@ -91,23 +85,18 @@ export default function TeacherDashboard() {
   };
 
   const nextTier = getNextTierInfo(totalLessons);
-
   const [earnedBalance, setEarnedBalance] = useState(tutor.earnedBalance || 240.00);
 
-  // 1. CONFIGURACIÓN DE TARIFA (COM LIMITES R$ 13 A R$ 40) Y LINK DE GOOGLE MEET
   const [hourlyRate, setHourlyRate] = useState(tutor.hourlyRate || 23);
   const [meetUrl, setMeetUrl] = useState(tutor.meetUrl || 'https://meet.google.com/abc-defg-hij');
   const [isRateSaved, setIsRateSaved] = useState(false);
   const [rateErrorMsg, setRateErrorMsg] = useState('');
 
-  // 2. EDITOR DE DISPONIBILIDAD SEMANAL (DE 07:00 A 23:00)
   const [schedule, setSchedule] = useState(tutor.weeklySchedule || {});
   const [isScheduleSaved, setIsScheduleSaved] = useState(false);
 
-  // 3. CHAT DIRETO NA PLATAFORMA (PROFESSOR <-> ALUNO)
   const [teacherChatMessage, setTeacherChatMessage] = useState('');
 
-  // 4. ESTADOS DE SOLICITAÇÃO DE RESGATE (PAYOUT)
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState(100);
   const [payoutMethod, setPayoutMethod] = useState('PIX Brasil 🇧🇷');
@@ -124,19 +113,28 @@ export default function TeacherDashboard() {
   ]);
   const [payoutSuccessMsg, setPayoutSuccessMsg] = useState('');
 
-  // 5. ESTADOS DE VERIFICACIÓN DE ASISTENCIA & MODAL DE FEEDBACK DA AULA
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('Excelente aula! Gabriel praticou conversação fluida e tempo verbal passado. Demonstrou ótimo domínio do vocabulário corporativo.');
   const [studyTips, setStudyTips] = useState('Revisar a pronúncia das palavras terminadas em -ción e rever o vocabulário de reuniões.');
   const [isClassCompletedState, setIsClassCompletedState] = useState(false);
 
+  // New Dashboard States
+  const [activeTab, setActiveTab] = useState('inicio');
+  const [welcomeDismissed, setWelcomeDismissed] = useState(
+    () => localStorage.getItem('lexy_teacher_welcome_dismissed') === 'true'
+  );
+
   const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-  
   const ALL_SLOTS = [
     '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
     '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', 
     '19:00', '20:00', '21:00', '22:00', '23:00'
   ];
+
+  const handleDismissWelcome = () => {
+    localStorage.setItem('lexy_teacher_welcome_dismissed', 'true');
+    setWelcomeDismissed(true);
+  };
 
   const toggleSlot = (day, slot) => {
     setSchedule(prev => {
@@ -149,17 +147,11 @@ export default function TeacherDashboard() {
   };
 
   const handleSelectAllDay = (day) => {
-    setSchedule(prev => ({
-      ...prev,
-      [day]: [...ALL_SLOTS]
-    }));
+    setSchedule(prev => ({ ...prev, [day]: [...ALL_SLOTS] }));
   };
 
   const handleClearDay = (day) => {
-    setSchedule(prev => ({
-      ...prev,
-      [day]: []
-    }));
+    setSchedule(prev => ({ ...prev, [day]: [] }));
   };
 
   const handleSaveSchedule = () => {
@@ -254,7 +246,7 @@ export default function TeacherDashboard() {
     id: 'booking-demo-1',
     studentName: 'Gabriel Alumno',
     studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-    day: 'Segunda-feira',
+    day: 'Hoje',
     time: '15:00',
     amount: hourlyRate,
     bookingType: 'subscription',
@@ -299,50 +291,8 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      
-      {/* ── BANNER DE ANÚNCIOS DA ADMINISTRAÇÃO (CORRIGIDO PARA MÁXIMA LEITURA) ── */}
-      {teacherAnnouncements.map(ann => (
-        <div key={ann.id} className="bg-slate-900/95 border-2 border-cyan-400 text-white p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xl animate-fade-in-up">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-400/30 shrink-0">
-              <Megaphone className="w-6 h-6 text-cyan-400 animate-bounce" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-white text-base tracking-wide">{ann.title}</h3>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">{ann.content}</p>
-            </div>
-          </div>
-          <span className="text-xs bg-cyan-500 text-slate-950 px-3.5 py-1.5 rounded-full font-black uppercase tracking-wider shrink-0 shadow-md">
-            📢 Anúncio Oficial Admin
-          </span>
-        </div>
-      ))}
-
-      {/* Alerta de Status Pendente */}
-      {tutor.status === 'pending' && (
-        <div className="bg-amber-500/20 border-2 border-amber-400 text-amber-300 p-4 sm:p-5 rounded-3xl flex items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <Clock className="w-6 h-6 text-amber-400 shrink-0 animate-pulse" />
-            <div>
-              <h3 className="font-extrabold text-white text-sm">Perfil de Tutor em Análise pela Administração</h3>
-              <p className="text-xs text-amber-200/90 mt-0.5">
-                Seu cadastro foi recebido. Você já pode configurar seus horários de atendimento (07:00 às 23:00), sua tarifa e seu link do Google Meet abaixo.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Alerta de Sucesso na Solicitação de Resgate / Liquidação da Aula */}
-      {payoutSuccessMsg && (
-        <div className="bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 p-4 rounded-2xl flex items-center gap-3 animate-fade-in-up">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 animate-bounce" />
-          <span className="text-xs font-extrabold text-white">{payoutSuccessMsg}</span>
-        </div>
-      )}
-
-      {/* Header do Painel do Tutor */}
+    <div className="space-y-6 animate-fade-in-up pb-20">
+      {/* HEADER DO PAINEL */}
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <img
@@ -358,548 +308,571 @@ export default function TeacherDashboard() {
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
                   : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
               }`}>
-                {tutor.status === 'approved' ? '✓ Tutor Aprovado' : '⌛ Pendente de Aprovação'}
+                {tutor.status === 'approved' ? '✓ Aprovado' : '⌛ Pendente'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Gerencie sua agenda (07h às 23h), acompanhe sua margem de ganho ({currentEarnPercent}%) e solicite saques.
+              Gerencie sua agenda (07h às 23h), acompanhe ganhos e solicite saques.
             </p>
           </div>
         </div>
-
-        {/* ── SALDO LIBERADO PAYOUT CON BOTÓN DE RESGATAR SALDO ── */}
-        <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Saldo Liberado Payout ({currentEarnPercent}%)</span>
-            <span className="text-2xl font-black text-emerald-400">${earnedBalance.toFixed(2)} USD</span>
-          </div>
-
-          <button
-            onClick={() => setIsPayoutModalOpen(true)}
-            className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-5 py-3 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition-all hover:scale-105"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Resgatar Saldo</span>
-          </button>
-        </div>
       </div>
 
-      {/* ── SEÇÃO: MARGEM DE GANHO PROGRESSIVA DO PROFESSOR (APENAS PORCENTAGEM DO PROFESSOR) ── */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-5 border border-emerald-500/40 glow-emerald">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-black uppercase mb-1">
-              <TrendingUp className="w-4 h-4 text-emerald-400" /> Sua Margem de Ganho Progressiva
-            </div>
-            <h2 className="text-xl font-extrabold text-white">Quanto Mais Aulas Dar, Maior é a Sua Margem de Ganho!</h2>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Sua Margem Atual</span>
-            <span className="text-xl font-black text-emerald-400">{currentEarnPercent}% por aula</span>
-          </div>
-        </div>
-
-        {/* Barra de Progresso até o Próximo Nível */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <div className="flex justify-between items-center text-xs font-bold">
-            <span className="text-white">Aulas Totais Dadas: <strong className="text-amber-400 font-extrabold text-sm">{totalLessons} aulas</strong></span>
-            {nextTier.remaining > 0 ? (
-              <span className="text-emerald-400">
-                Faltam <strong>{nextTier.remaining} aulas</strong> para aumentar sua margem de ganho para <strong>{nextTier.nextEarn}%</strong>!
-              </span>
-            ) : (
-              <span className="text-emerald-400 font-black">🎉 Parabéns! Você atingiu a Margem Máxima de {currentEarnPercent}%!</span>
-            )}
-          </div>
-
-          <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, (totalLessons / 51) * 100)}%` }}
-            />
-          </div>
-
-          {/* Tabela dos 5 Umbrais de Ganho do Professor */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 text-[11px]">
-            <div className={`p-2.5 rounded-xl border text-center ${totalLessons < 8 ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-              <span className="block font-bold">0 a 7 Aulas</span>
-              <strong className="text-xs font-black text-emerald-400 block">{tierRates?.tier1 || 75}% Seu Ganho</strong>
-            </div>
-
-            <div className={`p-2.5 rounded-xl border text-center ${totalLessons >= 8 && totalLessons < 16 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-              <span className="block font-bold">8 a 15 Aulas</span>
-              <strong className="text-xs font-black text-emerald-400 block">{tierRates?.tier2 || 80}% Seu Ganho</strong>
-            </div>
-
-            <div className={`p-2.5 rounded-xl border text-center ${totalLessons >= 16 && totalLessons < 21 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-              <span className="block font-bold">16 a 20 Aulas</span>
-              <strong className="text-xs font-black text-emerald-400 block">{tierRates?.tier3 || 85}% Seu Ganho</strong>
-            </div>
-
-            <div className={`p-2.5 rounded-xl border text-center ${totalLessons >= 21 && totalLessons <= 50 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-              <span className="block font-bold">21 a 50 Aulas</span>
-              <strong className="text-xs font-black text-emerald-400 block">{tierRates?.tier4 || 90}% Seu Ganho</strong>
-            </div>
-
-            <div className={`p-2.5 rounded-xl border text-center ${totalLessons > 50 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
-              <span className="block font-bold">&gt; 50 Aulas</span>
-              <strong className="text-xs font-black text-emerald-400 block">{tierRates?.tier5 || 92}% Seu Ganho</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── SECCIÓN DESTACADA: WIDGET DA PRÓXIMA AULA DO PROFESSOR ── */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4 border border-cyan-500/40 glow-cyan">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-black uppercase mb-1">
-              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" /> Sua Próxima Aula Agendada
-            </div>
-            <h2 className="text-xl font-extrabold text-white">Preparado para Ministrar a Aula?</h2>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Status da Aula</span>
-            <span className={`text-xs font-extrabold flex items-center gap-1 ${isClassCompletedState ? 'text-emerald-400' : 'text-amber-300'}`}>
-              <Clock className="w-3.5 h-3.5" />
-              {isClassCompletedState ? '✓ Concluída & Saldo Repassado' : 'Começa em 1h 15min'}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <img
-              src={nextBooking.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
-              alt={nextBooking.studentName}
-              className="w-14 h-14 rounded-2xl object-cover border border-cyan-400"
-            />
-            <div>
-              <h3 className="font-extrabold text-white text-base">Aluno: {nextBooking.studentName}</h3>
-              <p className="text-xs text-cyan-400 font-semibold">{nextBooking.day} às {nextBooking.time}</p>
-              <p className="text-xs text-slate-300 mt-1">
-                Ganhos Líquidos nesta Aula ({classEarnPercent}% repasse): <strong className="text-emerald-400 font-black">${netEarningsNextClass} USD</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
-            <a
-              href={`/classroom/${nextBooking.id}`}
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-6 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
+      {/* NAVEGAÇÃO EM ABAS */}
+      <div className="flex gap-1 p-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto scrollbar-none max-w-2xl mx-auto">
+        {[
+          { id: 'inicio', icon: Home, label: 'Início' },
+          { id: 'agenda', icon: Calendar, label: 'Agenda' },
+          { id: 'alunos', icon: Users, label: 'Alunos' },
+          { id: 'ganhos', icon: DollarSign, label: 'Ganhos' },
+          { id: 'perfil', icon: Settings, label: 'Perfil' }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all ${
+                isActive 
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20' 
+                  : 'text-slate-400 font-bold hover:text-white hover:bg-slate-800'
+              }`}
             >
-              <Video className="w-4 h-4" />
-              <span>Entrar na Sala Virtual Space (Google Meet)</span>
-            </a>
-
-            {!isClassCompletedState ? (
-              <button
-                onClick={handleOpenFeedbackModal}
-                className="bg-slate-900 hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-extrabold text-xs px-5 py-3 rounded-xl shadow flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                <span>Confirmar Conclusão da Aula</span>
-              </button>
-            ) : (
-              <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs px-5 py-3 rounded-xl flex items-center gap-1.5">
-                ✓ Concluída & Saldo Repassado
-              </span>
-            )}
-          </div>
-        </div>
+              <Icon className="w-4 h-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Grid de 2 Columnas principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* CONTEÚDO DAS ABAS */}
+      <div className="mt-6">
         
-        {/* Columna Izquierda: Editor de Disponibilidad Semanal & Chat Interno com Aluno (8 columnas) */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* ── CHAT DIRETO NA PLATAFORMA COM SELEÇÃO DE ALUNOS ── */}
-          <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4 border border-cyan-500/30">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-extrabold text-white">Chat Direto na Plataforma</h2>
-                  <span className="text-xs text-slate-400">Selecione o aluno abaixo para conversar em tempo real</span>
+        {/* ABA: INÍCIO */}
+        {activeTab === 'inicio' && (
+          <div className="space-y-6 animate-fade-in-up max-w-4xl mx-auto">
+            
+            {tutor.status === 'pending' && (
+              <div className="bg-amber-500/20 border-2 border-amber-400 text-amber-300 p-4 sm:p-5 rounded-3xl flex items-center justify-between gap-4 shadow-xl">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-6 h-6 text-amber-400 shrink-0 animate-pulse" />
+                  <div>
+                    <h3 className="font-extrabold text-white text-sm">Perfil de Tutor em Análise pela Administração</h3>
+                    <p className="text-xs text-amber-200/90 mt-0.5">
+                      Seu cadastro foi recebido. Você já pode configurar seus horários, tarifa e Meet.
+                    </p>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* SELETOR DROPDOWN DE ALUNO PARA O PROFESSOR */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400">Conversar com:</span>
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
-                  className="bg-slate-900 border border-cyan-500/50 text-cyan-300 font-extrabold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
-                >
-                  {myStudentsList.map(st => (
-                    <option key={st.id} value={st.id}>
-                      {st.name} ({st.level})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* BARRA SUPERIOR DE ALUNOS ATIVOS DO TUTOR (CLICÁVEIS) */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Seus Alunos:</span>
-              {myStudentsList.map(st => (
-                <button
-                  key={st.id}
-                  onClick={() => setSelectedStudentId(st.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 ${
-                    selectedStudentId === st.id
-                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <img src={st.avatar} alt={st.name} className="w-5 h-5 rounded-full object-cover" />
-                  <span>{st.name.split(' ')[0]}</span>
+            {!welcomeDismissed && (
+              <div className="bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/30 p-6 rounded-3xl relative animate-fade-in-up">
+                <button onClick={handleDismissWelcome} className="absolute top-4 right-4 text-amber-400 hover:text-white">
+                  <X className="w-5 h-5" />
                 </button>
-              ))}
-            </div>
-
-            {/* Mensajes del Chat del Alumno Seleccionado */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 h-64 overflow-y-auto space-y-3">
-              {activeStudentMessages.length > 0 ? (
-                activeStudentMessages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${msg.senderRole === 'teacher' ? 'items-end' : 'items-start'}`}
-                  >
-                    <div className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
-                      msg.senderRole === 'teacher'
-                        ? 'bg-amber-500 text-slate-950 font-bold'
-                        : 'bg-slate-900 border border-slate-800 text-slate-200'
-                    }`}>
-                      <span className="text-[10px] opacity-80 block font-black mb-0.5">{msg.senderName}</span>
-                      <p>{msg.text}</p>
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-0.5 font-mono">{msg.timestamp}</span>
+                <div className="flex gap-4">
+                  <div className="p-3 bg-amber-500/20 rounded-2xl text-amber-400 shrink-0 h-min">
+                    <Sparkles className="w-8 h-8" />
                   </div>
-                ))
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-500 text-xs italic">
-                  Nenhuma mensagem anterior com {selectedStudent.name}. Digite abaixo para iniciar a conversa.
+                  <div>
+                    <h2 className="text-xl font-extrabold text-white mb-2">🎉 Bem-vindo(a) ao Painel do Professor Lexy!</h2>
+                    <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                      Estamos felizes em ter você conosco! Para começar:
+                      <br/>1. Acesse a aba <strong>Agenda</strong> para definir sua disponibilidade.
+                      <br/>2. Vá em <strong>Perfil</strong> para configurar seu Meet e sua tarifa.
+                      <br/>3. Na aba <strong>Ganhos</strong>, você solicita seus resgates!
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Formulario de Envió de Mensaje al Alumno Seleccionado */}
-            <form onSubmit={handleSendTeacherChat} className="flex gap-2">
-              <input
-                type="text"
-                value={teacherChatMessage}
-                onChange={(e) => setTeacherChatMessage(e.target.value)}
-                placeholder={`Digitar mensagem para ${selectedStudent.name}...`}
-                className="flex-1 bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400"
-              />
-              <button
-                type="submit"
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5"
-              >
-                <span>Enviar</span>
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-
-          {/* EDITOR DE DISPONIBILIDADE HORÁRIA (07:00 ÀS 23:00) */}
-          <div id="calendar-section" className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-cyan-500/30">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-amber-400" />
-                  Editor de Disponibilidade Semanal (07:00 às 23:00)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Selecione com total autonomia os horários abertos em verde para agendamento dos alunos.
-                </p>
-              </div>
-
-              <button
-                onClick={handleSaveSchedule}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition-all"
-              >
-                <Save className="w-4 h-4" />
-                <span>Salvar Horários da Agenda</span>
-              </button>
-            </div>
-
-            {isScheduleSaved && (
-              <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Agenda de horários salva com sucesso!</span>
               </div>
             )}
 
-            {/* MATRIZ DE HORARIOS COMPLETA DE 07:00 A 23:00 */}
-            <div className="space-y-4">
-              {days.map(day => {
-                const activeCount = (schedule[day] || []).length;
-                return (
-                  <div key={day} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-extrabold text-amber-400">{day}</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                          {activeCount} horários ativos
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectAllDay(day)}
-                          className="text-cyan-400 font-bold hover:underline"
-                        >
-                          Marcar Todos
-                        </button>
-                        <span className="text-slate-600">|</span>
-                        <button
-                          type="button"
-                          onClick={() => handleClearDay(day)}
-                          className="text-slate-400 font-bold hover:underline"
-                        >
-                          Limpar Dia
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Botones de Horarios de 07:00 a 23:00 */}
-                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-9 gap-1.5">
-                      {ALL_SLOTS.map(slot => {
-                        const isActive = (schedule[day] || []).includes(slot);
-                        return (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => toggleSlot(day, slot)}
-                            className={`py-2 rounded-xl text-[11px] font-mono font-extrabold transition-all ${
-                              isActive
-                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                                : 'bg-slate-950 border border-slate-800 text-slate-500 hover:text-slate-200'
-                            }`}
-                          >
-                            {slot}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── HISTÓRICO DETALHADO DE GANHOS POR AULA CONCLUÍDA ── */}
-          <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4 border border-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-emerald-400" />
-                  Histórico Detalhado de Ganhos por Aula Concluída
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Acompanhe seus repasses líquidos acumulados de cada aluno segundo sua margem de ganho.</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {earningsHistory.map((item) => (
-                <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <img src={item.studentAvatar} alt={item.studentName} className="w-11 h-11 rounded-xl object-cover border border-slate-700" />
-                      <div>
-                        <h4 className="font-extrabold text-white text-sm">{item.studentName}</h4>
-                        <p className="text-xs text-slate-400">{item.date} • <span className="text-cyan-300 font-semibold">{item.classType}</span></p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-slate-500 line-through">R$ {item.grossAmount}</span>
-                        <strong className="text-emerald-400 font-black text-sm">+R$ {item.netAmount} / h</strong>
-                      </div>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 inline-block mt-1">
-                        ✓ {item.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {item.feedback && (
-                    <div className="bg-slate-950 border border-slate-800/80 p-2.5 rounded-xl text-[11px] text-slate-300">
-                      <strong className="text-amber-400 font-bold block mb-0.5">📝 Feedback Enviado ao Aluno:</strong>
-                      <p className="italic">"{item.feedback}"</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Columna Derecha: Configuración de Tarifa, Meet & Histórico de Saques (4 columnas) */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* CONFIGURAÇÕES DO PROFESSOR & LIMITES DE TARIFA (R$ 13 A R$ 40 / HORA) */}
-          <div className="glass-panel rounded-3xl p-6 space-y-5 border border-amber-500/30">
-            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <Settings className="w-4 h-4 text-amber-400" />
-              Configurações & Tarifa por Hora (R$)
-            </h3>
-
-            {isRateSaved && (
-              <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Configurações salvas com sucesso!</span>
+            {payoutSuccessMsg && (
+              <div className="bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 p-4 rounded-2xl flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 animate-bounce" />
+                <span className="text-xs font-extrabold text-white">{payoutSuccessMsg}</span>
               </div>
             )}
 
-            {rateErrorMsg && (
-              <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{rateErrorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              
-              {/* CAMPO LINK DO GOOGLE MEET DO PROFESSOR */}
-              <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Link do Google Meet Pessoal *</label>
-                <div className="relative">
-                  <Video className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="url"
-                    required
-                    value={meetUrl}
-                    onChange={(e) => setMeetUrl(e.target.value)}
-                    placeholder="https://meet.google.com/abc-defg-hij"
-                    className="w-full bg-slate-900 border border-slate-800 text-cyan-300 font-mono text-xs rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-cyan-400"
-                  />
-                </div>
-              </div>
-
-              {/* CAMPO TARIFA POR HORA CON LIMITES ESTRICTOS */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-slate-400 block">Tarifa por Hora (R$ BRL) *</label>
-                  <span className="text-[10px] text-amber-300 font-mono font-bold">R$ 13,00 a R$ 40,00</span>
-                </div>
-
-                <div className="relative">
-                  <span className="text-slate-400 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">R$</span>
-                  <input
-                    type="number"
-                    min={MIN_RATE}
-                    max={MAX_RATE}
-                    required
-                    value={hourlyRate}
-                    onChange={(e) => setHourlyRate(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                {/* Recomendación de Tarifa pela Plataforma */}
-                <div className="mt-2 bg-amber-500/15 border border-amber-500/30 p-2.5 rounded-xl text-[11px] flex items-center justify-between">
-                  <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ 23,00/h</span>
-                  <button
-                    type="button"
-                    onClick={() => setHourlyRate(RECOMMENDED_RATE)}
-                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow"
-                  >
-                    Aplicar R$ 23
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Preço Regular por Hora:</span>
-                  <strong className="text-white font-black text-sm">R$ {hourlyRate},00 / h</strong>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                  <span className="text-slate-400">Aula Experimental:</span>
-                  <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.75).toFixed(2)}</strong>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                  <span className="text-slate-400">Seu Repasse Líquido ({currentEarnPercent}%):</span>
-                  <strong className="text-amber-300 font-bold">R$ {(hourlyRate * (currentEarnPercent/100)).toFixed(2)} / h</strong>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5"
-              >
-                <Save className="w-4 h-4" />
-                <span>Salvar Configurações & Tarifa</span>
-              </button>
-            </form>
-          </div>
-
-          {/* HISTÓRICO DE SAQUES / SOLICITAÇÕES DE PAYOUT */}
-          <div className="glass-panel rounded-3xl p-6 space-y-4 border border-emerald-500/30">
-            <h3 className="text-base font-extrabold text-white flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-emerald-400" />
-                Solicitações de Resgate
-              </span>
-              <button
-                onClick={() => setIsPayoutModalOpen(true)}
-                className="text-[11px] font-bold text-emerald-400 hover:underline"
-              >
-                + Novo Saque
-              </button>
-            </h3>
-
-            <div className="space-y-3">
-              {payoutRequests.map(req => (
-                <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400 font-medium">{req.date}</span>
-                    <strong className="text-emerald-400 font-black">${req.amount.toFixed(2)} USD</strong>
+            {teacherAnnouncements.map(ann => (
+              <div key={ann.id} className="bg-slate-900/95 border-2 border-cyan-400 text-white p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-400/30 shrink-0">
+                    <Megaphone className="w-6 h-6 text-cyan-400 animate-bounce" />
                   </div>
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-slate-500">{req.method}</span>
-                    {req.status === 'approved' ? (
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Aprovado & Pago
-                      </span>
+                  <div>
+                    <h3 className="font-extrabold text-white text-base tracking-wide">{ann.title}</h3>
+                    <p className="text-xs text-slate-200 mt-1 leading-relaxed">{ann.content}</p>
+                  </div>
+                </div>
+                <span className="text-xs bg-cyan-500 text-slate-950 px-3.5 py-1.5 rounded-full font-black uppercase tracking-wider shrink-0 shadow-md">
+                  📢 Anúncio Oficial
+                </span>
+              </div>
+            ))}
+
+            <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4 border border-cyan-500/40 glow-cyan">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-black uppercase mb-1">
+                    <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" /> Aulas do Dia
+                  </div>
+                  <h2 className="text-xl font-extrabold text-white">Sua Próxima Aula</h2>
+                </div>
+              </div>
+
+              {nextBooking ? (
+                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={nextBooking.studentAvatar}
+                      alt={nextBooking.studentName}
+                      className="w-14 h-14 rounded-2xl object-cover border border-cyan-400"
+                    />
+                    <div>
+                      <h3 className="font-extrabold text-white text-base">Aluno: {nextBooking.studentName}</h3>
+                      <p className="text-xs text-cyan-400 font-semibold">{nextBooking.day} às {nextBooking.time}</p>
+                      <p className="text-xs text-slate-300 mt-1">
+                        Repasse ({classEarnPercent}%): <strong className="text-emerald-400 font-black">${netEarningsNextClass} USD</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+                    <a
+                      href={`/classroom/${nextBooking.id}`}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-6 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <Video className="w-4 h-4" />
+                      <span>Entrar na Aula</span>
+                    </a>
+
+                    {!isClassCompletedState ? (
+                      <button
+                        onClick={handleOpenFeedbackModal}
+                        className="bg-slate-900 hover:bg-slate-800 border border-amber-400/50 text-amber-300 font-extrabold text-xs px-5 py-3 rounded-xl shadow flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                        <span>Confirmar Conclusão</span>
+                      </button>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-amber-400 font-bold animate-pulse">
-                          ⌛ Em Análise (24h)
-                        </span>
-                        <button
-                          onClick={() => handleSimulateAdminApprove(req.id)}
-                          className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded hover:bg-amber-400"
-                          title="Simular aprovação pelo administrador em 24h"
-                        >
-                          Aprovar (Adm)
-                        </button>
-                      </div>
+                      <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs px-5 py-3 rounded-xl flex items-center gap-1.5">
+                        ✓ Concluída
+                      </span>
                     )}
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="text-center p-8 bg-slate-900/50 rounded-2xl border border-slate-800">
+                  <p className="text-slate-400">Nenhuma aula agendada para hoje 🌟</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-        </div>
+        {/* ABA: AGENDA */}
+        {activeTab === 'agenda' && (
+          <div className="animate-fade-in-up max-w-5xl mx-auto">
+            <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-cyan-500/30">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-amber-400" />
+                    Editor de Disponibilidade Semanal (07:00 às 23:00)
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Selecione os horários abertos (verde) para agendamento dos alunos.
+                  </p>
+                </div>
 
+                <button
+                  onClick={handleSaveSchedule}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition-all"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salvar Agenda</span>
+                </button>
+              </div>
+
+              {isScheduleSaved && (
+                <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Agenda de horários salva com sucesso!</span>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {days.map(day => {
+                  const activeCount = (schedule[day] || []).length;
+                  return (
+                    <div key={day} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-extrabold text-amber-400">{day}</span>
+                          <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                            {activeCount} horários ativos
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <button onClick={() => handleSelectAllDay(day)} className="text-cyan-400 font-bold hover:underline">Marcar Todos</button>
+                          <span className="text-slate-600">|</span>
+                          <button onClick={() => handleClearDay(day)} className="text-slate-400 font-bold hover:underline">Limpar</button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-9 gap-1.5">
+                        {ALL_SLOTS.map(slot => {
+                          const isActive = (schedule[day] || []).includes(slot);
+                          return (
+                            <button
+                              key={slot}
+                              onClick={() => toggleSlot(day, slot)}
+                              className={`py-2 rounded-xl text-[11px] font-mono font-extrabold transition-all ${
+                                isActive
+                                  ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                                  : 'bg-slate-950 border border-slate-800 text-slate-500 hover:text-slate-200'
+                              }`}
+                            >
+                              {slot}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ABA: ALUNOS */}
+        {activeTab === 'alunos' && (
+          <div className="animate-fade-in-up max-w-4xl mx-auto">
+            <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4 border border-cyan-500/30">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-extrabold text-white">Meus Alunos & Chat</h2>
+                    <span className="text-xs text-slate-400">Selecione o aluno para conversar</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400">Conversar com:</span>
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="bg-slate-900 border border-cyan-500/50 text-cyan-300 font-extrabold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
+                  >
+                    {myStudentsList.map(st => (
+                      <option key={st.id} value={st.id}>
+                        {st.name} ({st.level})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">Alunos:</span>
+                {myStudentsList.map(st => (
+                  <button
+                    key={st.id}
+                    onClick={() => setSelectedStudentId(st.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 ${
+                      selectedStudentId === st.id
+                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-md'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <img src={st.avatar} alt={st.name} className="w-5 h-5 rounded-full object-cover" />
+                    <span>{st.name.split(' ')[0]}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 h-80 overflow-y-auto space-y-3">
+                {activeStudentMessages.length > 0 ? (
+                  activeStudentMessages.map(msg => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${msg.senderRole === 'teacher' ? 'items-end' : 'items-start'}`}
+                    >
+                      <div className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
+                        msg.senderRole === 'teacher'
+                          ? 'bg-amber-500 text-slate-950 font-bold'
+                          : 'bg-slate-900 border border-slate-800 text-slate-200'
+                      }`}>
+                        <span className="text-[10px] opacity-80 block font-black mb-0.5">{msg.senderName}</span>
+                        <p>{msg.text}</p>
+                      </div>
+                      <span className="text-[10px] text-slate-500 mt-0.5 font-mono">{msg.timestamp}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="h-full flex items-center justify-center text-slate-500 text-xs italic">
+                    Nenhuma mensagem anterior com {selectedStudent.name}. Digite abaixo para iniciar.
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSendTeacherChat} className="flex gap-2">
+                <input
+                  type="text"
+                  value={teacherChatMessage}
+                  onChange={(e) => setTeacherChatMessage(e.target.value)}
+                  placeholder={`Digitar mensagem para ${selectedStudent.name}...`}
+                  className="flex-1 bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400"
+                />
+                <button
+                  type="submit"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5"
+                >
+                  <span>Enviar</span>
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ABA: GANHOS */}
+        {activeTab === 'ganhos' && (
+          <div className="space-y-6 animate-fade-in-up max-w-5xl mx-auto">
+            
+            {/* BOTÃO DE SAQUE E SALDO NO TOPO DESTA ABA - IMMEDIATELY VISIBLE */}
+            <div className="glass-panel rounded-3xl p-6 border border-emerald-500/40 glow-emerald flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+                  <DollarSign className="w-7 h-7 text-emerald-400" />
+                  Seus Ganhos & Saques
+                </h2>
+                <p className="text-slate-400 text-sm mt-1">Acompanhe suas receitas e solicite pagamentos para sua conta bancária.</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 min-w-[200px] text-center w-full sm:w-auto">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Saldo Liberado (Payout)</span>
+                  <span className="text-3xl font-black text-emerald-400">${earnedBalance.toFixed(2)} USD</span>
+                </div>
+
+                <button
+                  onClick={() => setIsPayoutModalOpen(true)}
+                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-sm px-8 py-5 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all hover:scale-105"
+                >
+                  <Wallet className="w-5 h-5" />
+                  <span>Solicitar Saque</span>
+                </button>
+              </div>
+            </div>
+
+            {/* MARGEM DE GANHO */}
+            <div className="glass-panel rounded-3xl p-6 space-y-5 border border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">Sua Margem de Repasse: {currentEarnPercent}% por aula</h3>
+                  <p className="text-xs text-slate-400">Quanto mais aulas você der, maior é a sua fatia dos lucros!</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center text-xs font-bold">
+                  <span className="text-white">Aulas Totais: <strong className="text-amber-400 font-extrabold text-sm">{totalLessons}</strong></span>
+                  {nextTier.remaining > 0 ? (
+                    <span className="text-emerald-400">
+                      Faltam <strong>{nextTier.remaining} aulas</strong> para <strong>{nextTier.nextEarn}%</strong>!
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-black">🎉 Margem Máxima!</span>
+                  )}
+                </div>
+
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (totalLessons / 51) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* HISTÓRICO DE GANHOS */}
+              <div className="glass-panel rounded-3xl p-6 border border-slate-800 space-y-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  Histórico de Aulas
+                </h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                  {earningsHistory.map((item) => (
+                    <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <img src={item.studentAvatar} alt={item.studentName} className="w-10 h-10 rounded-xl object-cover border border-slate-700" />
+                          <div>
+                            <h4 className="font-extrabold text-white text-sm">{item.studentName}</h4>
+                            <p className="text-xs text-slate-400">{item.date}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <strong className="text-emerald-400 font-black text-sm">+${item.netAmount} USD</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* HISTÓRICO DE SAQUES */}
+              <div className="glass-panel rounded-3xl p-6 border border-emerald-500/30 space-y-4">
+                <h3 className="text-base font-extrabold text-white flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-emerald-400" />
+                    Solicitações de Resgate
+                  </span>
+                </h3>
+
+                <div className="space-y-3">
+                  {payoutRequests.map(req => (
+                    <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400 font-medium">{req.date}</span>
+                        <strong className="text-emerald-400 font-black">${req.amount.toFixed(2)} USD</strong>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-500">{req.method}</span>
+                        {req.status === 'approved' ? (
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Aprovado
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-amber-400 font-bold animate-pulse">
+                              ⌛ Em Análise
+                            </span>
+                            <button
+                              onClick={() => handleSimulateAdminApprove(req.id)}
+                              className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded hover:bg-amber-400"
+                            >
+                              Aprovar (Adm)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ABA: PERFIL */}
+        {activeTab === 'perfil' && (
+          <div className="animate-fade-in-up max-w-2xl mx-auto">
+            <div className="glass-panel rounded-3xl p-6 space-y-5 border border-amber-500/30">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Settings className="w-4 h-4 text-amber-400" />
+                Configurações do Perfil & Tarifa
+              </h3>
+
+              {isRateSaved && (
+                <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Configurações salvas com sucesso!</span>
+                </div>
+              )}
+
+              {rateErrorMsg && (
+                <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{rateErrorMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSettings} className="space-y-4">
+                
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Link do Google Meet Pessoal *</label>
+                  <div className="relative">
+                    <Video className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="url"
+                      required
+                      value={meetUrl}
+                      onChange={(e) => setMeetUrl(e.target.value)}
+                      placeholder="https://meet.google.com/abc-defg-hij"
+                      className="w-full bg-slate-900 border border-slate-800 text-cyan-300 font-mono text-xs rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-slate-400 block">Tarifa por Hora (R$ BRL) *</label>
+                    <span className="text-[10px] text-amber-300 font-mono font-bold">R$ 13,00 a R$ 40,00</span>
+                  </div>
+
+                  <div className="relative">
+                    <span className="text-slate-400 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                    <input
+                      type="number"
+                      min={MIN_RATE}
+                      max={MAX_RATE}
+                      required
+                      value={hourlyRate}
+                      onChange={(e) => setHourlyRate(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div className="mt-2 bg-amber-500/15 border border-amber-500/30 p-2.5 rounded-xl text-[11px] flex items-center justify-between">
+                    <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ {RECOMMENDED_RATE},00/h</span>
+                    <button
+                      type="button"
+                      onClick={() => setHourlyRate(RECOMMENDED_RATE)}
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow"
+                    >
+                      Aplicar R$ {RECOMMENDED_RATE}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Preço Regular por Hora:</span>
+                    <strong className="text-white font-black text-sm">R$ {hourlyRate},00 / h</strong>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                    <span className="text-slate-400">Aula Experimental:</span>
+                    <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.75).toFixed(2)}</strong>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                    <span className="text-slate-400">Seu Repasse Líquido ({currentEarnPercent}%):</span>
+                    <strong className="text-amber-300 font-bold">R$ {(hourlyRate * (currentEarnPercent/100)).toFixed(2)} / h</strong>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salvar Configurações & Tarifa</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── MODAL: VERIFICAÇÃO DE ASISTENCIA Y REGISTRO DE FEEDBACK DO PROFESSOR ── */}
+      {/* MODAL: VERIFICAÇÃO DE ASISTENCIA Y REGISTRO DE FEEDBACK */}
       {isFeedbackModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-8 space-y-5 border border-cyan-500/40 animate-fade-in-up">
@@ -919,8 +892,8 @@ export default function TeacherDashboard() {
             <div className="bg-emerald-500/15 border border-emerald-500/40 p-3.5 rounded-2xl flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
               <div className="text-xs">
-                <strong className="text-white block font-bold">✓ Presença Confirmada do Aluno na Sala Virtual Space</strong>
-                <span className="text-emerald-300">Tempo de conexão em aula: 50 minutos mantidos.</span>
+                <strong className="text-white block font-bold">✓ Presença Confirmada na Sala</strong>
+                <span className="text-emerald-300">Tempo de conexão em aula: 50 minutos.</span>
               </div>
             </div>
 
@@ -938,7 +911,7 @@ export default function TeacherDashboard() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Dicas de Estudo & Tarefas para a Próxima Aula *</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Dicas de Estudo & Tarefas *</label>
                 <input
                   type="text"
                   required
@@ -951,7 +924,7 @@ export default function TeacherDashboard() {
 
               <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl flex justify-between items-center text-xs">
                 <div>
-                  <span className="text-slate-400 block">Sua Margem de Repasse Líquido ({classEarnPercent}%):</span>
+                  <span className="text-slate-400 block">Sua Margem de Repasse ({classEarnPercent}%):</span>
                   <span className="text-[10px] text-amber-300">Nível Atual: {totalLessons} aulas ministradas</span>
                 </div>
                 <strong className="text-emerald-400 font-black text-sm">+${netEarningsNextClass} USD</strong>
@@ -970,7 +943,7 @@ export default function TeacherDashboard() {
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5"
                 >
                   <Award className="w-4 h-4" />
-                  <span>Enviar Feedback e Liquidar Saldo</span>
+                  <span>Liquidar Saldo</span>
                 </button>
               </div>
             </form>
@@ -978,7 +951,7 @@ export default function TeacherDashboard() {
         </div>
       )}
 
-      {/* ── MODAL: SOLICITAR RESGATE DE SALDO (PAYOUT) ── */}
+      {/* MODAL: SOLICITAR RESGATE DE SALDO (PAYOUT) */}
       {isPayoutModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="glass-panel max-w-md w-full rounded-3xl p-6 sm:p-8 space-y-5 border border-emerald-500/40 animate-fade-in-up">
@@ -987,7 +960,7 @@ export default function TeacherDashboard() {
                 <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
                   <Wallet className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-extrabold text-white">Solicitar Resgate de Saldo (Payout)</h3>
+                <h3 className="text-lg font-extrabold text-white">Resgate de Saldo</h3>
               </div>
               <button onClick={() => setIsPayoutModalOpen(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
@@ -996,7 +969,7 @@ export default function TeacherDashboard() {
 
             <form onSubmit={handleRequestPayout} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Valor Solicitado a Sacar ($ USD) *</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Valor a Sacar ($ USD) *</label>
                 <div className="relative">
                   <DollarSign className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -1009,16 +982,16 @@ export default function TeacherDashboard() {
                     className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-emerald-400"
                   />
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">Saldo máximo disponível: ${earnedBalance.toFixed(2)} USD</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">Disponível: ${earnedBalance.toFixed(2)} USD</span>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Valor Bruto Solicitado:</span>
+                  <span className="text-slate-400">Valor Bruto:</span>
                   <strong className="text-white font-bold">${payoutAmount.toFixed(2)} USD</strong>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-800 text-emerald-400 font-bold">
-                  <span>Valor Líquido a Receber ({currentEarnPercent}%):</span>
+                  <span>Valor Líquido ({currentEarnPercent}%):</span>
                   <strong className="text-base font-black">${(payoutAmount * (currentEarnPercent / 100)).toFixed(2)} USD</strong>
                 </div>
               </div>
@@ -1032,24 +1005,20 @@ export default function TeacherDashboard() {
                 >
                   <option value="PIX Brasil 🇧🇷">PIX (Brasil 🇧🇷)</option>
                   <option value="PayPal 🌐">PayPal (Internacional 🌐)</option>
-                  <option value="Transferência Bancária">Transferência Bancária Direta</option>
+                  <option value="Transferência Bancária">Transferência Bancária</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Chave PIX ou Dados Reais da Conta *</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Chave PIX ou Conta *</label>
                 <input
                   type="text"
                   required
                   value={pixKey}
                   onChange={(e) => setPixKey(e.target.value)}
-                  placeholder="Ex: CPF, E-mail ou chave aleatória PIX"
+                  placeholder="Ex: CPF ou E-mail"
                   className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-emerald-400 font-mono"
                 />
-              </div>
-
-              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl text-[11px] text-amber-200 leading-relaxed">
-                <strong>📌 Regra de Aprovação (Até 24h):</strong> Sua solicitação com chave PIX real será enviada para a administração da plataforma e aprovada/processada em até 24 horas úteis.
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -1064,7 +1033,7 @@ export default function TeacherDashboard() {
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg"
                 >
-                  Confirmar Solicitação
+                  Confirmar
                 </button>
               </div>
             </form>

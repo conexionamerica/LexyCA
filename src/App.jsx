@@ -1,10 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MarketplaceProvider } from './contexts/MarketplaceContext';
 
 // Layout
 import Navbar from './components/layout/Navbar';
+// EmailVerificationNotice removido (verificação de e-mail desativada)
 
 // Pages
 import ExplorePage from './pages/ExplorePage';
@@ -18,6 +19,15 @@ import AdminDashboard from './pages/AdminDashboard';
 import OnboardingFlow from './pages/OnboardingFlow';
 import LoginPage from './pages/LoginPage';
 
+function ProtectedAdminRoute({ children }) {
+  const { profile, loading } = useAuth();
+  if (loading) return null;
+  if (!profile || profile.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 function Layout() {
   return (
     <div className="min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -29,7 +39,7 @@ function Layout() {
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />
           <Route path="/onboarding" element={<OnboardingFlow />} />
-          <Route path="/login" element={<LoginPage onLoginSuccess={() => {}} />} />
+          {/* Ruta de verificación de email removida */}
 
           {/* Reserva y Pago */}
           <Route path="/book/:id" element={<BookingPage />} />
@@ -42,7 +52,11 @@ function Layout() {
           <Route path="/dashboard/student/wallet" element={<StudentWallet />} />
           <Route path="/dashboard/teacher" element={<TeacherDashboard />} />
           <Route path="/tutor/calendar" element={<TeacherDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin" element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } />
 
           {/* Redirección 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />

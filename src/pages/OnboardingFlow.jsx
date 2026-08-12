@@ -36,12 +36,15 @@ const SPECIALTIES_OPTIONS = [
 export default function OnboardingFlow() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { registerTutor } = useMarketplace();
+  const { registerTutor, recommendedRate = 23 } = useMarketplace();
   const { signInWithSupabase, signUpWithSupabase } = useAuth();
 
   // Tab activo: 'register' (Cadastro) o 'login' (Iniciar Sessão)
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'register';
   const [activeTab, setActiveTab] = useState(initialMode); // 'login' | 'register'
+  
+  // Use photo instead of video for presentation
+  const [usePhotoInsteadOfVideo, setUsePhotoInsteadOfVideo] = useState(false);
 
   // Estados de Login do Tutor
   const [loginEmail, setLoginEmail] = useState('');
@@ -74,8 +77,20 @@ export default function OnboardingFlow() {
     headline: 'Professor(a) Nativo(a) com Foco em Conversação Fluida e Prática',
     bio: `¡Hola! Meu nome é professor(a) apaixonado(a) por ensinar idiomas. Utilizo uma metodologia 100% prática e personalizada focada na comunicação oral desde a primeira aula. Já ajudei dezenas de alunos a alcançarem a fluência.`,
     video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    presentation_photo: '',
     avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'
   });
+
+  const handlePhotoUpload = (field) => (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateField(field, reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -137,13 +152,17 @@ export default function OnboardingFlow() {
     if (step === 3) {
       if (!formData.experience_years || formData.experience_years < 1) return 'Informe seus anos de experiência.';
       if (!formData.hourly_rate || formData.hourly_rate < 13 || formData.hourly_rate > 40) {
-        return 'A tarifa por hora deve estar entre R$ 13,00 e R$ 40,00 por hora (Tarifa recomendada: R$ 23,00/h).';
+        return `A tarifa por hora deve estar entre R$ 13,00 e R$ 40,00 por hora (Tarifa recomendada: R$ ${recommendedRate},00/h).`;
       }
     }
     if (step === 4) {
       if (!formData.headline.trim()) return 'Informe o título do seu perfil público.';
       if (!formData.bio.trim() || formData.bio.length < 40) return 'A biografia deve ter pelo menos 40 caracteres.';
-      if (!formData.video_url.trim()) return 'Informe o link do seu vídeo de apresentação.';
+      if (usePhotoInsteadOfVideo) {
+        if (!formData.presentation_photo) return 'Faça o upload de uma foto de perfil ou escolha a opção de vídeo.';
+      } else {
+        if (!formData.video_url.trim()) return 'Informe o link do seu vídeo de apresentação ou escolha a opção de foto.';
+      }
     }
     return null;
   };
@@ -308,7 +327,7 @@ export default function OnboardingFlow() {
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="maria.tutor@preply.com"
+                  placeholder="maria.tutor@lexy.com"
                   className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-medium outline-none focus:border-amber-400"
                 />
               </div>
@@ -413,6 +432,25 @@ export default function OnboardingFlow() {
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Foto de Perfil *</label>
+                    <div className="flex items-center gap-4">
+                      {formData.avatar_url && (
+                        <img 
+                          src={formData.avatar_url} 
+                          alt="Avatar Preview" 
+                          className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md"
+                        />
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload('avatar_url')}
+                        className="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-xs font-bold text-slate-400 block mb-1">Nome Completo *</label>
                     <input
@@ -596,13 +634,13 @@ export default function OnboardingFlow() {
                       />
                     </div>
                     <div className="mt-2 bg-amber-500/15 border border-amber-500/30 p-2 rounded-xl text-[11px] flex items-center justify-between">
-                      <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ 23,00/h</span>
+                      <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ {recommendedRate},00/h</span>
                       <button
                         type="button"
-                        onClick={() => updateField('hourly_rate', 23)}
+                        onClick={() => updateField('hourly_rate', recommendedRate)}
                         className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow"
                       >
-                        Aplicar R$ 23
+                        Aplicar R$ {recommendedRate}
                       </button>
                     </div>
                   </div>
@@ -654,16 +692,50 @@ export default function OnboardingFlow() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Link do Vídeo de Apresentação (YouTube / Vimeo / Drive) *</label>
-                  <input
-                    type="url"
-                    required
-                    value={formData.video_url}
-                    onChange={(e) => updateField('video_url', e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 font-mono"
-                  />
+                <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                  <label className="flex items-center gap-3 cursor-pointer mb-4">
+                    <input
+                      type="checkbox"
+                      checked={usePhotoInsteadOfVideo}
+                      onChange={(e) => setUsePhotoInsteadOfVideo(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-950"
+                    />
+                    <span className="text-xs font-bold text-slate-300">Prefiro enviar uma foto de perfil em vez de vídeo</span>
+                  </label>
+
+                  {usePhotoInsteadOfVideo ? (
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Upload da Foto de Apresentação *</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload('presentation_photo')}
+                        className="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 cursor-pointer"
+                      />
+                      {formData.presentation_photo && (
+                        <div className="mt-3">
+                          <p className="text-[10px] font-bold text-slate-500 mb-1">Pré-visualização:</p>
+                          <img 
+                            src={formData.presentation_photo} 
+                            alt="Presentation Preview" 
+                            className="w-full max-w-xs h-40 object-cover rounded-xl border-2 border-amber-400/50"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Link do Vídeo de Apresentação (YouTube / Vimeo / Drive) *</label>
+                      <input
+                        type="url"
+                        required={!usePhotoInsteadOfVideo}
+                        value={formData.video_url}
+                        onChange={(e) => updateField('video_url', e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 font-mono"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
