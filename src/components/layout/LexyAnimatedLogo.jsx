@@ -6,35 +6,35 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
   return (
     <div className="group inline-flex flex-col items-center justify-center cursor-pointer select-none py-1">
       
-      {/* ── FILA SUPERIOR: MASCOTA 3D (CERO FONDO NEGRO CON MÁSCARA RADIAL) + ESTRELLA ✦ + "Lexy IDIOMAS" ── */}
-      <div className="flex items-center gap-2.5 relative">
+      {/* ── FILA SUPERIOR: MASCOTA 3D MAIS GRANDE + ESTRELLA ✦ + "Lexy IDIOMAS" ── */}
+      <div className="flex items-center gap-3 relative">
         
-        {/* Mascota 3D de la Foto sin Fondo Negro (Máscara Radial Transparente + Mix-Blend-Screen) */}
+        {/* Mascota 3D Destacada Más Grande sin Fondo Negro */}
         <div className="relative flex-shrink-0 flex items-center justify-center">
-          <div className="absolute inset-0 bg-cyan-400/30 rounded-full blur-md animate-pulse" />
+          <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-lg animate-pulse" />
           
           <img
             src="/lexy_mascot_3d.png"
             alt="Mascote Lexy 3D"
             style={{
-              maskImage: 'radial-gradient(circle at center, black 55%, transparent 85%)',
-              WebkitMaskImage: 'radial-gradient(circle at center, black 55%, transparent 85%)',
+              maskImage: 'radial-gradient(circle at center, black 58%, transparent 88%)',
+              WebkitMaskImage: 'radial-gradient(circle at center, black 58%, transparent 88%)',
             }}
             className={`${
-              isLarge ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-11 h-11 sm:w-13 sm:h-13'
-            } object-cover mix-blend-screen drop-shadow-[0_0_20px_rgba(56,189,248,0.9)] transition-transform duration-300 group-hover:scale-110`}
+              isLarge ? 'w-20 h-20 sm:w-24 sm:h-24' : 'w-16 h-16 sm:w-20 sm:h-20'
+            } object-cover mix-blend-screen drop-shadow-[0_0_22px_rgba(56,189,248,0.95)] transition-transform duration-300 group-hover:scale-110`}
           />
         </div>
 
-        {/* Estrella Dorada Destellante (✦) */}
-        <span className="text-amber-400 font-black text-xl sm:text-2xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
+        {/* Estrella Dorada Destellante (✦) Más Grande */}
+        <span className="text-amber-400 font-black text-2xl sm:text-3xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)]">
           ✦
         </span>
 
         {/* Nombre Lexy con Efecto de Transición de Color (brand-text-shimmer) + Cápsula IDIOMAS */}
         <div className="flex flex-col">
           <span className={`${
-            isLarge ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'
+            isLarge ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
           } font-black tracking-tight brand-text-shimmer transition-all duration-500`}>
             Lexy
           </span>
