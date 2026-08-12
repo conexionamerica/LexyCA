@@ -136,16 +136,26 @@ export default function Navbar() {
                   className="bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all hover:scale-105"
                 >
                   <UserCheck className="w-4 h-4" />
-                  <span>Para Alunos (Encontrar Tutores)</span>
+                  <span>Para Alunos</span>
                 </Link>
 
                 {/* BOTÓN 2: PARA TUTORES */}
                 <Link
                   to="/onboarding"
-                  className="bg-slate-900 hover:bg-slate-800 border border-amber-500/50 text-amber-300 hover:text-amber-200 font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 hover:scale-105"
+                  className="bg-slate-900 hover:bg-slate-800 border border-amber-500/50 text-amber-300 hover:text-amber-200 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 hover:scale-105"
                 >
                   <GraduationCap className="w-4 h-4 text-amber-400" />
-                  <span>Para Tutores (Quero Dar Aulas)</span>
+                  <span>Quero Dar Aulas</span>
+                </Link>
+
+                {/* BOTÓN 3: DIRECTO AL PAINEL ADMIN */}
+                <Link
+                  to="/admin"
+                  className="bg-slate-900/80 hover:bg-slate-900 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 hover:scale-105 shadow-md shadow-emerald-500/10"
+                  title="Acessar Painel do Administrador"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Admin</span>
                 </Link>
               </>
             )}
