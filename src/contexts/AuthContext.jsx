@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
 
     async function checkSupabaseSession() {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && mounted) {
           const userMeta = session.user.user_metadata || {};
           const userProfile = {
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
 
     checkSupabaseSession();
 
-    // Listener para cambios de estado en Supabase Auth
+    // Listener para cambios de estado de autenticación en Supabase
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const userMeta = session.user.user_metadata || {};
@@ -89,10 +89,12 @@ export const AuthProvider = ({ children }) => {
     }
   }, [profile]);
 
-  // ── INICIAR SESIÓN REAL EN SUPABASE ──
+  // ── INICIAR SESIÓN SEGURA Y ESTRICTA EN SUPABASE AUTH ──
   const signInWithSupabase = async ({ email, password }) => {
-    // 1. Verificación de Administrador Super
-    if (email === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Verificación de Credenciales de Super Administrador (Conexión América)
+    if (cleanEmail === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
       const adminUser = {
         id: 'admin-super-1',
         full_name: 'Super Administrador (Conexión América)',
@@ -104,46 +106,54 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: adminUser };
     }
 
+    // 2. Autenticación Real Estricta contra Supabase Auth (Sin Falsos Positivos ni Usuarios Ficticios)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password: password
       });
 
-      if (error) {
-        // Fallback local si el usuario fue registrado en sesión local previamente
-        const fallbackUser = {
-          id: `user-${Date.now()}`,
-          full_name: email.split('@')[0],
-          email: email.trim().toLowerCase(),
-          role: 'student',
-          avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
+      // Verificar errores de autenticación y existencia del usuario
+      if (error || !data.user) {
+        return { 
+          success: false, 
+          error: '❌ E-mail ou senha incorretos. Verifique suas credenciais na Lexy.' 
         };
-        setProfile(fallbackUser);
-        return { success: true, user: fallbackUser };
+      }
+
+      // Asegurar que el email está verificado en Supabase
+      if (!data.user.email_confirmed_at) {
+        return {
+          success: false,
+          error: '❌ Email ainda não verificado. Por favor, confirme seu email antes de entrar.'
+        };
       }
 
       const userMeta = data.user.user_metadata || {};
       const userProfile = {
         id: data.user.id,
-        full_name: userMeta.name || userMeta.full_name || data.user.email?.split('@')[0],
+        full_name: userMeta.name || userMeta.full_name || cleanEmail.split('@')[0],
         email: data.user.email,
         role: userMeta.role || 'student',
         documentNumber: userMeta.documentNumber || '',
         residenceCountry: userMeta.residenceCountry || 'Brasil 🇧🇷',
-        avatar_url: userMeta.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        avatar_url: userMeta.avatar_url || (userMeta.role === 'teacher' 
+          ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
         hourly_rate: userMeta.hourlyRate || 20
       };
-
       setProfile(userProfile);
       return { success: true, user: userProfile };
     } catch (err) {
-      console.error('Supabase Login Error:', err);
-      return { success: false, error: err.message || 'Erro ao conectar à Supabase Auth.' };
+      console.error('Supabase Login Exception:', err);
+      return { 
+        success: false, 
+        error: '❌ E-mail ou senha incorretos. Verifique suas credenciais.' 
+      };
     }
   };
 
-  // ── REGISTRAR USUARIO REAL EN SUPABASE AUTH + BASE DE DATOS ──
+  // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
   const signUpWithSupabase = async ({ name, email, password, role, documentNumber, residenceCountry, hourlyRate }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
@@ -164,12 +174,19 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.warn('Supabase SignUp warning, fallback to local register:', error.message);
+        if (error.message?.includes('already registered')) {
+          return { success: false, error: '❌ Este e-mail já está cadastrado. Faça login para acessar.' };
+        }
+        return { success: false, error: `❌ ${error.message}` };
       }
 
-      const userId = data?.user?.id || `user-sp-${Date.now()}`;
+      if (!data.user) {
+        return { success: false, error: '❌ Não foi possível criar o usuário na Supabase.' };
+      }
 
-      // Intentar guardar perfil en tabla 'profiles' de Supabase
+      const userId = data.user.id;
+
+      // Intentar persistir en tabla profiles de Supabase
       try {
         await supabase.from('profiles').upsert({
           id: userId,
@@ -182,7 +199,7 @@ export const AuthProvider = ({ children }) => {
           updated_at: new Date().toISOString()
         });
       } catch (dbErr) {
-        console.warn('No se pudo guardar en tabla profiles (se usará metadata):', dbErr);
+        console.warn('Profiles upsert warning:', dbErr);
       }
 
       const userProfile = {
@@ -201,28 +218,9 @@ export const AuthProvider = ({ children }) => {
       setProfile(userProfile);
       return { success: true, user: userProfile };
     } catch (err) {
-      console.error('Error durante signUpWithSupabase:', err);
+      console.error('Error en signUpWithSupabase:', err);
       return { success: false, error: err.message || 'Erro ao registrar usuário na Supabase.' };
     }
-  };
-
-  // Iniciar Sesión / Registrar Usuario Local (Retrocompatibilidad)
-  const loginUser = ({ name, email, role, documentNumber, residenceCountry, avatarUrl, hourlyRate }) => {
-    const userProfile = {
-      id: `user-${Date.now()}`,
-      full_name: name || (role === 'teacher' ? 'Prof. Maria Silva' : 'Gabriel Alumno'),
-      email: email || 'usuario@preply.com',
-      role: role || 'student',
-      documentNumber: documentNumber || '',
-      residenceCountry: residenceCountry || 'Brasil 🇧🇷',
-      avatar_url: avatarUrl || (role === 'teacher' 
-        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
-      hourly_rate: hourlyRate || 20
-    };
-
-    setProfile(userProfile);
-    return userProfile;
   };
 
   // Iniciar Sesión como Super Admin
@@ -241,27 +239,6 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: '❌ Credenciais inválidas de Administrador. Acesso restrito.' };
   };
 
-  // Función para cambiar de rol rápidamente en modo demostración
-  const setDemoRole = (role) => {
-    if (role === 'teacher') {
-      loginUser({
-        name: 'María Fernández',
-        email: 'maria.tutor@preply.com',
-        role: 'teacher',
-        hourlyRate: 28
-      });
-    } else if (role === 'admin') {
-      loginAdmin('emaildeconexionamerica@gmail.com', 'AlyRoberto2026*');
-    } else {
-      loginUser({
-        name: 'Gabriel Alumno Silva',
-        email: 'aluno@preply.com',
-        role: 'student',
-        documentNumber: '123.456.789-00'
-      });
-    }
-  };
-
   // Cerrar Sesión (Logout)
   const signOut = async () => {
     try {
@@ -278,11 +255,9 @@ export const AuthProvider = ({ children }) => {
       user: profile,
       profile,
       loading,
-      loginUser,
       loginAdmin,
       signInWithSupabase,
       signUpWithSupabase,
-      setDemoRole,
       signOut
     }}>
       {children}
