@@ -37,7 +37,7 @@ export default function OnboardingFlow() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { registerTutor } = useMarketplace();
-  const { loginUser } = useAuth();
+  const { signInWithSupabase, signUpWithSupabase } = useAuth();
 
   // Tab activo: 'register' (Cadastro) o 'login' (Iniciar Sessão)
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'register';
@@ -48,6 +48,7 @@ export default function OnboardingFlow() {
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estados de Cadastro do Tutor
   const [currentStep, setCurrentStep] = useState(1);
@@ -60,6 +61,7 @@ export default function OnboardingFlow() {
     full_name: '',
     email: '',
     phone: '',
+    password: '',
     country: 'Espanha',
     timezone: 'America/Sao_Paulo (GMT-3)',
     subject_taught: 'Espanhol',
@@ -91,7 +93,7 @@ export default function OnboardingFlow() {
   };
 
   // Manejo de Iniciar Sesión como Tutor Existente
-  const handleTutorLogin = (e) => {
+  const handleTutorLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
 
@@ -100,14 +102,23 @@ export default function OnboardingFlow() {
       return;
     }
 
-    loginUser({
-      name: loginEmail.includes('maria') ? 'María Fernández (Tutor)' : 'Prof. Tutor Cadastrado',
-      email: loginEmail,
-      role: 'teacher',
-      hourlyRate: 28
-    });
+    setIsSubmitting(true);
+    try {
+      const result = await signInWithSupabase({
+        email: loginEmail,
+        password: loginPassword
+      });
 
-    navigate('/dashboard/teacher');
+      if (result.success) {
+        navigate('/dashboard/teacher');
+      } else {
+        setLoginError(result.error || '❌ E-mail ou senha incorretos.');
+      }
+    } catch (err) {
+      setLoginError('❌ Erro ao conectar. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Validaciones de Cadastro
@@ -116,6 +127,7 @@ export default function OnboardingFlow() {
       if (!formData.full_name.trim()) return 'Por favor, informe seu nome completo.';
       if (!formData.email.trim() || !formData.email.includes('@')) return 'Por favor, informe um e-mail válido.';
       if (!formData.phone.trim()) return 'Por favor, informe seu telefone/WhatsApp.';
+      if (!formData.password || formData.password.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
     }
     if (step === 2) {
       if (!formData.subject_taught) return 'Selecione o idioma que deseja ensinar.';
@@ -154,7 +166,7 @@ export default function OnboardingFlow() {
     }
   };
 
-  const handleSubmitRegistration = (e) => {
+  const handleSubmitRegistration = async (e) => {
     e.preventDefault();
     const error = validateStep(4);
     if (error) {
@@ -162,17 +174,34 @@ export default function OnboardingFlow() {
       return;
     }
 
-    const newTutor = registerTutor(formData);
-    setCreatedTutorId(newTutor.id);
+    setIsSubmitting(true);
+    setErrorMessage('');
 
-    loginUser({
-      name: formData.full_name,
-      email: formData.email,
-      role: 'teacher',
-      hourlyRate: formData.hourly_rate
-    });
+    try {
+      // 1. Registrar el tutor en el marketplace (estado local)
+      const newTutor = registerTutor(formData);
+      setCreatedTutorId(newTutor.id);
 
-    setIsSuccess(true);
+      // 2. Registrar el usuario en Supabase Auth
+      const result = await signUpWithSupabase({
+        name: formData.full_name,
+        email: formData.email,
+        password: formData.password,
+        role: 'teacher',
+        hourlyRate: formData.hourly_rate
+      });
+
+      if (result.success) {
+        setIsSuccess(true);
+      } else {
+        setErrorMessage(result.error || '❌ Erro ao criar conta. Tente novamente.');
+      }
+    } catch (err) {
+      console.error('Error en registro de tutor:', err);
+      setErrorMessage('❌ Erro inesperado ao registrar. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -433,6 +462,28 @@ export default function OnboardingFlow() {
                 </div>
 
                 <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Senha de Acesso (Mínimo 6 caracteres) *</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={formData.password}
+                      onChange={(e) => updateField('password', e.target.value)}
+                      placeholder="Crie uma senha segura"
+                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-10 py-2.5 text-xs font-medium outline-none focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="text-xs font-bold text-slate-400 block mb-1">Fuso Horário (Timezone) *</label>
                   <select
                     value={formData.timezone}
@@ -641,9 +692,10 @@ export default function OnboardingFlow() {
               ) : (
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2"
+                  disabled={isSubmitting}
+                  className={`bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
-                  <span>Finalizar Cadastro de Tutor 🚀</span>
+                  <span>{isSubmitting ? 'Registrando...' : 'Finalizar Cadastro de Tutor 🚀'}</span>
                 </button>
               )}
             </div>
