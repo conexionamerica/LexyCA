@@ -18,6 +18,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import OnboardingFlow from './pages/OnboardingFlow';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 
 function ProtectedAdminRoute({ children }) {
   const { profile, loading } = useAuth();
@@ -35,7 +36,7 @@ function Layout() {
       <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <Routes>
           {/* Rutas Públicas de Exploración y Perfil de Tutores */}
-          <Route path="/" element={<ExplorePage />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />
