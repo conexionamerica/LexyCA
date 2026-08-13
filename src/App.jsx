@@ -37,6 +37,7 @@ function Layout() {
           {/* Rutas Públicas de Exploración y Perfil de Tutores */}
           <Route path="/" element={<ExplorePage />} />
           <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />
           <Route path="/onboarding" element={<OnboardingFlow />} />
           {/* Ruta de verificación de email removida */}
