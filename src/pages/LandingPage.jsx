@@ -68,99 +68,129 @@ export default function LandingPage() {
     <div className="space-y-16 animate-fade-in-up pb-16">
       
       {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY CON ESTÉTICA LEXY ── */}
-      <div className="relative rounded-3xl bg-slate-950/95 border border-cyan-500/30 p-4 sm:p-8 md:p-12 overflow-hidden shadow-2xl space-y-6">
+      <div className="relative rounded-3xl bg-slate-950/95 border border-cyan-500/30 p-5 sm:p-8 md:p-12 overflow-hidden shadow-2xl">
         <div className="absolute -right-16 -top-16 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        {/* Imagen Destacada do Professor / Aula Virtual */}
-        <div className="relative rounded-2xl overflow-hidden aspect-[16/9] max-h-[360px] bg-slate-900 border border-slate-800 shadow-2xl group">
-          <img 
-            src="/lexy_hero_tutor.png" 
-            alt="Professor(a) de Idiomas Lexy" 
-            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300 text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>Aula ao vivo • Lexy Space</span>
-          </div>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          
+          {/* LADO IZQUIERDO: TEXTOS, CTAS, ESTATÍSTICAS E IDIOMAS */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-extrabold uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>Plataforma Oficial Lexy Idiomas</span>
+            </div>
 
-        {/* Título Principal */}
-        <div className="space-y-4 text-left">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-black uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-            <span>Plataforma Oficial Lexy Idiomas</span>
-          </div>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.12]">
+              Aprenda mais rápido com as <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">melhores aulas de idiomas</span>.
+            </h1>
 
-          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-[1.15]">
-            Aprenda mais rápido com as <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">melhores aulas de idiomas</span>.
-          </h1>
-        </div>
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl">
+              Aulas particulares online 1-on-1 com professores nativos de Inglês e Espanhol. Alcance a fluência no seu tempo!
+            </p>
 
-        {/* Botão de Ação Principal (CTA) */}
-        <div>
-          <button
-            onClick={() => navigate('/explore')}
-            className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-base sm:text-lg py-4 px-8 rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
-          >
-            <span>Encontrar seu professor</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
+            {/* BOTÃO PRINCIPAL DE CTA */}
+            <div>
+              <button
+                onClick={() => navigate('/explore')}
+                className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-base sm:text-lg py-4 px-8 rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+              >
+                <span>Encontrar seu professor</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
 
-        {/* Barra de Estatísticas em Fila */}
-        <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
-          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-            <div className="text-lg sm:text-xl font-black text-white">100.000+</div>
-            <p className="text-xs text-slate-400 font-medium">professores com experiência</p>
-          </div>
+            {/* ESTATÍSTICAS */}
+            <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
+              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                <div className="text-lg sm:text-xl font-black text-white">100.000+</div>
+                <p className="text-[11px] text-slate-400 font-medium">professores com experiência</p>
+              </div>
 
-          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-            <div className="text-lg sm:text-xl font-black text-white">Mais de 300.000</div>
-            <p className="text-xs text-slate-400 font-medium">aulas avaliadas com 5 estrelas</p>
-          </div>
+              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                <div className="text-lg sm:text-xl font-black text-white">Mais de 300.000</div>
+                <p className="text-[11px] text-slate-400 font-medium">aulas avaliadas com 5 estrelas</p>
+              </div>
 
-          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
-            <div className="text-lg sm:text-xl font-black text-amber-400 flex items-center justify-center sm:justify-start gap-1">
-              <span>4,8</span>
-              <div className="flex text-amber-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
-                ))}
+              <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                <div className="text-lg sm:text-xl font-black text-amber-400 flex items-center justify-center sm:justify-start gap-1">
+                  <span>4,8</span>
+                  <div className="flex text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium">de satisfação dos alunos</p>
               </div>
             </div>
-            <p className="text-xs text-slate-400 font-medium">de satisfação dos alunos</p>
+
+            {/* SELETOR RÁPIDO DE IDIOMAS */}
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => navigate('/explore?subject=Inglês')}
+                className="w-full p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇬🇧</span>
+                  <div className="text-left">
+                    <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua inglesa</span>
+                    <span className="text-xs text-slate-400">25.017 professores qualificados</span>
+                  </div>
+                </div>
+                <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              <button
+                onClick={() => navigate('/explore?subject=Espanhol')}
+                className="w-full p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇪🇸</span>
+                  <div className="text-left">
+                    <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua espanhola</span>
+                    <span className="text-xs text-slate-400">18.420 professores qualificados</span>
+                  </div>
+                </div>
+                <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
           </div>
-        </div>
 
-        {/* Categorias Rápidas de Idioma */}
-        <div className="pt-2 space-y-2">
-          <button
-            onClick={() => navigate('/explore?subject=Inglês')}
-            className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🇬🇧</span>
-              <div className="text-left">
-                <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua inglesa</span>
-                <span className="text-xs text-slate-400">25.017 professores qualificados</span>
-              </div>
-            </div>
-            <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
-          </button>
+          {/* LADO DERECHO: FOTO REAL DA PROFESSORA EM AULA VIRTUAL */}
+          <div className="lg:col-span-5 relative">
+            <div className="relative rounded-3xl overflow-hidden aspect-[4/3] bg-slate-900 border-2 border-cyan-500/40 shadow-2xl group glow-cyan">
+              
+              {/* Foto Real de Tutor Profesional */}
+              <img 
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1000&auto=format&fit=crop&q=80" 
+                alt="Professora Real de Idiomas na Sala Virtual Lexy" 
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+              />
 
-          <button
-            onClick={() => navigate('/explore?subject=Espanhol')}
-            className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🇪🇸</span>
-              <div className="text-left">
-                <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua espanhola</span>
-                <span className="text-xs text-slate-400">18.420 professores qualificados</span>
+              {/* Overlay sutil e Badges de Aula Ao Vivo */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent pointer-events-none" />
+
+              <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300 text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>Aula ao vivo • Lexy Space</span>
               </div>
+
+              <div className="absolute bottom-4 left-4 right-4 bg-slate-950/80 backdrop-blur border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Profª María Fernández</span>
+                </div>
+                <div className="flex items-center gap-1 text-amber-400">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  <span>4.9 (320+ aulas)</span>
+                </div>
+              </div>
+
             </div>
-            <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </div>
+
         </div>
       </div>
 
