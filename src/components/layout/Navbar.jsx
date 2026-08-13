@@ -25,13 +25,13 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80">
-      <div className="w-full px-4 sm:px-8">
+      <div className="w-full px-2 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between min-h-[64px] sm:min-h-[76px] py-2">
           
-          {/* LADO ESQUERDO: Logo */}
-          <div className="flex items-center gap-6 sm:gap-8">
+          {/* LADO ESQUERDO: Logo & Eslogan alinhados bem à esquerda */}
+          <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center shrink-0">
-              <LexyAnimatedLogo size="medium" showSlogan={false} />
+              <LexyAnimatedLogo size="medium" showSlogan={true} />
             </Link>
           </div>
 
