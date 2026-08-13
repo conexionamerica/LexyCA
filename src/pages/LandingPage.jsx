@@ -176,22 +176,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* ── PROMOTIONAL BANNERS SECTION ── */}
-      <div className="relative w-full h-16 sm:h-20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-amber-500/10 border-y border-amber-500/20 flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center text-amber-300">
-          {messagesToDisplay.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`absolute transition-all duration-1000 ease-in-out transform flex items-center gap-3 px-4 ${
-                idx === currentSlide ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}
-            >
-              <Info className="w-5 h-5 flex-shrink-0" />
-              <span className="font-semibold text-sm sm:text-base text-center">{msg}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* ── SECCIONES SECUNDARIAS (ALINEADAS LIMPIAMENTE AL CENTRO) ── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16">

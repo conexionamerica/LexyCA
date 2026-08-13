@@ -5,7 +5,7 @@ import { useMarketplace } from '../../contexts/MarketplaceContext';
 import LexyAnimatedLogo from './LexyAnimatedLogo';
 import { 
   Globe, Search, UserCheck, GraduationCap, 
-  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X 
+  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X, ArrowRight 
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -16,6 +16,7 @@ export default function Navbar() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const handleLogout = () => {
     signOut();
@@ -159,14 +160,14 @@ export default function Navbar() {
                   <span>Seja um professor</span>
                 </Link>
 
-                {/* BOTÃO 3: LOGIN (PARA ALUNO OU PROFESSOR) */}
-                <Link
-                  to="/login"
-                  className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-1.5 hover:border-slate-600"
+                {/* BOTÃO 3: LOGIN (ABRE MODAL PERGUNTANDO ALUNO OU PROFESSOR) */}
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-1.5 hover:border-slate-600 cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Login</span>
-                </Link>
+                </button>
               </>
             )}
 
@@ -206,14 +207,87 @@ export default function Navbar() {
             <span>2. Seja um professor</span>
           </Link>
 
-          <Link
-            to="/login"
-            onClick={() => setIsMobileMenuOpen(false)}
+          <button
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              setIsLoginModalOpen(true);
+            }}
             className="w-full bg-slate-900 text-white font-bold text-xs p-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2"
           >
             <LogIn className="w-4 h-4 text-cyan-400" />
             <span>3. Login (Aluno / Professor)</span>
-          </Link>
+          </button>
+        </div>
+      )}
+
+      {/* MODAL DE SELEÇÃO DE LOGIN: ALUNO OU PROFESSOR */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-950 border-2 border-cyan-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6 relative glow-cyan">
+            
+            {/* Botão de Fechar */}
+            <button 
+              onClick={() => setIsLoginModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-900 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header do Modal */}
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto mb-3 border border-cyan-400/30">
+                <LogIn className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white">Como deseja acessar?</h3>
+              <p className="text-xs text-slate-400">
+                Escolha o portal correspondente ao seu perfil na Lexy Idiomas.
+              </p>
+            </div>
+
+            {/* 2 Opções de Acesso */}
+            <div className="space-y-3">
+              {/* OPÇÃO 1: SOU ALUNO */}
+              <button
+                onClick={() => {
+                  setIsLoginModalOpen(false);
+                  navigate('/login?role=student');
+                }}
+                className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-400 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Sou Aluno</span>
+                    <span className="text-[11px] text-slate-400">Acessar portal do aluno e minhas aulas</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-cyan-300 group-hover:translate-x-1 transition-transform shrink-0" />
+              </button>
+
+              {/* OPÇÃO 2: SOU PROFESSOR */}
+              <button
+                onClick={() => {
+                  setIsLoginModalOpen(false);
+                  navigate('/login?role=teacher');
+                }}
+                className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-400 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-white text-sm block group-hover:text-amber-300">Sou Professor (Tutor)</span>
+                    <span className="text-[11px] text-slate-400">Acessar painel do tutor e agenda</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
     </header>
