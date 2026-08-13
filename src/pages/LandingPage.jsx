@@ -158,33 +158,33 @@ export default function LandingPage() {
 
           </div>
 
-          {/* LADO DERECHO: FOTO REAL DA PROFESSORA EM AULA VIRTUAL */}
+          {/* LADO DERECHO: FOTO REAL DO PROFESSOR EM AULA VIRTUAL */}
           <div className="lg:col-span-5 relative">
             <div className="relative rounded-3xl overflow-hidden aspect-[4/3] bg-slate-900 border-2 border-cyan-500/40 shadow-2xl group glow-cyan">
               
-              {/* Foto Real de Tutor Profesional */}
+              {/* Foto Real de Tutor Profesional Enviada pelo Usuário */}
               <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=1000&auto=format&fit=crop&q=80" 
-                alt="Professora Real de Idiomas na Sala Virtual Lexy" 
-                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
+                src="/lexy_hero_man.png" 
+                alt="Professor Real de Idiomas na Sala Virtual Lexy" 
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
               />
 
               {/* Overlay sutil e Badges de Aula Ao Vivo */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent pointer-events-none" />
 
-              <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300 text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+              <div className="absolute top-4 left-4 bg-slate-950/85 backdrop-blur border border-cyan-400/40 text-cyan-300 text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                 <span>Aula ao vivo • Lexy Space</span>
               </div>
 
-              <div className="absolute bottom-4 left-4 right-4 bg-slate-950/80 backdrop-blur border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
+              <div className="absolute bottom-4 left-4 right-4 bg-slate-950/85 backdrop-blur border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span>Profª María Fernández</span>
+                  <span>Prof. Gabriel Silva</span>
                 </div>
                 <div className="flex items-center gap-1 text-amber-400">
                   <Star className="w-3.5 h-3.5 fill-amber-400" />
-                  <span>4.9 (320+ aulas)</span>
+                  <span>5.0 (410+ aulas)</span>
                 </div>
               </div>
 
