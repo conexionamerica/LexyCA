@@ -15,6 +15,10 @@
   --font-body: 'Plus Jakarta Sans', sans-serif;
 }
 
+html {
+  font-size: 85%; /* Scaled ~25% more compact for sleek, high-density layout */
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--bg-slate-dark);

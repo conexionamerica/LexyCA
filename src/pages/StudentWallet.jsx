@@ -50,8 +50,11 @@ export default function StudentWallet() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-black text-slate-100 tracking-tight">Créditos Lexy</h1>
-        <p className="text-slate-400 font-medium mt-1">Gerencie seu saldo para reservar aulas instantaneamente.</p>
+        <h1 className="text-3xl font-black text-slate-100 tracking-tight flex items-center gap-2">
+          <span>Carteira Digital LexyPay</span>
+          <span className="text-xs bg-cyan-500/20 text-cyan-300 font-bold px-2.5 py-1 rounded-full border border-cyan-400/30 uppercase tracking-wider">Oficial</span>
+        </h1>
+        <p className="text-slate-400 font-medium mt-1">Gerencie seu saldo em créditos com segurança instantânea.</p>
       </div>
 
       <div className="bg-amber-500/15 border border-amber-500/30 text-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

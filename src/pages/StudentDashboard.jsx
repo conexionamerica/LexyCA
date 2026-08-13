@@ -287,17 +287,34 @@ export default function StudentDashboard() {
           {/* COLUMNA LATERAL / BARRA DERECHA (span-1) */}
           <div className="space-y-6">
             
-            {/* Widget Billetera (Blueprint Requirment) */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-xl space-y-4 shadow-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 text-sm font-medium">{t.currentBalance || "Saldo Atual"}</span>
-                <span className="text-2xl font-bold text-white">R$ {student.walletBalance?.toFixed(2) || '0.00'}</span>
+            {/* Widget Billetera LexyPay (Design Redesenhado & Nome Bonito) */}
+            <div className="bg-gradient-to-br from-slate-900/90 via-slate-950/90 to-cyan-950/40 border border-cyan-500/30 rounded-2xl p-5 backdrop-blur-xl space-y-4 shadow-2xl relative overflow-hidden group">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-sky-400 text-slate-950 flex items-center justify-center font-black shadow-md shadow-cyan-500/20">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-sm tracking-wide">LexyPay Wallet</h3>
+                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider block">Carteira Digital</span>
+                  </div>
+                </div>
+                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  ● Ativa
+                </span>
               </div>
+
+              <div className="flex justify-between items-baseline pt-1">
+                <span className="text-slate-400 text-xs font-semibold">Saldo em Conta</span>
+                <span className="text-2xl font-black text-white tracking-tight">R$ {student.walletBalance?.toFixed(2) || '0.00'}</span>
+              </div>
+
               <button
                 onClick={() => setActiveTab('carteira')}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer text-xs group-hover:scale-[1.02]"
               >
-                <span>{t.rechargeCredits || "+ Recarregar Créditos"}</span>
+                <Plus className="w-4 h-4" />
+                <span>Recarregar Créditos LexyPay</span>
               </button>
             </div>
 
