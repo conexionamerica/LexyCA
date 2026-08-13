@@ -44,15 +44,18 @@ export default function Navbar() {
 
   const currentTab = searchParams.get('tab') || 'inicio';
 
+  // Verificar se o usuário está dentro de qualquer painel
+  const isInsidePanel = !!profile || location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/tutor') || location.pathname.startsWith('/admin');
+
   return (
     <header className="relative w-full z-30 bg-slate-950 border-b border-slate-800/80">
       <div className="w-full px-2 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between min-h-[64px] sm:min-h-[72px] py-2">
           
-          {/* LADO ESQUERDO: Logo & Eslogan */}
+          {/* LADO ESQUERDO: Logo & Mascot (Sem eslogan nem palavra Idiomas quando dentro do painel) */}
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center shrink-0">
-              <LexyAnimatedLogo size="medium" showSlogan={true} />
+              <LexyAnimatedLogo size="medium" showSlogan={!isInsidePanel} showIdiomas={!isInsidePanel} />
             </Link>
           </div>
 

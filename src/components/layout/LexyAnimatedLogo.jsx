@@ -1,12 +1,12 @@
 import React from 'react';
 
-export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true }) {
+export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true, showIdiomas = true }) {
   const isLarge = size === 'large';
 
   return (
     <div className="group inline-flex flex-col items-center justify-center cursor-pointer select-none py-1">
       
-      {/* ── FILA SUPERIOR: MASCOTA 3D MAIS GRANDE + ESTRELLA ✦ + "Lexy IDIOMAS" ── */}
+      {/* ── FILA SUPERIOR: MASCOTA 3D MAIS GRANDE + ESTRELLA ✦ + "Lexy" (opcional IDIOMAS) ── */}
       <div className="flex items-center gap-3 relative">
         
         {/* Mascota 3D Destacada Más Grande sin Fondo Negro */}
@@ -21,17 +21,17 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
               WebkitMaskImage: 'radial-gradient(circle at center, black 58%, transparent 88%)',
             }}
             className={`${
-              isLarge ? 'w-16 h-16 sm:w-24 sm:h-24' : 'w-10 h-10 sm:w-16 sm:h-16'
+              isLarge ? 'w-16 h-16 sm:w-24 sm:h-24' : 'w-10 h-10 sm:w-14 sm:h-14'
             } object-cover mix-blend-screen drop-shadow-[0_0_22px_rgba(56,189,248,0.95)] transition-transform duration-300 group-hover:scale-110`}
           />
         </div>
 
-        {/* Estrella Dorada Destellante (✦) Más Grande */}
-        <span className="text-amber-400 font-black text-xl sm:text-3xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)]">
+        {/* Estrella Dorada Destellante (✦) */}
+        <span className="text-amber-400 font-black text-xl sm:text-2xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)]">
           ✦
         </span>
 
-        {/* Nombre Lexy con Efecto de Transición de Color (brand-text-shimmer) + Cápsula IDIOMAS */}
+        {/* Nombre Lexy + Cápsula IDIOMAS (opcional) */}
         <div className="flex flex-col">
           <span className={`${
             isLarge ? 'text-3xl sm:text-5xl' : 'text-xl sm:text-2xl'
@@ -39,9 +39,11 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
             Lexy
           </span>
 
-          <span className="border border-cyan-400/70 text-cyan-300 font-black text-[9px] sm:text-[11px] uppercase px-2 py-0.2 sm:px-3 sm:py-0.5 rounded-full shadow-lg shadow-cyan-500/20 tracking-widest text-center mt-0.5 bg-cyan-950/40">
-            IDIOMAS
-          </span>
+          {showIdiomas && (
+            <span className="border border-cyan-400/70 text-cyan-300 font-black text-[9px] sm:text-[11px] uppercase px-2 py-0.2 sm:px-3 sm:py-0.5 rounded-full shadow-lg shadow-cyan-500/20 tracking-widest text-center mt-0.5 bg-cyan-950/40">
+              IDIOMAS
+            </span>
+          )}
         </div>
 
       </div>
