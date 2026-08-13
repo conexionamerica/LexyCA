@@ -123,17 +123,17 @@ export default function LandingPage() {
                     <span>Aula ao vivo • Lexy Space</span>
                   </div>
 
-                  {/* Informação do Professor na foto */}
-                  <div className="absolute bottom-4 left-4 right-4 bg-slate-950/85 backdrop-blur border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span>Prof. Gabriel Silva</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-400">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span>5.0 (410+ aulas)</span>
-                    </div>
-                  </div>
+                  {/* Botão de cadastro sobre a foto solicitado pelo usuário */}
+                  <button
+                    onClick={() => navigate('/login?role=student')}
+                    className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs sm:text-sm py-3 px-4 rounded-xl shadow-2xl flex items-center justify-between transition-all hover:scale-[1.02] group cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-slate-950 flex-shrink-0" />
+                      <span>Cria tua conta agora e começa a estudar</span>
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-slate-950 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                  </button>
 
                 </div>
 
