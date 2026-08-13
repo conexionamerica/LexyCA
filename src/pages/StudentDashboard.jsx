@@ -68,24 +68,9 @@ export default function StudentDashboard() {
     ];
   });
 
-  const completedLessonsHistory = [
-    {
-      id: 'comp-101',
-      tutorName: assignedTutor.name,
-      tutorAvatar: assignedTutor.avatar,
-      tutorSubject: assignedTutor.subject,
-      date: '11/08/2026 às 15:00',
-      feedback: 'Excelente aula! Praticou conversação fluida e tempo verbal passado. Demonstrou ótimo domínio do vocabulário corporativo.',
-      studyTips: 'Revisar a pronúncia das palavras terminadas em -ción e rever o vocabulário de reuniões.',
-      status: 'Concluída'
-    }
-  ];
-
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState(null);
-  const [selectedBookingForAbsence, setSelectedBookingForAbsence] = useState(null);
   const [rescheduleDay, setRescheduleDay] = useState('Quarta-feira');
   const [rescheduleTime, setRescheduleTime] = useState('16:00');
-  const [absenceReason, setAbsenceReason] = useState('Enfermidade / Motivos Médicos');
   const [actionSuccessMessage, setActionSuccessMessage] = useState('');
 
   const handleConfirmReschedule = (e) => {
@@ -94,15 +79,6 @@ export default function StudentDashboard() {
     setMyBookingsList(prev => prev.map(b => b.id === selectedBookingForReschedule.id ? { ...b, day: rescheduleDay, time: rescheduleTime, status: 'rescheduled' } : b));
     setActionSuccessMessage(`🔄 Reagendamento solicitado para ${rescheduleDay} às ${rescheduleTime}! Notificação enviada ao professor.`);
     setSelectedBookingForReschedule(null);
-    setTimeout(() => setActionSuccessMessage(''), 5000);
-  };
-
-  const handleConfirmAbsence = (e) => {
-    e.preventDefault();
-    if (!selectedBookingForAbsence) return;
-    setMyBookingsList(prev => prev.map(b => b.id === selectedBookingForAbsence.id ? { ...b, status: 'absence_reported', absenceReason } : b));
-    setActionSuccessMessage(`⚠️ Falta informada com sucesso ao professor (${absenceReason}).`);
-    setSelectedBookingForAbsence(null);
     setTimeout(() => setActionSuccessMessage(''), 5000);
   };
 
@@ -126,18 +102,18 @@ export default function StudentDashboard() {
   const nextBooking = myBookingsList.find(b => b.status === 'confirmed' || b.status === 'rescheduled') || myBookingsList[0];
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
+    <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 animate-fade-in-up">
       
-      {/* TABS HEADER DE NAVEGAÇÃO */}
-      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
+      {/* TABS HEADER DE NAVEGAÇÃO COMPACTO */}
+      <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-1 flex items-center gap-1 overflow-x-auto scrollbar-none whitespace-nowrap">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
             }`}
           >
             {tab.label}
@@ -146,75 +122,73 @@ export default function StudentDashboard() {
       </div>
 
       {actionSuccessMessage && (
-        <div className="bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 p-4 rounded-2xl flex items-center gap-3 animate-fade-in-up">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="text-xs font-bold text-white">{actionSuccessMessage}</span>
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3 rounded-xl flex items-center gap-2 text-xs font-medium animate-fade-in-up">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{actionSuccessMessage}</span>
         </div>
       )}
 
-      {/* TAB CONTENT: INÍCIO (REESTRUTURADO EM 2 COLUNAS CONFORME BLUEPRINT) */}
+      {/* TAB CONTENT: INÍCIO (COMPACT 2-COLUMN GRID) */}
       {activeTab === 'inicio' && (
-        <div className="max-w-7xl mx-auto py-2 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           
           {/* COLUMNA PRINCIPAL (span-2) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             
-            {/* Banner Saludo Personalizado */}
+            {/* Banner Saludo Personalizado Compacto */}
             <div>
-              <h1 className="text-3xl font-bold text-white">Olá, {currentName}! 👋</h1>
-              <p className="text-slate-400 mt-1">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
+              <h1 className="text-xl sm:text-2xl font-semibold text-white">Olá, {currentName}! 👋</h1>
+              <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
             </div>
 
             {/* Modal de Boas-Vindas se ativo */}
             {showWelcome && (
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6 relative overflow-hidden shadow-xl">
-                <button onClick={dismissWelcome} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-                  <X className="w-5 h-5" />
+              <div className="bg-slate-900/40 backdrop-blur-md border border-cyan-500/20 rounded-xl p-4 relative overflow-hidden space-y-2">
+                <button onClick={dismissWelcome} className="absolute top-3 right-3 text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
                 </button>
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black uppercase">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Bem-vindo à Lexy Idiomas</span>
-                  </div>
-                  <h2 className="text-xl font-bold text-white">Pronto para começar suas aulas?</h2>
-                  <p className="text-slate-300 text-xs leading-relaxed">
-                    Estamos muito felizes em ter você aqui. Navegue pelo nosso catálogo, escolha seu professor ideal e agende sua primeira aula com garantia total de satisfação.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab('carteira')}
-                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs py-2.5 px-5 rounded-xl shadow-lg shadow-cyan-500/20"
-                  >
-                    + Recarregar Créditos Lexy
-                  </button>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-semibold uppercase">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Bem-vindo à Lexy Idiomas</span>
                 </div>
+                <h2 className="text-sm font-semibold text-white">Pronto para começar suas aulas?</h2>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Estamos muito felizes em ter você aqui. Escolha seu professor no catálogo e comece a estudar com garantia total de satisfação.
+                </p>
+                <button
+                  onClick={() => setActiveTab('carteira')}
+                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-3.5 rounded-lg shadow-sm"
+                >
+                  + Recarregar Créditos Lexy
+                </button>
               </div>
             )}
 
-            {/* Hero Card - Próxima Clase (Frutiger Aero Glassmorphism) */}
+            {/* Hero Card - Próxima Clase (Plano e Limpo + Glassmorphic Sutil) */}
             {nextBooking ? (
-              <div className="bg-gradient-to-r from-slate-900/90 to-cyan-950/40 border border-cyan-500/30 rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden shadow-2xl space-y-6">
+              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20">
+                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     {t.confirmedBadge || "● Confirmada"}
                   </span>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                     {t.nextClassLabel || "Próxima Aula"}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3.5">
                   <img 
                     src={nextBooking.tutorAvatar || assignedTutor.avatar} 
                     alt={nextBooking.tutorName || assignedTutor.name}
-                    className="w-16 h-16 rounded-full border-2 border-cyan-400 object-cover ring-2 ring-cyan-500 shadow-lg" 
+                    className="w-12 h-12 rounded-full border border-cyan-400/50 object-cover ring-2 ring-cyan-500/40 shrink-0" 
                   />
                   <div>
-                    <h3 className="text-xl font-bold text-white">{nextBooking.tutorName || assignedTutor.name}</h3>
-                    <p className="text-cyan-400 text-sm font-medium">
+                    <h3 className="text-base font-semibold text-white">{nextBooking.tutorName || assignedTutor.name}</h3>
+                    <p className="text-cyan-400 text-xs font-medium">
                       {nextBooking.tutorSubject || assignedTutor.subject} • Aula Individual
                     </p>
-                    <p className="text-slate-300 text-sm mt-1 flex items-center gap-1.5 font-semibold">
-                      <Calendar className="w-4 h-4 text-cyan-400" />
+                    <p className="text-slate-300 text-xs mt-0.5 flex items-center gap-1.5 font-medium">
+                      <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                       <span>{nextBooking.day} às {nextBooking.time}</span>
                     </p>
                   </div>
@@ -222,42 +196,42 @@ export default function StudentDashboard() {
 
                 <button 
                   onClick={() => navigate(`/classroom/${nextBooking.id}`)}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-10 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>{t.enterVirtualRoom || "🎥 Entrar na Sala Virtual"}</span>
                 </button>
               </div>
             ) : (
-              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 text-center space-y-3">
-                <BookOpen className="w-10 h-10 text-cyan-400 mx-auto" />
-                <h3 className="text-base font-bold text-white">Nenhuma aula agendada no momento</h3>
+              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 text-center space-y-2">
+                <BookOpen className="w-8 h-8 text-cyan-400 mx-auto" />
+                <h3 className="text-sm font-semibold text-white">Nenhuma aula agendada no momento</h3>
                 <p className="text-xs text-slate-400">Escolha um tutor no catálogo e agende sua primeira aula!</p>
                 <button
                   onClick={() => setActiveTab('catalogo')}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow"
+                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg shadow-sm"
                 >
                   Explorar Tutores
                 </button>
               </div>
             )}
 
-            {/* Lista de Aulas e Histórico */}
-            <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-cyan-400" />
+            {/* Lista de Aulas e Histórico Compacta */}
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-cyan-400" />
                 <span>Minhas Aulas Agendadas</span>
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {myBookingsList.map(booking => (
-                  <div key={booking.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div key={booking.id} className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <img src={booking.tutorAvatar} alt={booking.tutorName} className="w-12 h-12 rounded-full object-cover border border-cyan-400/40 shrink-0" />
+                      <img src={booking.tutorAvatar} alt={booking.tutorName} className="w-10 h-10 rounded-full object-cover border border-cyan-400/30 shrink-0" />
                       <div>
-                        <h4 className="font-bold text-white text-sm">{booking.tutorName}</h4>
-                        <p className="text-xs text-cyan-400">{booking.tutorSubject}</p>
-                        <p className="text-xs text-slate-300 mt-0.5 flex items-center gap-1 font-medium">
-                          <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                        <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
+                        <p className="text-[11px] text-cyan-400 font-medium">{booking.tutorSubject}</p>
+                        <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1 font-medium">
+                          <Calendar className="w-3 h-3 text-cyan-400" />
                           <span>{booking.day} às {booking.time}</span>
                         </p>
                       </div>
@@ -266,13 +240,13 @@ export default function StudentDashboard() {
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => setSelectedBookingForReschedule(booking)}
-                        className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                        className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all"
                       >
                         Reagendar
                       </button>
                       <button
                         onClick={() => navigate(`/classroom/${booking.id}`)}
-                        className="flex-1 sm:flex-initial bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/40 text-cyan-300 hover:text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition-all"
+                        className="flex-1 sm:flex-initial bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/30 text-cyan-300 hover:text-slate-950 text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all"
                       >
                         Entrar
                       </button>
@@ -285,73 +259,73 @@ export default function StudentDashboard() {
           </div>
 
           {/* COLUMNA LATERAL / BARRA DERECHA (span-1) */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             
-            {/* Widget Billetera LexyPay (Design Redesenhado & Nome Bonito) */}
-            <div className="bg-gradient-to-br from-slate-900/90 via-slate-950/90 to-cyan-950/40 border border-cyan-500/30 rounded-2xl p-5 backdrop-blur-xl space-y-4 shadow-2xl relative overflow-hidden group">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            {/* Widget Billetera LexyPay (Sobria e Limpa) */}
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-sky-400 text-slate-950 flex items-center justify-center font-black shadow-md shadow-cyan-500/20">
-                    <CreditCard className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 flex items-center justify-center font-bold">
+                    <CreditCard className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-white text-sm tracking-wide">LexyPay Wallet</h3>
-                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider block">Carteira Digital</span>
+                    <h3 className="font-semibold text-white text-xs tracking-wide">LexyPay Wallet</h3>
+                    <span className="text-[10px] text-cyan-400 font-medium block">Carteira Digital</span>
                   </div>
                 </div>
-                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/20">
+                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full border border-emerald-500/20">
                   ● Ativa
                 </span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-1">
-                <span className="text-slate-400 text-xs font-semibold">Saldo em Conta</span>
-                <span className="text-2xl font-black text-white tracking-tight">R$ {student.walletBalance?.toFixed(2) || '0.00'}</span>
+              <div className="flex justify-between items-baseline pt-0.5">
+                <span className="text-slate-400 text-xs">Saldo em Conta</span>
+                <span className="text-xl font-bold text-white tracking-tight">R$ {student.walletBalance?.toFixed(2) || '0.00'}</span>
               </div>
 
               <button
                 onClick={() => setActiveTab('carteira')}
-                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 cursor-pointer text-xs group-hover:scale-[1.02]"
+                className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Recarregar Créditos LexyPay</span>
               </button>
             </div>
 
             {/* Widget de Notificações / Anúncios Rápidos */}
-            <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <Megaphone className="w-5 h-5 text-cyan-400" />
-                <h3 className="font-bold text-white text-sm">Novidades e Avisos</h3>
+                <Megaphone className="w-4 h-4 text-cyan-400" />
+                <h3 className="font-semibold text-white text-xs">Novidades e Avisos</h3>
               </div>
 
               {studentAnnouncements.length > 0 ? (
                 studentAnnouncements.map(ann => (
-                  <div key={ann.id} className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1">
-                    <h4 className="font-bold text-white text-xs">{ann.title}</h4>
+                  <div key={ann.id} className="p-2.5 bg-slate-950/60 border border-slate-800/60 rounded-lg space-y-0.5">
+                    <h4 className="font-medium text-white text-xs">{ann.title}</h4>
                     <p className="text-[11px] text-slate-400 leading-relaxed">{ann.content}</p>
                   </div>
                 ))
               ) : (
-                <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1">
-                  <h4 className="font-bold text-white text-xs">🚀 Aulas ilimitadas com professores nativos</h4>
+                <div className="p-2.5 bg-slate-950/60 border border-slate-800/60 rounded-lg space-y-0.5">
+                  <h4 className="font-medium text-white text-xs">🚀 Aulas particulares com professores nativos</h4>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Aproveite a flexibilidade do Lexy Space para agendar aulas individuais quando quiser.
+                    Aproveite a flexibilidade da Sala Virtual para agendar suas aulas quando desejar.
                   </p>
                 </div>
               )}
             </div>
 
             {/* Suporte Rápido Widget */}
-            <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-3 shadow-xl text-center">
-              <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
-              <h4 className="font-bold text-white text-sm">Precisa de Ajuda?</h4>
-              <p className="text-xs text-slate-400">Nossa equipe de suporte está online 24/7 no WhatsApp.</p>
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-2.5 shadow-sm text-center">
+              <ShieldCheck className="w-6 h-6 text-emerald-400 mx-auto" />
+              <h4 className="font-semibold text-white text-xs">Precisa de Ajuda?</h4>
+              <p className="text-[11px] text-slate-400">Suporte online 24/7 via WhatsApp.</p>
               <a
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/40 text-emerald-300 hover:text-slate-950 font-bold text-xs py-2.5 px-4 rounded-xl transition-all"
+                className="w-full h-8 inline-flex items-center justify-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/30 text-emerald-300 hover:text-slate-950 font-medium text-xs rounded-lg transition-all"
               >
                 <span>Falar no WhatsApp 💬</span>
               </a>
@@ -362,46 +336,44 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* TAB CONTENT: CATÁLOGO */}
+      {/* TAB CONTENT: CATÁLOGO COMPACTO */}
       {activeTab === 'catalogo' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-6">
-            <h2 className="text-2xl font-bold text-white">Catálogo de Tutores Disponíveis</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {approvedTutors.map(tutor => (
-                <div key={tutor.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <img src={tutor.avatar} alt={tutor.name} className="w-14 h-14 rounded-full object-cover border-2 border-cyan-400" />
-                    <div>
-                      <h3 className="font-bold text-white text-base">{tutor.name}</h3>
-                      <p className="text-xs text-cyan-400 font-semibold">{tutor.subject} • {tutor.title}</p>
-                      <p className="text-xs text-slate-400 font-bold mt-0.5">${tutor.hourlyRate} USD/h</p>
-                    </div>
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Catálogo de Tutores Disponíveis</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {approvedTutors.map(tutor => (
+              <div key={tutor.id} className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <img src={tutor.avatar} alt={tutor.name} className="w-11 h-11 rounded-full object-cover border border-cyan-400/40" />
+                  <div>
+                    <h3 className="font-semibold text-white text-sm">{tutor.name}</h3>
+                    <p className="text-xs text-cyan-400 font-medium">{tutor.subject} • {tutor.title}</p>
+                    <p className="text-xs text-slate-300 font-bold mt-0.5">${tutor.hourlyRate} USD/h</p>
                   </div>
-                  <button
-                    onClick={() => navigate(`/book/${tutor.id}`)}
-                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs py-3 rounded-xl shadow cursor-pointer"
-                  >
-                    Agendar Aula com {tutor.name.split(' ')[0]}
-                  </button>
                 </div>
-              ))}
-            </div>
+                <button
+                  onClick={() => navigate(`/book/${tutor.id}`)}
+                  className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs rounded-lg shadow-sm cursor-pointer transition-all"
+                >
+                  Agendar Aula com {tutor.name.split(' ')[0]}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* TAB CONTENT: CHAT */}
+      {/* TAB CONTENT: CHAT COMPACTO */}
       {activeTab === 'chat' && (
-        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 space-y-6">
-          <h2 className="text-2xl font-bold text-white">Chat com seu Professor</h2>
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 h-80 overflow-y-auto space-y-3">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Chat com seu Professor</h2>
+          <div className="bg-slate-950/80 border border-slate-800/60 rounded-xl p-4 h-72 overflow-y-auto space-y-2">
             {directChatMessages.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-10">Nenhuma mensagem enviada ainda. Digite abaixo para conversar com seu tutor.</p>
             ) : (
               directChatMessages.map(msg => (
                 <div key={msg.id} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-3 rounded-xl max-w-sm text-xs ${msg.sender === 'student' ? 'bg-cyan-500 text-slate-950 font-medium' : 'bg-slate-800 text-slate-200'}`}>
+                  <div className={`p-2.5 rounded-lg max-w-sm text-xs ${msg.sender === 'student' ? 'bg-cyan-500 text-slate-950 font-medium' : 'bg-slate-800 text-slate-200'}`}>
                     {msg.text}
                   </div>
                 </div>
@@ -421,7 +393,7 @@ export default function StudentDashboard() {
                   setStudentChatMessage('');
                 }
               }}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+              className="flex-1 bg-slate-950 border border-slate-800/80 rounded-lg px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
             />
             <button
               onClick={() => {
@@ -430,7 +402,7 @@ export default function StudentDashboard() {
                   setStudentChatMessage('');
                 }
               }}
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-6 py-3 rounded-xl cursor-pointer"
+              className="h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-5 rounded-lg cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -443,38 +415,38 @@ export default function StudentDashboard() {
         <StudentWallet />
       )}
 
-      {/* TAB CONTENT: PERFIL */}
+      {/* TAB CONTENT: PERFIL COMPACTO */}
       {activeTab === 'perfil' && (
-        <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-white border-b border-slate-800 pb-3">Meu Perfil de Aluno</h2>
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4 max-w-xl mx-auto">
+          <h2 className="text-lg font-semibold text-white border-b border-slate-800/60 pb-2">Meu Perfil de Aluno</h2>
           
-          <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-slate-500 block mb-1">Nome Completo</span>
-                <span className="text-white font-bold text-sm">{currentName}</span>
+          <div className="space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                <span className="text-slate-500 block mb-0.5">Nome Completo</span>
+                <span className="text-white font-medium text-xs">{currentName}</span>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-slate-500 block mb-1">Endereço de E-mail</span>
-                <span className="text-white font-bold text-sm">{currentEmail}</span>
+              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                <span className="text-slate-500 block mb-0.5">Endereço de E-mail</span>
+                <span className="text-white font-medium text-xs">{currentEmail}</span>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-slate-500 block mb-1">Documento Registrado</span>
-                <span className="text-white font-bold text-sm">{currentDocument}</span>
+              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                <span className="text-slate-500 block mb-0.5">Documento Registrado</span>
+                <span className="text-white font-medium text-xs">{currentDocument}</span>
               </div>
 
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <span className="text-slate-500 block mb-1">País de Residência</span>
-                <span className="text-white font-bold text-sm">{currentCountry}</span>
+              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
+                <span className="text-slate-500 block mb-0.5">País de Residência</span>
+                <span className="text-white font-medium text-xs">{currentCountry}</span>
               </div>
             </div>
 
-            <div className="pt-4 flex gap-4">
+            <div className="pt-2">
               <button
                 onClick={handleLogout}
-                className="w-full bg-rose-500/20 hover:bg-rose-500 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
+                className="w-full bg-rose-500/10 hover:bg-rose-500 border border-rose-500/30 text-rose-300 hover:text-white font-medium text-xs py-2 rounded-lg transition-all cursor-pointer"
               >
                 Sair da Conta (Logout)
               </button>
@@ -486,17 +458,17 @@ export default function StudentDashboard() {
       {/* MODAL DE REAGENDAMENTO */}
       {selectedBookingForReschedule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-bold text-white">Reagendar Aula</h3>
+          <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 max-w-sm w-full space-y-3">
+            <h3 className="text-base font-semibold text-white">Reagendar Aula</h3>
             <p className="text-xs text-slate-400">Escolha o novo dia e horário para sua aula com {selectedBookingForReschedule.tutorName}.</p>
 
-            <form onSubmit={handleConfirmReschedule} className="space-y-4">
+            <form onSubmit={handleConfirmReschedule} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Dia Preferencial</label>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Dia Preferencial</label>
                 <select
                   value={rescheduleDay}
                   onChange={(e) => setRescheduleDay(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl p-3 text-xs outline-none"
+                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg p-2.5 text-xs outline-none"
                 >
                   <option value="Segunda-feira">Segunda-feira</option>
                   <option value="Terça-feira">Terça-feira</option>
@@ -507,11 +479,11 @@ export default function StudentDashboard() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Horário</label>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Horário</label>
                 <select
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl p-3 text-xs outline-none"
+                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg p-2.5 text-xs outline-none"
                 >
                   <option value="09:00">09:00</option>
                   <option value="11:00">11:00</option>
@@ -525,15 +497,15 @@ export default function StudentDashboard() {
                 <button
                   type="button"
                   onClick={() => setSelectedBookingForReschedule(null)}
-                  className="flex-1 bg-slate-900 text-slate-400 text-xs font-bold py-3 rounded-xl border border-slate-800"
+                  className="flex-1 bg-slate-900 text-slate-400 text-xs font-medium py-2 rounded-lg border border-slate-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-cyan-500 text-slate-950 text-xs font-bold py-3 rounded-xl shadow"
+                  className="flex-1 bg-cyan-500 text-slate-950 text-xs font-medium py-2 rounded-lg shadow-sm"
                 >
-                  Confirmar Reagendamento
+                  Confirmar
                 </button>
               </div>
             </form>
