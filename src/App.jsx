@@ -5,6 +5,7 @@ import { MarketplaceProvider } from './contexts/MarketplaceContext';
 
 // Layout
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 // EmailVerificationNotice removido (verificação de e-mail desativada)
 
 // Pages
@@ -64,6 +65,7 @@ function Layout() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }

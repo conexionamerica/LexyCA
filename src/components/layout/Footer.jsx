@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { Globe, MessageCircle, Share2 } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -16,10 +16,9 @@ const Footer = () => {
               Aprende. Fala. Conecta. A melhor plataforma para você alcançar a fluência no menor tempo possível.
             </p>
             <div className="flex gap-4 pt-2">
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><Instagram className="w-5 h-5" /></a>
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><Facebook className="w-5 h-5" /></a>
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><Twitter className="w-5 h-5" /></a>
-              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors"><Linkedin className="w-5 h-5" /></a>
+              <a href="https://wa.me/5511999999999" target="_blank" rel="noreferrer" className="text-slate-400 hover:text-emerald-400 transition-colors" title="WhatsApp Suporte"><MessageCircle className="w-5 h-5" /></a>
+              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors" title="Site Oficial"><Globe className="w-5 h-5" /></a>
+              <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors" title="Redes Sociais"><Share2 className="w-5 h-5" /></a>
             </div>
           </div>
 
@@ -43,12 +42,17 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-400">
-            © 2026 Lexy by CA Idiomas — Todos os direitos reservados
-          </p>
-          <div className="flex gap-4 text-xs text-slate-500">
-            <Link to="#" className="hover:text-slate-300">Termos de Uso</Link>
-            <Link to="#" className="hover:text-slate-300">Política de Privacidade</Link>
+          <div className="text-center md:text-left space-y-1">
+            <p className="text-xs font-bold text-slate-300">
+              © 2026 Lexy by CA Idiomas — Todos os direitos reservados
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Este site é de propriedade exclusiva do Grupo CA Idiomas.
+            </p>
+          </div>
+          <div className="flex gap-4 text-xs text-slate-400 font-medium">
+            <Link to="#" className="hover:text-cyan-400 transition-colors">Termos de Uso</Link>
+            <Link to="#" className="hover:text-cyan-400 transition-colors">Política de Privacidade</Link>
           </div>
         </div>
       </div>
