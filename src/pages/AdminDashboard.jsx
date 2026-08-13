@@ -202,45 +202,45 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* TABS NAVEGATION */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex flex-wrap gap-1">
+      {/* TABS NAVEGATION - SCROLL HORIZONTAL NO CELULAR */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
         <button 
           onClick={() => setActiveTab('panel')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'panel' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'panel' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <Award className="w-4 h-4" /> 📊 Painel
+          <Award className="w-4 h-4 shrink-0" /> 📊 Painel
         </button>
         <button 
           onClick={() => setActiveTab('tutors')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'tutors' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'tutors' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <User className="w-4 h-4" /> 👨‍🏫 Tutores
+          <User className="w-4 h-4 shrink-0" /> 👨‍🏫 Tutores
           {pendingCount > 0 && <span className="bg-rose-500 text-white text-[10px] rounded-full px-1.5 ml-1">{pendingCount}</span>}
         </button>
         <button 
           onClick={() => setActiveTab('students')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'students' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'students' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <Users className="w-4 h-4" /> 👥 Alunos
+          <Users className="w-4 h-4 shrink-0" /> 👥 Alunos
         </button>
         <button 
           onClick={() => setActiveTab('payouts')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'payouts' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'payouts' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <Wallet className="w-4 h-4" /> 💸 Saques
+          <Wallet className="w-4 h-4 shrink-0" /> 💸 Saques
           {pendingPayouts.filter(p => p.status === 'pending').length > 0 && <span className="bg-rose-500 text-white text-[10px] rounded-full px-1.5 ml-1">{pendingPayouts.filter(p => p.status === 'pending').length}</span>}
         </button>
         <button 
           onClick={() => setActiveTab('announcements')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'announcements' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'announcements' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <Megaphone className="w-4 h-4" /> 📢 Anúncios
+          <Megaphone className="w-4 h-4 shrink-0" /> 📢 Anúncios
         </button>
         <button 
           onClick={() => setActiveTab('config')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 text-xs transition-all ${activeTab === 'config' ? 'bg-amber-500 text-slate-950 font-black rounded-xl' : 'text-slate-400 font-bold hover:text-white'}`}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'config' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
-          <Settings className="w-4 h-4" /> ⚙️ Config
+          <Settings className="w-4 h-4 shrink-0" /> ⚙️ Config
         </button>
       </div>
 

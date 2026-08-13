@@ -21,25 +21,25 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
               WebkitMaskImage: 'radial-gradient(circle at center, black 58%, transparent 88%)',
             }}
             className={`${
-              isLarge ? 'w-20 h-20 sm:w-24 sm:h-24' : 'w-16 h-16 sm:w-20 sm:h-20'
+              isLarge ? 'w-16 h-16 sm:w-24 sm:h-24' : 'w-10 h-10 sm:w-16 sm:h-16'
             } object-cover mix-blend-screen drop-shadow-[0_0_22px_rgba(56,189,248,0.95)] transition-transform duration-300 group-hover:scale-110`}
           />
         </div>
 
         {/* Estrella Dorada Destellante (✦) Más Grande */}
-        <span className="text-amber-400 font-black text-2xl sm:text-3xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)]">
+        <span className="text-amber-400 font-black text-xl sm:text-3xl animate-pulse -ml-1 mr-0.5 drop-shadow-[0_0_12px_rgba(245,158,11,0.9)]">
           ✦
         </span>
 
         {/* Nombre Lexy con Efecto de Transición de Color (brand-text-shimmer) + Cápsula IDIOMAS */}
         <div className="flex flex-col">
           <span className={`${
-            isLarge ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
+            isLarge ? 'text-3xl sm:text-5xl' : 'text-xl sm:text-2xl'
           } font-black tracking-tight brand-text-shimmer transition-all duration-500`}>
             Lexy
           </span>
 
-          <span className="border-2 border-cyan-400/70 text-cyan-300 font-black text-[10px] sm:text-[11px] uppercase px-3 py-0.5 rounded-full shadow-lg shadow-cyan-500/20 tracking-widest text-center mt-0.5 bg-cyan-950/40">
+          <span className="border border-cyan-400/70 text-cyan-300 font-black text-[9px] sm:text-[11px] uppercase px-2 py-0.2 sm:px-3 sm:py-0.5 rounded-full shadow-lg shadow-cyan-500/20 tracking-widest text-center mt-0.5 bg-cyan-950/40">
             IDIOMAS
           </span>
         </div>
@@ -48,7 +48,7 @@ export default function LexyAnimatedLogo({ size = 'medium', showSlogan = true })
 
       {/* ── FILA INFERIOR: ESLOGAN "Aprende ✨ Fala ✨ Conecta" ── */}
       {showSlogan && (
-        <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm font-black tracking-wide text-white">
+        <div className="hidden sm:flex items-center gap-2 mt-1 text-xs sm:text-sm font-black tracking-wide text-white">
           <span className="hover:text-cyan-300 transition-colors">Aprende</span>
           <span className="text-amber-400 animate-pulse">✨</span>
           <span className="hover:text-emerald-300 transition-colors">Fala</span>

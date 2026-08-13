@@ -124,13 +124,13 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* TABS HEADER */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex flex-wrap gap-1">
+      {/* TABS HEADER - HORIZONTAL SCROLL ON MOBILE */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
+            className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
               activeTab === tab.id
                 ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'

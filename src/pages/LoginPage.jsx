@@ -188,36 +188,36 @@ export default function LoginPage() {
       {/* CARD PRINCIPAL RÉPLICA DE ALUNO.CONEXIONAMERICA.COM.BR */}
       <div className="w-full max-w-5xl bg-slate-950/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 grid grid-cols-1 md:grid-cols-12 relative z-10">
         
-        {/* LADO IZQUIERDO: BANNERS PROMO & NOVIDADES (CONEXIÓN AMÉRICA IDIOMAS) */}
-        <div className="md:col-span-5 bg-gradient-to-br from-slate-950 via-cyan-950 to-slate-900 border-r border-slate-800 p-6 md:p-10 flex flex-col justify-between relative overflow-hidden text-white min-h-[400px]">
+        {/* LADO IZQUIERDO: BANNERS PROMO & NOVIDADES */}
+        <div className="md:col-span-5 bg-gradient-to-br from-slate-950 via-cyan-950 to-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-4 sm:p-6 md:p-10 flex flex-col justify-between relative overflow-hidden text-white">
           <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
           
           {/* Logo Branding */}
-          <div className="relative z-10 space-y-4">
+          <div className="relative z-10 space-y-3">
             <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/25">
-                <Globe className="w-6 h-6 stroke-[2.5]" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/25">
+                <Globe className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div>
-                <span className="font-extrabold text-lg text-white block leading-tight">Lexy Idiomas</span>
+                <span className="font-extrabold text-base sm:text-lg text-white block leading-tight">Lexy Idiomas</span>
                 <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block -mt-0.5">Portal Aluno</span>
               </div>
             </Link>
 
             {/* Banner Oportunidades & Novidades */}
-            <div className="p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-3 shadow-xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Nova Estrutura Lexy
+            <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-2 shadow-xl">
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold uppercase">
+                <Sparkles className="w-3 h-3 text-amber-400" /> Nova Estrutura Lexy
               </div>
-              <h3 className="font-black text-white text-base leading-snug">Aprenda Inglês e Espanhol com Tutores Nativos!</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="font-black text-white text-sm sm:text-base leading-snug">Aprenda Inglês e Espanhol com Tutores Nativos!</h3>
+              <p className="text-xs text-slate-300 leading-relaxed hidden sm:block">
                 Aulas particulares 1-on-1 com professores qualificados, sala virtual interativa e cobrança por billetera.
               </p>
               <a
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500 hover:text-slate-950 transition-all"
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500 hover:text-slate-950 transition-all"
               >
                 Falar com Suporte WhatsApp 💬
               </a>
@@ -225,7 +225,7 @@ export default function LoginPage() {
           </div>
 
           {/* Convenios & Parcerias Row */}
-          <div className="relative z-10 pt-6 border-t border-slate-800/80 text-center space-y-2">
+          <div className="relative z-10 pt-4 border-t border-slate-800/80 text-center space-y-1 hidden sm:block">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parcerias e Convênios</p>
             <div className="flex items-center justify-center gap-6 opacity-75 text-xs font-black text-slate-400">
               <span>You<span className="text-cyan-400">Huul</span></span>
@@ -236,7 +236,7 @@ export default function LoginPage() {
         </div>
 
         {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO RÉPLICA */}
-        <div className="md:col-span-7 p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-6">
+        <div className="md:col-span-7 p-4 sm:p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-5">
           
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black uppercase">

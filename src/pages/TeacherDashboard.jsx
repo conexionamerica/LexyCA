@@ -318,8 +318,8 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* NAVEGAÇÃO EM ABAS */}
-      <div className="flex gap-1 p-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto scrollbar-none max-w-2xl mx-auto">
+      {/* NAVEGAÇÃO EM ABAS - SCROLL HORIZONTAL NO CELULAR */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto scrollbar-none whitespace-nowrap max-w-3xl mx-auto">
         {[
           { id: 'inicio', icon: Home, label: 'Início' },
           { id: 'agenda', icon: Calendar, label: 'Agenda' },
@@ -333,14 +333,14 @@ export default function TeacherDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all ${
+              className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm font-bold transition-all ${
                 isActive 
                   ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20' 
-                  : 'text-slate-400 font-bold hover:text-white hover:bg-slate-800'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{tab.label}</span>
             </button>
           );
         })}

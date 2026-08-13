@@ -25,11 +25,11 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between min-h-[105px] py-3">
+      <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between min-h-[64px] sm:min-h-[80px] py-2">
           
           {/* Logo & Brand Lexy Idiomas com Varinha Mágica e Transições */}
-          <Link to="/">
+          <Link to="/" className="flex items-center">
             <LexyAnimatedLogo size="medium" showSlogan={true} />
           </Link>
 

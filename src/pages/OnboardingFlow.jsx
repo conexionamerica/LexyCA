@@ -407,7 +407,7 @@ export default function OnboardingFlow() {
                 >
                   {currentStep > step.num ? '✓' : step.num}
                 </div>
-                <span className="text-[10px] hidden sm:inline text-center">{step.label}</span>
+                <span className="text-[10px] text-center font-medium leading-tight">{step.label}</span>
               </div>
             ))}
           </div>
