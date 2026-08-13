@@ -22,12 +22,23 @@ const RESIDENCE_COUNTRIES = [
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { loginUser, signInWithSupabase, signUpWithSupabase } = useAuth();
   const { registerStudentAccount, tutors } = useMarketplace();
 
-  // Rol por defecto o seleccionado en la URL
-  const targetRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
+  // Rol activo (aluno o professor) sincronizado con URL
+  const queryRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
+  const [activeRole, setActiveRole] = useState(queryRole);
+
+  React.useEffect(() => {
+    const current = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
+    setActiveRole(current);
+  }, [searchParams]);
+
+  const handleRoleSwitch = (role) => {
+    setActiveRole(role);
+    setSearchParams({ role });
+  };
 
   const [isLogin, setIsLogin] = useState(true); // true: Iniciar Sessão, false: Criar Conta
   const [showPassword, setShowPassword] = useState(false);
@@ -108,7 +119,7 @@ export default function LoginPage() {
         return;
       }
 
-      const userRole = res.user?.role || targetRole;
+      const userRole = res.user?.role || activeRole;
       if (userRole === 'teacher') {
         navigate('/dashboard/teacher');
       } else if (userRole === 'admin') {
@@ -124,7 +135,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (targetRole === 'student') {
+      if (activeRole === 'student') {
         if (isBrazil) {
           const cleanCPF = cpf.replace(/\D/g, '');
           if (!validateCPF(cleanCPF)) {
@@ -146,7 +157,7 @@ export default function LoginPage() {
         name,
         email: cleanEmail,
         password,
-        role: targetRole,
+        role: activeRole,
         documentNumber: docNumber,
         residenceCountry,
         study_language: studyLanguage,
@@ -158,7 +169,7 @@ export default function LoginPage() {
 
       if (res.success) {
         setRegistrationSuccess(true);
-        if (targetRole === 'student') {
+        if (activeRole === 'student') {
           registerStudentAccount({
             name,
             email: cleanEmail,
@@ -170,7 +181,7 @@ export default function LoginPage() {
         }
         setTimeout(() => {
           // Após criação de conta, redirecionar direto ao painel do aluno/tutor
-          if (targetRole === 'teacher') {
+          if (activeRole === 'teacher') {
             navigate('/dashboard/teacher');
           } else {
             navigate('/dashboard/student');
@@ -200,24 +211,36 @@ export default function LoginPage() {
               </div>
               <div>
                 <span className="font-extrabold text-base sm:text-lg text-white block leading-tight">Lexy Idiomas</span>
-                <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest block -mt-0.5">Portal Aluno</span>
+                <span className={`text-[10px] font-bold uppercase tracking-widest block -mt-0.5 ${activeRole === 'teacher' ? 'text-amber-400' : 'text-cyan-400'}`}>
+                  {activeRole === 'teacher' ? 'Portal Professor' : 'Portal Aluno'}
+                </span>
               </div>
             </Link>
 
             {/* Banner Oportunidades & Novidades */}
-            <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 space-y-2 shadow-xl">
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-extrabold uppercase">
-                <Sparkles className="w-3 h-3 text-amber-400" /> Nova Estrutura Lexy
+            <div className={`p-4 rounded-2xl bg-slate-900/80 border space-y-2 shadow-xl ${activeRole === 'teacher' ? 'border-amber-500/30' : 'border-cyan-500/30'}`}>
+              <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${activeRole === 'teacher' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}`}>
+                <Sparkles className="w-3 h-3 text-amber-400" /> {activeRole === 'teacher' ? 'Área de Docência' : 'Nova Estrutura Lexy'}
               </div>
-              <h3 className="font-black text-white text-sm sm:text-base leading-snug">Aprenda Inglês e Espanhol com Tutores Nativos!</h3>
+              <h3 className="font-black text-white text-sm sm:text-base leading-snug">
+                {activeRole === 'teacher' 
+                  ? 'Ensine Idiomas Online e Monetize seu Conhecimento!' 
+                  : 'Aprenda Inglês e Espanhol com Tutores Nativos!'}
+              </h3>
               <p className="text-xs text-slate-300 leading-relaxed hidden sm:block">
-                Aulas particulares 1-on-1 com professores qualificados, sala virtual interativa e cobrança por billetera.
+                {activeRole === 'teacher'
+                  ? 'Gerencie suas aulas, receba pagamentos com segurança e expanda seus alunos no Lexy Space.'
+                  : 'Aulas particulares 1-on-1 com professores qualificados, sala virtual interativa e cobrança por billetera.'}
               </p>
               <a
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500 hover:text-slate-950 transition-all"
+                className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  activeRole === 'teacher'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500 hover:text-slate-950'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500 hover:text-slate-950'
+                }`}
               >
                 Falar com Suporte WhatsApp 💬
               </a>
@@ -238,19 +261,56 @@ export default function LoginPage() {
         {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO RÉPLICA */}
         <div className="md:col-span-7 p-4 sm:p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-5">
           
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black uppercase">
-              {targetRole === 'teacher' ? <GraduationCap className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-cyan-400" />}
-              <span>{targetRole === 'teacher' ? 'Área do Tutor / Professor' : 'Portal do Aluno'}</span>
+          {/* SELETOR DE PERFIL: ALUNO vs PROFESSOR */}
+          <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl mb-1">
+            <button
+              type="button"
+              onClick={() => handleRoleSwitch('student')}
+              className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                activeRole === 'student'
+                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Portal Aluno</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleRoleSwitch('teacher')}
+              className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                activeRole === 'teacher'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Portal Professor</span>
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase border ${
+              activeRole === 'teacher' ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+            }`}>
+              {activeRole === 'teacher' ? <GraduationCap className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-cyan-400" />}
+              <span>{activeRole === 'teacher' ? 'Área do Tutor / Professor' : 'Portal do Aluno'}</span>
             </div>
 
             <h1 className="text-2xl font-extrabold text-white">
-              {isLogin ? 'Acessar Portal do Aluno' : 'Criar Conta de Aluno'}
+              {isLogin 
+                ? (activeRole === 'teacher' ? 'Acessar Portal do Professor' : 'Acessar Portal do Aluno')
+                : (activeRole === 'teacher' ? 'Criar Conta de Professor' : 'Criar Conta de Aluno')}
             </h1>
             <p className="text-xs text-slate-400">
               {isLogin 
-                ? ' 👋 Bem-vindo de volta! Entre com seu e-mail e senha para acessar suas aulas.' 
-                : 'Preencha seus dados para criar sua conta de aluno.'}
+                ? (activeRole === 'teacher' 
+                    ? '👋 Bem-vindo de volta, Professor! Entre com seu e-mail e senha para acessar sua agenda.' 
+                    : '👋 Bem-vindo de volta! Entre com seu e-mail e senha para acessar suas aulas.')
+                : (activeRole === 'teacher'
+                    ? 'Preencha seus dados para cadastrar-se como tutor na Lexy Idiomas.'
+                    : 'Preencha seus dados para criar sua conta de aluno.')}
             </p>
           </div>
 
@@ -483,9 +543,19 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className={`w-full font-black text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer ${
+                  activeRole === 'teacher'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 shadow-amber-500/20'
+                    : 'bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 shadow-cyan-500/20'
+                }`}
               >
-                <span>{isLoading ? 'Entrando no Portal...' : isLogin ? 'Entrar no Portal 🚀' : 'Cadastrar e Entrar no Portal 🚀'}</span>
+                <span>
+                  {isLoading 
+                    ? 'Entrando no Portal...' 
+                    : isLogin 
+                      ? (activeRole === 'teacher' ? 'Entrar no Portal do Professor 🚀' : 'Entrar no Portal do Aluno 🚀') 
+                      : (activeRole === 'teacher' ? 'Cadastrar e Entrar como Professor 🚀' : 'Cadastrar e Entrar no Portal 🚀')}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
