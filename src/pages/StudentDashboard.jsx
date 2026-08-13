@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -13,13 +13,16 @@ import StudentWallet from './StudentWallet';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { 
     student, tutors, bookings, completeBooking, 
     announcements, directChatMessages, sendDirectMessage 
   } = useMarketplace();
   const { profile, logout } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState('inicio');
+
+  // Tab control via URL searchParams (unificado no Header superior)
+  const activeTab = searchParams.get('tab') || 'inicio';
 
   // Welcome modal logic
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -112,35 +115,12 @@ export default function StudentDashboard() {
     }
   };
 
-  const tabs = [
-    { id: 'inicio', label: '🏠 Início' },
-    { id: 'catalogo', label: '📚 Catálogo' },
-    { id: 'chat', label: '💬 Chat' },
-    { id: 'carteira', label: '💰 Carteira' },
-    { id: 'perfil', label: '👤 Perfil' }
-  ];
-
+  // Determinar a próxima aula principal e as aulas subsecventes (sem repetição)
   const nextBooking = myBookingsList.find(b => b.status === 'confirmed' || b.status === 'rescheduled') || myBookingsList[0];
+  const subsequentBookings = myBookingsList.filter(b => b.id !== nextBooking?.id);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 animate-fade-in-up">
-      
-      {/* TABS HEADER DE NAVEGAÇÃO COMPACTO */}
-      <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-1 flex items-center gap-1 overflow-x-auto scrollbar-none whitespace-nowrap">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {actionSuccessMessage && (
         <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3 rounded-xl flex items-center gap-2 text-xs font-medium animate-fade-in-up">
@@ -149,14 +129,14 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* TAB 1: INÍCIO (COMPACT 2-COLUMN GRID) */}
+      {/* TAB 1: INÍCIO (2 COLUNAS LIMPAS) */}
       {activeTab === 'inicio' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           
           {/* COLUMNA PRINCIPAL (span-2) */}
           <div className="lg:col-span-2 space-y-4">
             
-            {/* Banner Saludo Personalizado Compacto */}
+            {/* Banner Saludo Personalizado */}
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-white">Olá, {currentName}! 👋</h1>
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
@@ -165,7 +145,7 @@ export default function StudentDashboard() {
             {/* Modal de Boas-Vindas se ativo */}
             {showWelcome && (
               <div className="bg-slate-900/40 backdrop-blur-md border border-cyan-500/20 rounded-xl p-4 relative overflow-hidden space-y-2">
-                <button onClick={dismissWelcome} className="absolute top-3 right-3 text-slate-400 hover:text-white">
+                <button onClick={dismissWelcome} className="absolute top-3 right-3 text-slate-400 hover:text-white cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-semibold uppercase">
@@ -177,7 +157,7 @@ export default function StudentDashboard() {
                   Estamos muito felizes em ter você aqui. Escolha seu professor no catálogo e comece a estudar com garantia total de satisfação.
                 </p>
                 <button
-                  onClick={() => setActiveTab('carteira')}
+                  onClick={() => setSearchParams({ tab: 'carteira' })}
                   className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-3.5 rounded-lg shadow-sm cursor-pointer"
                 >
                   + Recarregar Créditos Lexy
@@ -185,9 +165,9 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* Hero Card - Próxima Clase (Plano e Limpo + Glassmorphic Sutil) */}
+            {/* REDISEÑO DE HERO CARD (PRÓXIMA AULA - DISPOSIÇÃO FLEXBOX HORIZONTAL SEM BOTÃO GIGANTE) */}
             {nextBooking ? (
-              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-4 shadow-sm">
+              <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/30 border border-cyan-500/20 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     {t.confirmedBadge || "● Confirmada"}
@@ -197,30 +177,35 @@ export default function StudentDashboard() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3.5">
-                  <img 
-                    src={nextBooking.tutorAvatar || assignedTutor.avatar} 
-                    alt={nextBooking.tutorName || assignedTutor.name}
-                    className="w-12 h-12 rounded-full border border-cyan-400/50 object-cover ring-2 ring-cyan-500/40 shrink-0" 
-                  />
-                  <div>
-                    <h3 className="text-base font-semibold text-white">{nextBooking.tutorName || assignedTutor.name}</h3>
-                    <p className="text-cyan-400 text-xs font-medium">
-                      {nextBooking.tutorSubject || assignedTutor.subject} • Aula Individual
-                    </p>
-                    <p className="text-slate-300 text-xs mt-0.5 flex items-center gap-1.5 font-medium">
-                      <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{nextBooking.day} às {nextBooking.time}</span>
-                    </p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Esquerda: Avatar + Detalhes + Calendário */}
+                  <div className="flex items-center gap-3.5">
+                    <img 
+                      src={nextBooking.tutorAvatar || assignedTutor.avatar} 
+                      alt={nextBooking.tutorName || assignedTutor.name}
+                      className="w-12 h-12 rounded-full border border-cyan-400/50 object-cover ring-2 ring-cyan-500/40 shrink-0" 
+                    />
+                    <div>
+                      <h3 className="text-base font-semibold text-white">{nextBooking.tutorName || assignedTutor.name}</h3>
+                      <p className="text-cyan-400 text-xs font-medium">
+                        {nextBooking.tutorSubject || assignedTutor.subject} • Aula Individual
+                      </p>
+                      {/* Uso exclusivo de ícone de calendário */}
+                      <p className="text-slate-300 text-xs mt-0.5 flex items-center gap-1.5 font-medium">
+                        <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{nextBooking.day} às {nextBooking.time}</span>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <button 
-                  onClick={() => navigate(`/classroom/${nextBooking.id}`)}
-                  className="w-full h-10 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>{t.enterVirtualRoom || "🎥 Entrar na Sala Virtual"}</span>
-                </button>
+                  {/* Direita: Botão compacto Entrar na Sala Virtual */}
+                  <button 
+                    onClick={() => navigate(`/classroom/${nextBooking.id}`)}
+                    className="h-10 px-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full sm:w-auto"
+                  >
+                    <span>{t.enterVirtualRoom || "🎥 Entrar na Sala Virtual"}</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 text-center space-y-2">
@@ -228,7 +213,7 @@ export default function StudentDashboard() {
                 <h3 className="text-sm font-semibold text-white">Nenhuma aula agendada no momento</h3>
                 <p className="text-xs text-slate-400">Escolha um tutor no catálogo e agende sua primeira aula!</p>
                 <button
-                  onClick={() => setActiveTab('catalogo')}
+                  onClick={() => setSearchParams({ tab: 'catalogo' })}
                   className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg shadow-sm cursor-pointer"
                 >
                   Explorar Tutores
@@ -236,45 +221,51 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* Lista de Aulas e Histórico Compacta */}
+            {/* Lista de Aulas subsecventes (ELIMINADA REPETIÇÃO DE PRÓXIMA AULA) */}
             <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-3 shadow-sm">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-cyan-400" />
                 <span>Minhas Aulas Agendadas</span>
               </h3>
 
-              <div className="space-y-2.5">
-                {myBookingsList.map(booking => (
-                  <div key={booking.id} className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <img src={booking.tutorAvatar} alt={booking.tutorName} className="w-10 h-10 rounded-full object-cover border border-cyan-400/30 shrink-0" />
-                      <div>
-                        <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
-                        <p className="text-[11px] text-cyan-400 font-medium">{booking.tutorSubject}</p>
-                        <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1 font-medium">
-                          <Calendar className="w-3 h-3 text-cyan-400" />
-                          <span>{booking.day} às {booking.time}</span>
-                        </p>
+              {subsequentBookings.length === 0 ? (
+                <div className="bg-slate-950/40 border border-slate-800/60 rounded-lg p-4 text-center text-xs text-slate-400">
+                  Você não possui outras aulas agendadas além da próxima aula acima.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {subsequentBookings.map(booking => (
+                    <div key={booking.id} className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img src={booking.tutorAvatar} alt={booking.tutorName} className="w-10 h-10 rounded-full object-cover border border-cyan-400/30 shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
+                          <p className="text-[11px] text-cyan-400 font-medium">{booking.tutorSubject}</p>
+                          <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1 font-medium">
+                            <Calendar className="w-3 h-3 text-cyan-400" />
+                            <span>{booking.day} às {booking.time}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={() => setSelectedBookingForReschedule(booking)}
+                          className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                        >
+                          Reagendar
+                        </button>
+                        <button
+                          onClick={() => navigate(`/classroom/${booking.id}`)}
+                          className="flex-1 sm:flex-initial bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/30 text-cyan-300 hover:text-slate-950 text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                        >
+                          Entrar
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        onClick={() => setSelectedBookingForReschedule(booking)}
-                        className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all"
-                      >
-                        Reagendar
-                      </button>
-                      <button
-                        onClick={() => navigate(`/classroom/${booking.id}`)}
-                        className="flex-1 sm:flex-initial bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/30 text-cyan-300 hover:text-slate-950 text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all"
-                      >
-                        Entrar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -282,7 +273,7 @@ export default function StudentDashboard() {
           {/* COLUMNA LATERAL / BARRA DERECHA (span-1) */}
           <div className="space-y-4">
             
-            {/* Widget Billetera LexyPay (Sobria e Limpa) */}
+            {/* Widget Billetera LexyPay (Estilizada e Sobria) */}
             <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
@@ -305,11 +296,11 @@ export default function StudentDashboard() {
               </div>
 
               <button
-                onClick={() => setActiveTab('carteira')}
-                className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                onClick={() => setSearchParams({ tab: 'carteira' })}
+                className="w-full h-8 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Recarregar Créditos LexyPay</span>
+                <Plus className="w-3.5 h-3.5 text-cyan-400" />
+                <span>+ Recarregar Créditos</span>
               </button>
             </div>
 

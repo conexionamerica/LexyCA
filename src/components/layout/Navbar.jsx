@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import LexyAnimatedLogo from './LexyAnimatedLogo';
 import { 
   Globe, Search, UserCheck, GraduationCap, 
-  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X, ArrowRight, Headphones, Check
+  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X, ArrowRight, Headphones, Check, Calendar
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -15,6 +15,7 @@ export default function Navbar() {
   const { lang, changeLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -33,19 +34,51 @@ export default function Navbar() {
     en: { flag: '🇺🇸', label: 'English, US' }
   };
 
+  const studentTabs = [
+    { id: 'inicio', label: '🏠 Início' },
+    { id: 'catalogo', label: '📚 Catálogo' },
+    { id: 'chat', label: '💬 Chat' },
+    { id: 'carteira', label: '💰 Carteira' },
+    { id: 'perfil', label: '👤 Perfil' }
+  ];
+
+  const currentTab = searchParams.get('tab') || 'inicio';
+
   return (
     <header className="relative w-full z-30 bg-slate-950 border-b border-slate-800/80">
       <div className="w-full px-2 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between min-h-[64px] sm:min-h-[76px] py-2">
+        <div className="flex items-center justify-between min-h-[64px] sm:min-h-[72px] py-2">
           
-          {/* LADO ESQUERDO: Logo & Eslogan alinhados bem à esquerda */}
+          {/* LADO ESQUERDO: Logo & Eslogan */}
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center shrink-0">
               <LexyAnimatedLogo size="medium" showSlogan={true} />
             </Link>
           </div>
 
-          {/* LADO DIREITO: 3 BOTÕES PRINCIPAL + IDIOMA E SUPORTE */}
+          {/* CENTRO: NAVEGAÇÃO UNIFICADA DO ALUNO NO HEADER PRINCIPAL (ELIMINA BARRA DUPLA) */}
+          {profile?.role === 'student' && (
+            <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 border border-slate-800/80 rounded-xl p-1 shadow-inner">
+              {studentTabs.map(tab => {
+                const isActive = location.pathname.startsWith('/dashboard/student') && currentTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => navigate(`/dashboard/student?tab=${tab.id}`)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* LADO DIREITO: IDIOMA, SUPORTE E MENÚ DE USUARIO */}
           <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-300">
             
             {/* Seletor de Idioma / Moeda */}
