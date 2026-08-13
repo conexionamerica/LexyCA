@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Wallet, ArrowRight, ArrowDownLeft, ArrowUpRight, CheckCircle, Loader2 } from 'lucide-react';
+import { 
+  Wallet, ArrowRight, ArrowDownLeft, ArrowUpRight, 
+  CheckCircle, Loader2, CreditCard, ShieldCheck, CheckCircle2, Award, Clock
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function StudentWallet() {
@@ -12,9 +15,9 @@ export default function StudentWallet() {
   
   // Historial simulado con reactividad al estado local
   const [history, setHistory] = useState([
-    { id: 1, type: 'recharge', amount: 200, date: '10 Oct 2026', desc: 'Recarga Mercado Pago' },
-    { id: 2, type: 'payment', amount: -65, date: '12 Oct 2026', desc: 'Aula com Lucía Fernández' },
-    { id: 3, type: 'recharge', amount: 15, date: '14 Oct 2026', desc: 'Recarga promocional' }
+    { id: 1, type: 'recharge', amount: 200, date: '10/08/2026', desc: 'Recarga via Mercado Pago (PIX)', status: 'Concluído' },
+    { id: 2, type: 'payment', amount: -65, date: '11/08/2026', desc: 'Aula Individual com Lucía Fernández', status: 'Concluído' },
+    { id: 3, type: 'recharge', amount: 15, date: '12/08/2026', desc: 'Bônus de Boas-Vindas LexyPay', status: 'Concluído' }
   ]);
 
   const currentBalance = profile?.wallet_balance || 0;
@@ -26,7 +29,7 @@ export default function StudentWallet() {
     setLoading(true);
     setSuccess(false);
 
-    // Simular el proceso del Checkout de Mercado Pago
+    // Simular o processo do Checkout de Mercado Pago
     setTimeout(async () => {
       await updateWalletBalance(numAmount);
       
@@ -34,8 +37,9 @@ export default function StudentWallet() {
         id: Date.now(),
         type: 'recharge',
         amount: numAmount,
-        date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
-        desc: 'Recarga Mercado Pago'
+        date: new Date().toLocaleDateString('pt-BR'),
+        desc: 'Recarga via Mercado Pago',
+        status: 'Concluído'
       };
       
       setHistory([newTx, ...history]);
@@ -44,139 +48,180 @@ export default function StudentWallet() {
       setAmount('50');
 
       setTimeout(() => setSuccess(false), 3000);
-    }, 1500);
+    }, 1200);
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-slate-100 tracking-tight flex items-center gap-2">
-          <span>Carteira Digital LexyPay</span>
-          <span className="text-xs bg-cyan-500/20 text-cyan-300 font-bold px-2.5 py-1 rounded-full border border-cyan-400/30 uppercase tracking-wider">Oficial</span>
-        </h1>
-        <p className="text-slate-400 font-medium mt-1">Gerencie seu saldo em créditos com segurança instantânea.</p>
-      </div>
-
-      <div className="bg-amber-500/15 border border-amber-500/30 text-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-4 animate-fade-in-up">
+      
+      {/* HEADER DA CARTEIRA DIGITAL */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-3">
         <div>
-          <span className="font-bold">⚠️ O saldo recarregado na plataforma não é reembolsável sob nenhuma hipótese.</span> Para assistência sobre este assunto, entre em contato com nosso suporte 24/7.
+          <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight flex items-center gap-2">
+            <span>Carteira Digital LexyPay</span>
+            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-semibold px-2 py-0.5 rounded-full border border-cyan-500/30 uppercase tracking-wider">
+              Oficial
+            </span>
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">Gerencie seu saldo em créditos para agendamentos instantâneos.</p>
         </div>
-        <a href="https://wa.me/5511999999999" target="_blank" rel="noreferrer" className="text-amber-100 bg-amber-500/20 px-3 py-1.5 rounded-lg font-bold text-sm whitespace-nowrap border border-amber-500/40 hover:bg-amber-500/30 transition-colors">
-          Suporte via WhatsApp
-        </a>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Balance Card - Frutiger Aero Style */}
-        <Card className="relative overflow-hidden bg-gradient-to-br from-sky-500 to-cyan-400 border-0 shadow-[0_20px_50px_-12px_rgba(56,189,248,0.4)]">
-           <div className="absolute top-0 left-0 right-0 h-32 bg-white/10 rounded-b-[100%] pointer-events-none" />
-           <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-           <div className="absolute top-[20%] right-[10%] w-16 h-16 bg-white/15 rounded-full border border-white/25 pointer-events-none" />
-           
-           <CardContent className="p-8 relative z-10 text-white space-y-6">
-              <div className="flex items-center gap-3 bg-white/20 w-fit px-4 py-1.5 rounded-full border border-white/30 backdrop-blur-sm">
-                 <Wallet className="w-4 h-4 text-sky-100" />
-                 <span className="text-xs font-bold uppercase tracking-wider text-sky-50">Saldo Disponível</span>
-              </div>
-              
-              <div className="text-6xl font-black font-mono tracking-tighter flex items-end">
-                <span className="text-4xl mr-1 pb-1">R$</span> 
-                {currentBalance.toFixed(2).split('.')[0]}
-                <span className="text-3xl text-sky-100">.{currentBalance.toFixed(2).split('.')[1]}</span>
-              </div>
-              
-              <p className="text-sm text-cyan-50 font-medium">Saldo válido para qualquer tutor da plataforma Lexy.</p>
-           </CardContent>
-        </Card>
+      {/* A. FILA DE KPIS (3 TARJETAS COMPACTAS ESTÁNDAR WISE/STRIPE) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* KPI 1: Saldo Disponível */}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Saldo Disponível</span>
+            <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-500/20">
+              ● Carteira Ativa
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-white tracking-tight">
+            R$ {currentBalance.toFixed(2)}
+          </p>
+          <p className="text-[11px] text-cyan-400 font-medium">Válido para agendamentos no Lexy Space</p>
+        </div>
 
-        {/* Recharge Action */}
-        <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800 shadow-xl shadow-slate-900/50 relative overflow-hidden text-slate-200">
+        {/* KPI 2: Créditos Utilizados */}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Créditos Utilizados</span>
+            <Wallet className="w-3.5 h-3.5 text-cyan-400" />
+          </div>
+          <p className="text-2xl font-bold text-white tracking-tight">
+            R$ 65,00
+          </p>
+          <p className="text-[11px] text-slate-400">Total investido este mês</p>
+        </div>
+
+        {/* KPI 3: Aulas Realizadas */}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Aulas Concluídas</span>
+            <Award className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <p className="text-2xl font-bold text-white tracking-tight">
+            1 Aula
+          </p>
+          <p className="text-[11px] text-emerald-400 font-medium">100% Satisfação Garantida</p>
+        </div>
+      </div>
+
+      {/* B. LAYOUT 2 COLUMNAS PARA RECARGA E HISTORIQUE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
+        {/* COLUMNA 1: MÓDULO DE RECARGA (span-1) */}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-4 shadow-sm relative overflow-hidden">
           {success && (
-            <div className="absolute inset-0 bg-sky-500/95 backdrop-blur-md z-20 flex flex-col items-center justify-center text-white animate-in fade-in zoom-in-95 duration-300">
-               <CheckCircle className="w-16 h-16 mb-4 animate-[bounce_1s_ease-in-out_infinite]" />
-               <h3 className="text-2xl font-black">Recarga Concluída!</h3>
-               <p className="font-medium mt-1 text-sky-100">Seu saldo foi atualizado.</p>
+            <div className="absolute inset-0 bg-cyan-500/95 backdrop-blur-md z-20 flex flex-col items-center justify-center text-slate-950 p-4 text-center animate-fade-in">
+              <CheckCircle2 className="w-10 h-10 mb-2" />
+              <h3 className="text-base font-bold">Recarga Concluída!</h3>
+              <p className="text-xs font-medium mt-0.5">Seu saldo foi atualizado instantaneamente.</p>
             </div>
           )}
-          
-          <CardHeader>
-            <CardTitle className="text-lg font-bold text-white">Recarregar Saldo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 relative z-10">
-            <div className="space-y-3">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Valor (R$)</label>
-              <div className="flex gap-2">
-                {['50', '100', '200'].map(val => (
-                  <button
-                    key={val}
-                    onClick={() => setAmount(val)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                      amount === val 
-                      ? 'border-sky-400 bg-sky-500/10 text-sky-400 shadow-sm' 
-                      : 'border-slate-700 text-slate-400 hover:border-sky-400/50 hover:bg-slate-800'
-                    }`}
-                  >
-                    R$ {val}
-                  </button>
-                ))}
-              </div>
-              <div className="relative mt-2">
-                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
-                 <input 
-                   type="number" 
-                   value={amount}
-                   onChange={(e) => setAmount(e.target.value)}
-                   className="w-full pl-10 pr-4 py-3 bg-slate-950/50 backdrop-blur-sm border border-slate-700 rounded-xl font-mono text-lg font-bold text-white outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-400/20 transition-all shadow-inner"
-                 />
+
+          <div>
+            <h3 className="font-semibold text-white text-sm">Recarregar Saldo LexyPay</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Escolha o valor e pague via PIX ou Cartão.</p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Valores Rápidos</label>
+            <div className="grid grid-cols-3 gap-2">
+              {['50', '100', '200'].map(val => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setAmount(val)}
+                  className={`py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    amount === val 
+                      ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 shadow-sm' 
+                      : 'border-slate-800/80 text-slate-400 hover:border-slate-700 hover:text-white bg-slate-950/40'
+                  }`}
+                >
+                  R$ {val}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Valor Personalizado</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">R$</span>
+                <input 
+                  type="number" 
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs font-semibold text-white outline-none focus:border-cyan-400"
+                />
               </div>
             </div>
-            
-            <Button 
-              onClick={handleRecharge}
-              disabled={loading || !amount || parseFloat(amount) <= 0}
-              className="w-full bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 hover:from-sky-400 hover:to-cyan-300 shadow-lg shadow-sky-500/20 h-12 text-base rounded-xl font-black flex items-center justify-center gap-2 border border-sky-400/50 transition-all hover:scale-[1.02]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin text-slate-950" /> Processando pagamento...
-                </>
-              ) : (
-                <>
-                  Pagar com Mercado Pago
-                  <ArrowRight className="w-5 h-5 text-slate-950" />
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+
+          <button 
+            onClick={handleRecharge}
+            disabled={loading || !amount || parseFloat(amount) <= 0}
+            className="w-full h-11 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs rounded-lg shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                <span>Processando pagamento...</span>
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-4 h-4" />
+                <span>Pagar com Mercado Pago</span>
+              </>
+            )}
+          </button>
+
+          <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+            ⚠️ Transações protegidas via Mercado Pago. O saldo não é reembolsável.
+          </p>
+        </div>
+
+        {/* COLUMNA 2: HISTÓRICO DE TRANSAÇÕES (span-2) */}
+        <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+            <h3 className="font-semibold text-white text-sm">Histórico de Transações</h3>
+            <span className="text-[10px] text-slate-400">Extrato Recente</span>
+          </div>
+
+          <div className="space-y-2">
+            {history.map((item) => (
+              <div key={item.id} className="p-3 bg-slate-950/60 border border-slate-800/60 rounded-lg flex items-center justify-between gap-3 hover:border-slate-700 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    item.type === 'recharge' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800/60 text-slate-400 border border-slate-700/60'
+                  }`}>
+                    {item.type === 'recharge' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-white text-xs">{item.desc}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{item.date}</p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className={`font-mono font-semibold text-xs block ${
+                    item.type === 'recharge' ? 'text-emerald-400' : 'text-slate-300'
+                  }`}>
+                    {item.type === 'recharge' ? '+' : ''}R$ {Math.abs(item.amount).toFixed(2)}
+                  </span>
+                  <span className="bg-slate-800 text-slate-300 text-[9px] px-1.5 py-0.5 rounded border border-slate-700/60 inline-block mt-0.5">
+                    {item.status || 'Concluído'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
 
-      {/* History */}
-      <h2 className="text-xl font-bold text-slate-100 mt-10 mb-4">Histórico de Transações</h2>
-      <div className="bg-slate-900/50 backdrop-blur-md rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
-        <div className="divide-y divide-slate-800/50">
-          {history.map((item) => (
-            <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors">
-               <div className="flex items-center gap-4">
-                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
-                   item.type === 'recharge' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                 }`}>
-                   {item.type === 'recharge' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                 </div>
-                 <div>
-                   <p className="font-bold text-slate-200 text-sm">{item.desc}</p>
-                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">{item.date}</p>
-                 </div>
-               </div>
-               <div className={`font-mono font-black text-lg ${
-                 item.type === 'recharge' ? 'text-sky-400' : 'text-slate-200'
-               }`}>
-                 {item.type === 'recharge' ? '+' : ''}{item.amount.toFixed(2)}
-               </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

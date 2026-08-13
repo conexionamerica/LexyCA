@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,7 +7,7 @@ import {
   Calendar, Video, CreditCard, MessageSquare, 
   Search, Star, CheckCircle2, Award, Heart, Plus, Sparkles, 
   BookOpen, ChevronRight, Wallet, UserCheck, ShieldCheck, 
-  RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send 
+  RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown 
 } from 'lucide-react';
 import StudentWallet from './StudentWallet';
 
@@ -41,15 +41,36 @@ export default function StudentDashboard() {
     }
   }, [profile, navigate]);
 
-  const currentName = profile?.full_name || student.name || 'Aluno';
+  const currentName = profile?.full_name || student.name || 'Gabriel Aluno';
   const currentEmail = profile?.email || student.email || 'aluno@lexy.com';
   const currentDocument = profile?.documentNumber || student.documentNumber || '123.456.789-00';
   const currentCountry = profile?.residenceCountry || student.residenceCountry || 'Brasil 🇧🇷';
+  const currentLanguage = profile?.study_language || 'Inglês 🇬🇧🇺🇸';
+  const currentLevel = profile?.language_level || 'B2 - Intermediário Avançado 🎓';
+  const currentMotivation = profile?.study_motivation || 'Carreira Profissional 📈';
 
   const approvedTutors = tutors.filter(t => t.status === 'approved');
   const assignedTutor = approvedTutors[0] || tutors[0];
 
+  // Filtros do Catálogo no Dashboard
+  const [catSubject, setCatSubject] = useState('Todos');
+  const [catSort, setCatSort] = useState('price_asc');
+  const [catMaxPrice, setCatMaxPrice] = useState(50);
+
+  const filteredCatalogTutors = useMemo(() => {
+    return approvedTutors.filter(tutor => {
+      if (catSubject !== 'Todos' && tutor.subject !== catSubject) return false;
+      if (tutor.hourlyRate > catMaxPrice) return false;
+      return true;
+    }).sort((a, b) => {
+      if (catSort === 'price_asc') return a.hourlyRate - b.hourlyRate;
+      if (catSort === 'rating') return b.rating - a.rating;
+      return 0;
+    });
+  }, [approvedTutors, catSubject, catSort, catMaxPrice]);
+
   const [studentChatMessage, setStudentChatMessage] = useState('');
+  const [activeChatTutorId, setActiveChatTutorId] = useState(assignedTutor?.id || 'tutor-1');
 
   const [myBookingsList, setMyBookingsList] = useState(() => {
     return bookings.length > 0 ? bookings : [
@@ -128,7 +149,7 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* TAB CONTENT: INÍCIO (COMPACT 2-COLUMN GRID) */}
+      {/* TAB 1: INÍCIO (COMPACT 2-COLUMN GRID) */}
       {activeTab === 'inicio' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           
@@ -157,7 +178,7 @@ export default function StudentDashboard() {
                 </p>
                 <button
                   onClick={() => setActiveTab('carteira')}
-                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-3.5 rounded-lg shadow-sm"
+                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-3.5 rounded-lg shadow-sm cursor-pointer"
                 >
                   + Recarregar Créditos Lexy
                 </button>
@@ -208,7 +229,7 @@ export default function StudentDashboard() {
                 <p className="text-xs text-slate-400">Escolha um tutor no catálogo e agende sua primeira aula!</p>
                 <button
                   onClick={() => setActiveTab('catalogo')}
-                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg shadow-sm"
+                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg shadow-sm cursor-pointer"
                 >
                   Explorar Tutores
                 </button>
@@ -336,26 +357,111 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* TAB CONTENT: CATÁLOGO COMPACTO */}
+      {/* TAB 2: CATÁLOGO DE TUTORES COMPACTO COM BARRA DE FILTROS SUPERIOR */}
       {activeTab === 'catalogo' && (
-        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Catálogo de Tutores Disponíveis</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {approvedTutors.map(tutor => (
-              <div key={tutor.id} className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <img src={tutor.avatar} alt={tutor.name} className="w-11 h-11 rounded-full object-cover border border-cyan-400/40" />
-                  <div>
-                    <h3 className="font-semibold text-white text-sm">{tutor.name}</h3>
-                    <p className="text-xs text-cyan-400 font-medium">{tutor.subject} • {tutor.title}</p>
-                    <p className="text-xs text-slate-300 font-bold mt-0.5">${tutor.hourlyRate} USD/h</p>
+        <div className="space-y-4">
+          
+          {/* BARRA DE FILTROS SUPERIOR HORIZONTAL COMPACTA */}
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2.5">
+              
+              {/* Filtro Idioma */}
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-medium text-slate-400">Idioma:</span>
+                <select
+                  value={catSubject}
+                  onChange={(e) => setCatSubject(e.target.value)}
+                  className="bg-slate-950 border border-slate-800/80 text-white rounded-lg px-2.5 py-1 text-xs outline-none cursor-pointer focus:border-cyan-400"
+                >
+                  <option value="Todos">Todos os Idiomas</option>
+                  <option value="Inglês">Inglês 🇬🇧🇺🇸</option>
+                  <option value="Espanhol">Espanhol 🇪🇸</option>
+                </select>
+              </div>
+
+              {/* Filtro Ordenación */}
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-medium text-slate-400">Ordenar:</span>
+                <select
+                  value={catSort}
+                  onChange={(e) => setCatSort(e.target.value)}
+                  className="bg-slate-950 border border-slate-800/80 text-white rounded-lg px-2.5 py-1 text-xs outline-none cursor-pointer focus:border-cyan-400"
+                >
+                  <option value="price_asc">Menor Preço / Hora</option>
+                  <option value="rating">Mais Recomendados</option>
+                </select>
+              </div>
+
+              {/* Filtro Preço Máximo */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-slate-400">Até R$ {catMaxPrice}/h</span>
+                <input
+                  type="range"
+                  min={15}
+                  max={60}
+                  step={5}
+                  value={catMaxPrice}
+                  onChange={(e) => setCatMaxPrice(Number(e.target.value))}
+                  className="w-24 accent-cyan-400 cursor-pointer"
+                />
+              </div>
+
+            </div>
+
+            <div className="text-xs text-slate-400 font-medium">
+              <span>{filteredCatalogTutors.length} tutores encontrados</span>
+            </div>
+          </div>
+
+          {/* GRILLA DE TARJETAS DE TUTORES COMPACTAS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCatalogTutors.map(tutor => (
+              <div 
+                key={tutor.id} 
+                className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 hover:border-cyan-500/40 rounded-xl p-4 flex flex-col justify-between space-y-3 transition-all group shadow-sm"
+              >
+                <div className="space-y-2.5">
+                  {/* Foto Redonda com Anel Brilhante */}
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={tutor.avatar} 
+                      alt={tutor.name} 
+                      className="w-12 h-12 rounded-full object-cover border border-cyan-400/50 ring-2 ring-cyan-500/30 group-hover:scale-105 transition-transform shrink-0" 
+                    />
+                    <div>
+                      <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
+                        {tutor.name}
+                      </h3>
+                      <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/20 mt-0.5">
+                        {tutor.subject} • Nativo {tutor.flag}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Biografía Corta de 2 Líneas */}
+                  <p className="text-xs text-slate-400 leading-snug line-clamp-2">
+                    {tutor.bio}
+                  </p>
+
+                  {/* Rating & Preço por Hora */}
+                  <div className="flex items-center justify-between border-t border-slate-800/60 pt-2 text-xs">
+                    <div className="flex items-center gap-1 text-amber-300 font-semibold">
+                      <Star className="w-3.5 h-3.5 fill-amber-400" />
+                      <span>{tutor.rating}</span>
+                      <span className="text-[10px] text-slate-500">({tutor.reviewCount})</span>
+                    </div>
+                    <span className="font-bold text-white text-sm">
+                      ${tutor.hourlyRate} USD/h
+                    </span>
                   </div>
                 </div>
+
+                {/* Botão Secundário / Primário Elegante e Compacto (h-9) */}
                 <button
                   onClick={() => navigate(`/book/${tutor.id}`)}
-                  className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs rounded-lg shadow-sm cursor-pointer transition-all"
+                  className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  Agendar Aula com {tutor.name.split(' ')[0]}
+                  <span>Agendar Aula Experimental</span>
                 </button>
               </div>
             ))}
@@ -363,94 +469,206 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* TAB CONTENT: CHAT COMPACTO */}
+      {/* TAB 3: CHAT SPLIT-VIEW (2 COLUMNAS ESTÁNDAR 30% / 70%) */}
       {activeTab === 'chat' && (
-        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Chat com seu Professor</h2>
-          <div className="bg-slate-950/80 border border-slate-800/60 rounded-xl p-4 h-72 overflow-y-auto space-y-2">
-            {directChatMessages.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-10">Nenhuma mensagem enviada ainda. Digite abaixo para conversar com seu tutor.</p>
-            ) : (
-              directChatMessages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-2.5 rounded-lg max-w-sm text-xs ${msg.sender === 'student' ? 'bg-cyan-500 text-slate-950 font-medium' : 'bg-slate-800 text-slate-200'}`}>
-                    {msg.text}
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-220px)] min-h-[480px] shadow-sm">
+          
+          {/* SIDEBAR IZQUIERDA (30% - md:col-span-4) */}
+          <div className="md:col-span-4 bg-slate-950/80 border-b md:border-b-0 md:border-r border-slate-800/60 p-3 space-y-3 flex flex-col overflow-y-auto">
+            <h3 className="font-semibold text-white text-xs uppercase tracking-wider px-1">Conversas Ativas</h3>
+            
+            <div className="space-y-1">
+              {approvedTutors.slice(0, 3).map((tutor) => (
+                <button
+                  key={tutor.id}
+                  onClick={() => setActiveChatTutorId(tutor.id)}
+                  className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left cursor-pointer ${
+                    activeChatTutorId === tutor.id
+                      ? 'bg-cyan-500/15 border border-cyan-500/30 text-white'
+                      : 'hover:bg-slate-900 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <img src={tutor.avatar} alt={tutor.name} className="w-9 h-9 rounded-full object-cover border border-cyan-400/40 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-white truncate">{tutor.name}</span>
+                      <span className="text-[10px] text-slate-500">Hoje</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">Olá! Tudo pronto para nossa aula?</p>
                   </div>
-                </div>
-              ))
-            )}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Digite sua mensagem ao tutor..."
-              value={studentChatMessage}
-              onChange={(e) => setStudentChatMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && studentChatMessage.trim()) {
-                  sendDirectMessage(studentChatMessage.trim(), 'student');
-                  setStudentChatMessage('');
-                }
-              }}
-              className="flex-1 bg-slate-950 border border-slate-800/80 rounded-lg px-3.5 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
-            />
-            <button
-              onClick={() => {
-                if (studentChatMessage.trim()) {
-                  sendDirectMessage(studentChatMessage.trim(), 'student');
-                  setStudentChatMessage('');
-                }
-              }}
-              className="h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-5 rounded-lg cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+          {/* ÁREA DE CHAT DERECHA (70% - md:col-span-8) */}
+          <div className="md:col-span-8 flex flex-col justify-between bg-slate-950/40">
+            
+            {/* Header del Tutor Activo */}
+            <div className="p-3 bg-slate-950/80 border-b border-slate-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <img src={assignedTutor.avatar} alt={assignedTutor.name} className="w-8 h-8 rounded-full object-cover border border-cyan-400/40" />
+                <div>
+                  <h4 className="font-semibold text-white text-xs">{assignedTutor.name}</h4>
+                  <span className="text-[10px] text-emerald-400 font-medium">● Online • {assignedTutor.subject}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ventana de Mensajes Scrollable */}
+            <div className="p-4 overflow-y-auto space-y-2 flex-1">
+              {directChatMessages.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-xs">
+                  Nenhuma mensagem trocada ainda. Digite sua dúvida ou mensagem abaixo!
+                </div>
+              ) : (
+                directChatMessages.map(msg => (
+                  <div key={msg.id} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`p-2.5 rounded-lg max-w-xs sm:max-w-sm text-xs leading-relaxed ${
+                      msg.sender === 'student' 
+                        ? 'bg-cyan-500 text-slate-950 font-medium shadow-sm' 
+                        : 'bg-slate-900 border border-slate-800 text-slate-200'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Input Fijo al Pie */}
+            <div className="p-3 border-t border-slate-800/60 bg-slate-950/80 flex gap-2">
+              <input
+                type="text"
+                placeholder="Escreva sua mensagem..."
+                value={studentChatMessage}
+                onChange={(e) => setStudentChatMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && studentChatMessage.trim()) {
+                    sendDirectMessage(studentChatMessage.trim(), 'student');
+                    setStudentChatMessage('');
+                  }
+                }}
+                className="flex-1 bg-slate-900 border border-slate-800/80 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+              />
+              <button
+                onClick={() => {
+                  if (studentChatMessage.trim()) {
+                    sendDirectMessage(studentChatMessage.trim(), 'student');
+                    setStudentChatMessage('');
+                  }
+                }}
+                className="h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg cursor-pointer flex items-center gap-1"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Enviar</span>
+              </button>
+            </div>
+
           </div>
+
         </div>
       )}
 
-      {/* TAB CONTENT: CARTEIRA */}
+      {/* TAB 4: CARTEIRA DIGITAL */}
       {activeTab === 'carteira' && (
         <StudentWallet />
       )}
 
-      {/* TAB CONTENT: PERFIL COMPACTO */}
+      {/* TAB 5: PERFIL ORGANIZADO EM 3 SEÇÕES PROFISSIONAIS */}
       {activeTab === 'perfil' && (
-        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 space-y-4 max-w-xl mx-auto">
-          <h2 className="text-lg font-semibold text-white border-b border-slate-800/60 pb-2">Meu Perfil de Aluno</h2>
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-4 max-w-3xl mx-auto shadow-sm">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Configurações de Perfil</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Gerencie seus dados cadastrais, preferências de ensino e segurança da conta.</p>
+          </div>
           
-          <div className="space-y-3 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
-                <span className="text-slate-500 block mb-0.5">Nome Completo</span>
-                <span className="text-white font-medium text-xs">{currentName}</span>
+          <div className="space-y-4">
+            
+            {/* SEÇÃO 1: DADOS PESSOAIS */}
+            <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                <span>Seção 1: Dados Pessoais</span>
+              </h3>
+
+              <div className="flex items-center gap-3 pb-2 border-b border-slate-800/60">
+                <img 
+                  src={profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'} 
+                  alt="Avatar Aluno" 
+                  className="w-12 h-12 rounded-full object-cover border border-cyan-400/50" 
+                />
+                <div>
+                  <span className="font-semibold text-white text-xs block">{currentName}</span>
+                  <span className="text-[11px] text-slate-400 block">{currentEmail}</span>
+                </div>
               </div>
 
-              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
-                <span className="text-slate-500 block mb-0.5">Endereço de E-mail</span>
-                <span className="text-white font-medium text-xs">{currentEmail}</span>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">Nome Completo</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentName}</span>
+                </div>
 
-              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
-                <span className="text-slate-500 block mb-0.5">Documento Registrado</span>
-                <span className="text-white font-medium text-xs">{currentDocument}</span>
-              </div>
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">Endereço de E-mail</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentEmail}</span>
+                </div>
 
-              <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/60">
-                <span className="text-slate-500 block mb-0.5">País de Residência</span>
-                <span className="text-white font-medium text-xs">{currentCountry}</span>
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">CPF / Documento</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentDocument}</span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">País de Residência</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentCountry}</span>
+                </div>
               </div>
             </div>
 
-            <div className="pt-2">
+            {/* SEÇÃO 2: PREFERÊNCIAS DE APRENDIZADO */}
+            <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Seção 2: Preferências de Aprendizado</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">Idioma de Interesse</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentLanguage}</span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">Nível Atual</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentLevel}</span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 block mb-0.5 font-medium">Objetivo dos Estudos</span>
+                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentMotivation}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SEÇÃO 3: SEGURANÇA E ENCERRAMENTO (BOTÃO DISCRETO SECUNDÁRIO) */}
+            <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-white text-xs">Segurança da Conta</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Encerre sua sessão com segurança neste dispositivo.</p>
+              </div>
+
+              {/* Botão Secundário Discreto com Borda Vermelha Sutil */}
               <button
                 onClick={handleLogout}
-                className="w-full bg-rose-500/10 hover:bg-rose-500 border border-rose-500/30 text-rose-300 hover:text-white font-medium text-xs py-2 rounded-lg transition-all cursor-pointer"
+                className="h-9 px-4 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-medium text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
               >
-                Sair da Conta (Logout)
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Encerrar Sessão</span>
               </button>
             </div>
+
           </div>
         </div>
       )}
@@ -497,13 +715,13 @@ export default function StudentDashboard() {
                 <button
                   type="button"
                   onClick={() => setSelectedBookingForReschedule(null)}
-                  className="flex-1 bg-slate-900 text-slate-400 text-xs font-medium py-2 rounded-lg border border-slate-800"
+                  className="flex-1 bg-slate-900 text-slate-400 text-xs font-medium py-2 rounded-lg border border-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-cyan-500 text-slate-950 text-xs font-medium py-2 rounded-lg shadow-sm"
+                  className="flex-1 bg-cyan-500 text-slate-950 text-xs font-medium py-2 rounded-lg shadow-sm cursor-pointer"
                 >
                   Confirmar
                 </button>
