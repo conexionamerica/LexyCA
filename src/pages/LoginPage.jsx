@@ -20,25 +20,15 @@ const RESIDENCE_COUNTRIES = [
   'Outro País 🌐'
 ];
 
-export default function LoginPage() {
+export default function LoginPage({ forceRole }) {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { loginUser, signInWithSupabase, signUpWithSupabase } = useAuth();
   const { registerStudentAccount, tutors } = useMarketplace();
 
-  // Rol activo (aluno o professor) sincronizado con URL
-  const queryRole = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
-  const [activeRole, setActiveRole] = useState(queryRole);
-
-  React.useEffect(() => {
-    const current = searchParams.get('role') === 'teacher' ? 'teacher' : 'student';
-    setActiveRole(current);
-  }, [searchParams]);
-
-  const handleRoleSwitch = (role) => {
-    setActiveRole(role);
-    setSearchParams({ role });
-  };
+  // Role estrictamente determinado por prop o ruta (SEPARADOS)
+  const activeRole = forceRole || (searchParams.get('role') === 'teacher' ? 'teacher' : 'student');
+  const isTeacher = activeRole === 'teacher';
 
   const [isLogin, setIsLogin] = useState(true); // true: Iniciar Sessão, false: Criar Conta
   const [showPassword, setShowPassword] = useState(false);
@@ -260,35 +250,6 @@ export default function LoginPage() {
 
         {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO RÉPLICA */}
         <div className="md:col-span-7 p-4 sm:p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-5">
-          
-          {/* SELETOR DE PERFIL: ALUNO vs PROFESSOR */}
-          <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl mb-1">
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('student')}
-              className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeRole === 'student'
-                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Portal Aluno</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleRoleSwitch('teacher')}
-              className={`py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeRole === 'teacher'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>Portal Professor</span>
-            </button>
-          </div>
 
           <div className="space-y-1.5">
             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase border ${

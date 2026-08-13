@@ -250,7 +250,7 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   setIsLoginModalOpen(false);
-                  navigate('/login?role=student');
+                  navigate('/login/student');
                 }}
                 className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-400 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
@@ -270,7 +270,7 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   setIsLoginModalOpen(false);
-                  navigate('/login?role=teacher');
+                  navigate('/login/teacher');
                 }}
                 className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-400 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
