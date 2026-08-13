@@ -142,31 +142,14 @@ export default function LandingPage() {
 
           </div>
 
-          {/* ESTATÍSTICA DE AVALIAÇÃO COM ESTRELAS SOLICITADA PELO USUÁRIO */}
-          <div className="mt-10 pt-6 border-t border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
-                <span>4,8</span>
-                <div className="flex text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-amber-400" />
-                  ))}
-                </div>
-              </div>
-              <span className="text-xs sm:text-sm text-slate-400 font-medium border-l border-slate-800 pl-3">
-                de satisfação dos alunos
-              </span>
-            </div>
-          </div>
-
-          {/* SELETOR DE IDIOMAS LINHAS SIMPLES */}
+          {/* SELETOR DE IDIOMAS LINHAS SIMPLES COM BANDEIRAS REAIS (EUA E ESPANHA) */}
           <div className="mt-8 space-y-2 border-t border-slate-800/80 pt-6">
             <button
               onClick={() => navigate('/explore?subject=Inglês')}
               className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
             >
               <div className="flex items-center gap-4">
-                <span className="text-3xl">🇬🇧</span>
+                <img src="https://flagcdn.com/w40/us.png" alt="Bandeira Estados Unidos" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
                 <div className="text-left">
                   <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua inglesa</span>
                   <span className="text-xs text-slate-400">25.017 professores qualificados</span>
@@ -180,7 +163,7 @@ export default function LandingPage() {
               className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
             >
               <div className="flex items-center gap-4">
-                <span className="text-3xl">🇪🇸</span>
+                <img src="https://flagcdn.com/w40/es.png" alt="Bandeira Espanha" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
                 <div className="text-left">
                   <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua espanhola</span>
                   <span className="text-xs text-slate-400">18.420 professores qualificados</span>
