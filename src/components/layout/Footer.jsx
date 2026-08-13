@@ -47,7 +47,7 @@ const Footer = () => {
               © 2026 Lexy by CA Idiomas — Todos os direitos reservados
             </p>
             <p className="text-[11px] text-slate-500">
-              Este site é de propriedade exclusiva do Grupo CA Idiomas.
+              Este site é de propriedade exclusiva do CA Group.
             </p>
           </div>
           <div className="flex gap-4 text-xs text-slate-400 font-medium">
