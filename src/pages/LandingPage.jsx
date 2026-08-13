@@ -382,6 +382,70 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* ── SEÇÃO PARA TUTORES: SEJA UM PROFESSOR NA LEXY ── */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-amber-500/30 rounded-3xl p-8 sm:p-12 space-y-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute -left-10 -top-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-black uppercase tracking-wider">
+              <GraduationCap className="w-4 h-4 text-amber-400" />
+              <span>Quero Dar Aulas na Lexy</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
+              Seja um professor na <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">Lexy Idiomas</span>
+            </h2>
+
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-medium">
+              Monetize seu conhecimento especializado e alcance novos alunos diariamente. Faça seu cadastro e comece a lecionar online com flexibilidade total.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Encontre novos alunos</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Conecte-se com estudantes motivados de diversos lugares buscando aulas de Inglês e Espanhol.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Expanda suas atividades</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Defina seus próprios horários e tarifas por hora, trabalhando de onde estiver com total autonomia.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Receba com segurança</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Pagamentos garantidos após cada aula e saques diretos via PIX para sua conta bancária.
+              </p>
+            </div>
+          </div>
+
+          {/* BOTÃO FINAL DE CADASTRO DO TUTOR */}
+          <div className="text-center pt-2">
+            <button
+              onClick={() => navigate('/onboarding')}
+              className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-sm sm:text-base py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/20 inline-flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+            >
+              <GraduationCap className="w-5 h-5 text-slate-950" />
+              <span>Cadastrar-se para dar aulas na Lexy</span>
+              <ArrowRight className="w-5 h-5 text-slate-950" />
+            </button>
+          </div>
+        </div>
+
         {/* ── FAQ SECTION ── */}
         <div className="max-w-3xl mx-auto space-y-6">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center">Perguntas Frequentes</h2>
