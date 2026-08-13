@@ -67,122 +67,135 @@ export default function LandingPage() {
   return (
     <div className="space-y-16 animate-fade-in-up pb-16">
       
-      {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY (EDGE-TO-EDGE UNBOXED) ── */}
-      <div className="w-full bg-slate-950 border-b border-slate-800/80 px-4 sm:px-8 py-6 sm:py-10">
-        <div className="max-w-6xl mx-auto">
+      {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY (EDGE-TO-EDGE 100% SEM SANGRIA OU MARGENS) ── */}
+      <div className="w-full bg-slate-950 border-b border-slate-800/80 px-4 sm:px-8 lg:px-12 py-10 sm:py-16">
+        <div className="w-full max-w-[1400px] mx-auto">
           
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             
-            {/* FOTO DO PROFESSOR (IMAGEM PRINCIPAL EM DESTAQUE) */}
-            <div className="lg:col-span-5 lg:order-2">
-              <div className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 shadow-2xl group">
-                <img 
-                  src="/lexy_hero_man.png" 
-                  alt="Professor Real de Idiomas na Sala Virtual Lexy" 
-                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                />
-                
-                <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur border border-cyan-400/40 text-cyan-300 text-[11px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Aula ao vivo • Lexy Space</span>
-                </div>
-
-                <div className="absolute bottom-3 left-3 right-3 bg-slate-950/85 backdrop-blur border border-slate-800 p-2.5 rounded-xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span>Prof. Gabriel Silva</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-amber-400">
-                    <Star className="w-3.5 h-3.5 fill-amber-400" />
-                    <span>5.0 (410+ aulas)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* TEXTO, CTA, ESTATÍSTICAS E IDIOMAS */}
-            <div className="lg:col-span-7 lg:order-1 space-y-6">
+            {/* TEXTO E CTA PRINCIPAL (LADO ESQUERDO DA TELA IGUAL À FOTO) */}
+            <div className="lg:col-span-7 space-y-8">
               
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-extrabold uppercase tracking-wider">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  <span>Plataforma Oficial Lexy Idiomas</span>
-                </div>
-
-                <h1 className="text-3xl sm:text-5xl lg:text-5xl font-black text-white tracking-tight leading-[1.12]">
+              <div className="space-y-4">
+                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.08]">
                   Aprenda mais rápido com as <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">melhores aulas de idiomas</span>.
                 </h1>
+                
+                <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl font-medium">
+                  Aulas particulares online 1-on-1 com professores nativos de Inglês e Espanhol. Alcance a fluência rapidamente com suporte individual.
+                </p>
               </div>
 
-              {/* BOTÃO PRINCIPAL DE CTA FULL-WIDTH */}
+              {/* BOTÃO PRINCIPAL ESTILO PREPLY CON CORES LEXY */}
               <div>
                 <button
                   onClick={() => navigate('/explore')}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-base sm:text-lg py-4 px-6 rounded-xl shadow-xl shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
+                  className="w-full sm:w-auto bg-slate-900 hover:bg-slate-850 border border-cyan-500/50 hover:border-cyan-400 text-white font-black text-base sm:text-lg py-4 px-8 rounded-xl shadow-2xl shadow-cyan-500/10 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] group"
                 >
                   <span>Encontrar seu professor</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* ESTATÍSTICAS UNBOXED (LINHA DIVISÓRIA LIMPA SEM CAIXAS INTERNAS) */}
-              <div className="pt-6 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
-                <div>
-                  <div className="text-xl font-black text-white">100.000+</div>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">professores com experiência</p>
-                </div>
-
-                <div>
-                  <div className="text-xl font-black text-white">Mais de 300.000</div>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">professores avaliados com 5 estrelas</p>
-                </div>
-
-                <div>
-                  <div className="text-xl font-black text-white flex items-center justify-center sm:justify-start gap-1">
-                    <span>4,8</span>
-                    <div className="flex text-amber-400">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">de satisfação dos alunos</p>
-                </div>
-              </div>
-
-              {/* SELETOR DE IDIOMAS LIMPO (LINHAS DIVISÓRIAS SIMPLES ESTILO PREPLY) */}
-              <div className="pt-4 space-y-1 border-t border-slate-800/80">
-                <button
-                  onClick={() => navigate('/explore?subject=Inglês')}
-                  className="w-full py-3.5 px-3 rounded-xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🇬🇧</span>
-                    <div className="text-left">
-                      <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua inglesa</span>
-                      <span className="text-xs text-slate-400">25.017 professores qualificados</span>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
-                </button>
-
-                <button
-                  onClick={() => navigate('/explore?subject=Espanhol')}
-                  className="w-full py-3.5 px-3 rounded-xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🇪🇸</span>
-                    <div className="text-left">
-                      <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua espanhola</span>
-                      <span className="text-xs text-slate-400">18.420 professores qualificados</span>
-                    </div>
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
 
             </div>
 
+            {/* FOTO DO PROFESSOR COM EFEITO DE CARTÕES EMPILHADOS (LADO DIREITO IGUAL À FOTO) */}
+            <div className="lg:col-span-5 relative pt-6 lg:pt-0">
+              <div className="relative max-w-md lg:max-w-none mx-auto">
+                
+                {/* Camada 3 de fundo empilhada */}
+                <div className="absolute -right-6 -bottom-6 inset-0 bg-slate-900/40 border border-slate-800/40 rounded-3xl transform rotate-3 pointer-events-none" />
+                
+                {/* Camada 2 de fundo empilhada */}
+                <div className="absolute -right-3 -bottom-3 inset-0 bg-slate-900/80 border border-slate-800/80 rounded-3xl transform rotate-1 pointer-events-none" />
+
+                {/* Cartão Principal da Foto Real */}
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/3] bg-slate-900 border-2 border-cyan-500/40 shadow-2xl group">
+                  <img 
+                    src="/lexy_hero_man.png" 
+                    alt="Professor Real de Idiomas na Sala Virtual Lexy" 
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                  />
+                  
+                  {/* Badge de Aula Ao Vivo */}
+                  <div className="absolute top-4 left-4 bg-slate-950/85 backdrop-blur border border-cyan-400/40 text-cyan-300 text-xs font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span>Aula ao vivo • Lexy Space</span>
+                  </div>
+
+                  {/* Informação do Professor na foto */}
+                  <div className="absolute bottom-4 left-4 right-4 bg-slate-950/85 backdrop-blur border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-white shadow-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>Prof. Gabriel Silva</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-400">
+                      <Star className="w-3.5 h-3.5 fill-amber-400" />
+                      <span>5.0 (410+ aulas)</span>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+          {/* ESTATÍSTICAS UNBOXED DIVISÓRIAS (ESTILO PREPLY ORIGINAL) */}
+          <div className="mt-12 sm:mt-16 pt-8 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-left">
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-white">100.000+</div>
+              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">professores com experiência</p>
+            </div>
+
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-white">Mais de 300.000</div>
+              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">aulas avaliadas com 5 estrelas</p>
+            </div>
+
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-white flex items-center justify-center sm:justify-start gap-1.5">
+                <span>4,8</span>
+                <div className="flex text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400" />
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">de satisfação dos alunos</p>
+            </div>
+          </div>
+
+          {/* SELETOR DE IDIOMAS LINHAS SIMPLES */}
+          <div className="mt-8 space-y-2 border-t border-slate-800/80 pt-6">
+            <button
+              onClick={() => navigate('/explore?subject=Inglês')}
+              className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🇬🇧</span>
+                <div className="text-left">
+                  <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua inglesa</span>
+                  <span className="text-xs text-slate-400">25.017 professores qualificados</span>
+                </div>
+              </div>
+              <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => navigate('/explore?subject=Espanhol')}
+              className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🇪🇸</span>
+                <div className="text-left">
+                  <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua espanhola</span>
+                  <span className="text-xs text-slate-400">18.420 professores qualificados</span>
+                </div>
+              </div>
+              <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
 
         </div>
