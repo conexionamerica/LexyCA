@@ -430,7 +430,7 @@ export default function LoginPage({ forceRole }) {
                       />
                     </div>
                   )}
-                  {targetRole === 'student' && (
+                  {activeRole === 'student' && (
                     <>
                       <div>
                         <label className="text-[11px] font-bold text-slate-400 block mb-1">Qual idioma deseja estudar? *</label>
