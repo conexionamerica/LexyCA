@@ -24,7 +24,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80">
+    <header className="relative w-full z-30 bg-slate-950 border-b border-slate-800/80">
       <div className="w-full px-2 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between min-h-[64px] sm:min-h-[76px] py-2">
           
