@@ -31,9 +31,9 @@ function ProtectedAdminRoute({ children }) {
 
 function Layout() {
   return (
-    <div className="min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200 bg-slate-950">
       <Navbar />
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <main className="flex-1 w-full">
         <Routes>
           {/* Rutas Públicas de Exploración y Perfil de Tutores */}
           <Route path="/" element={<LandingPage />} />
