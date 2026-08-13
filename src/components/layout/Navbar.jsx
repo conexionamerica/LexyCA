@@ -28,28 +28,18 @@ export default function Navbar() {
       <div className="w-full px-4 sm:px-8">
         <div className="flex items-center justify-between min-h-[64px] sm:min-h-[76px] py-2">
           
-          {/* LADO ESQUERDO: Logo & Links de Navegação */}
+          {/* LADO ESQUERDO: Logo */}
           <div className="flex items-center gap-6 sm:gap-8">
             <Link to="/" className="flex items-center shrink-0">
               <LexyAnimatedLogo size="medium" showSlogan={false} />
             </Link>
-
-            {/* Links de navegação desktop */}
-            <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-300">
-              <Link to="/explore" className="hover:text-cyan-400 transition-colors">
-                Encontrar professores
-              </Link>
-              <Link to="/onboarding" className="hover:text-amber-400 transition-colors">
-                Seja um professor
-              </Link>
-            </nav>
           </div>
 
-          {/* LADO DIREITO: Idioma, Suporte & Login/Menu de Usuário */}
-          <div className="hidden md:flex items-center gap-4 text-xs font-bold text-slate-300">
+          {/* LADO DIREITO: 3 BOTÕES PRINCIPAIS + IDIOMA E SUPORTE */}
+          <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-300">
             
             {/* Seletor de Idioma / Moeda */}
-            <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors mr-1">
               <span>Português, BRL</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </div>
@@ -59,7 +49,7 @@ export default function Navbar() {
               href="https://wa.me/5511999999999"
               target="_blank"
               rel="noreferrer"
-              className="p-2 rounded-full hover:bg-slate-900 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-full hover:bg-slate-900 text-slate-400 hover:text-white transition-colors mr-1"
               title="Suporte 24/7"
             >
               <Globe className="w-4 h-4" />
@@ -149,14 +139,35 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              /* VISITANTE SEM LOGIN: BOTÓN ESTILO [→ Login] */
-              <Link
-                to="/login"
-                className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow transition-all flex items-center gap-2"
-              >
-                <LogIn className="w-4 h-4 text-cyan-400" />
-                <span>Login</span>
-              </Link>
+              /* VISITANTE: 3 BOTÕES PEDIDOS PELO USUÁRIO */
+              <>
+                {/* BOTÃO 1: ENCONTRAR UM PROFESSOR */}
+                <Link
+                  to="/explore"
+                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 flex items-center gap-1.5 transition-all hover:scale-105"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Encontrar um professor</span>
+                </Link>
+
+                {/* BOTÃO 2: SEJA UM PROFESSOR */}
+                <Link
+                  to="/onboarding"
+                  className="bg-slate-900 hover:bg-slate-850 border border-amber-500/50 text-amber-300 hover:text-amber-200 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 hover:scale-105"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Seja um professor</span>
+                </Link>
+
+                {/* BOTÃO 3: LOGIN (PARA ALUNO OU PROFESSOR) */}
+                <Link
+                  to="/login"
+                  className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-1.5 hover:border-slate-600"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Login</span>
+                </Link>
+              </>
             )}
 
           </div>
@@ -178,12 +189,12 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-slate-950 border-b border-slate-800 p-4 space-y-3 animate-fade-in-up">
           <Link
-            to="/login?role=student"
+            to="/explore"
             onClick={() => setIsMobileMenuOpen(false)}
             className="w-full bg-cyan-500 text-slate-950 font-bold text-xs p-3 rounded-xl flex items-center justify-center gap-2"
           >
-            <UserCheck className="w-4 h-4" />
-            <span>Para Alunos (Encontrar Tutores)</span>
+            <Search className="w-4 h-4" />
+            <span>1. Encontrar um professor</span>
           </Link>
 
           <Link
@@ -192,7 +203,16 @@ export default function Navbar() {
             className="w-full bg-slate-900 text-amber-300 font-bold text-xs p-3 rounded-xl border border-slate-800 flex items-center justify-center gap-2"
           >
             <GraduationCap className="w-4 h-4 text-amber-400" />
-            <span>Para Tutores (Quero Dar Aulas)</span>
+            <span>2. Seja um professor</span>
+          </Link>
+
+          <Link
+            to="/login"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="w-full bg-slate-900 text-white font-bold text-xs p-3 rounded-xl border border-slate-700 flex items-center justify-center gap-2"
+          >
+            <LogIn className="w-4 h-4 text-cyan-400" />
+            <span>3. Login (Aluno / Professor)</span>
           </Link>
         </div>
       )}
