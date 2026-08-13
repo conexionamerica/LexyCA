@@ -1,24 +1,37 @@
-import React, { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Search, Star, ShieldCheck, Play, Heart, Clock, Globe, 
   Sparkles, Filter, CheckCircle2, ChevronRight, X, ArrowUpDown, Award 
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function ExplorePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { tutors } = useMarketplace();
+  const { t } = useLanguage();
+
+  // URL subject param handler
+  const initialSubject = searchParams.get('subject') || 'Todos';
 
   // Estados de Filtro
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Todos');
+  const [selectedSubject, setSelectedSubject] = useState(initialSubject);
   const [maxPrice, setMaxPrice] = useState(50);
   const [onlyNative, setOnlyNative] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState('Todos');
   const [sortBy, setSortBy] = useState('rating'); // 'rating', 'price_asc', 'price_desc', 'popular'
   const [activeVideoUrl, setActiveVideoUrl] = useState(null);
   const [favorites, setFavorites] = useState(['tutor-1']);
+
+  useEffect(() => {
+    const subjectParam = searchParams.get('subject');
+    if (subjectParam) {
+      setSelectedSubject(subjectParam);
+    }
+  }, [searchParams]);
 
   // Alternar Favorito
   const toggleFavorite = (id) => {
@@ -39,7 +52,11 @@ export default function ExplorePage() {
       if (!matchesSearch) return false;
 
       // Idioma / Materia
-      if (selectedSubject !== 'Todos' && tutor.subject !== selectedSubject) return false;
+      if (selectedSubject !== 'Todos') {
+        const targetSub = selectedSubject.toLowerCase();
+        const tutorSub = tutor.subject ? tutor.subject.toLowerCase() : '';
+        if (!tutorSub.includes(targetSub) && !targetSub.includes(tutorSub)) return false;
+      }
 
       // Precio Máximo
       if (tutor.hourlyRate > maxPrice) return false;
@@ -84,25 +101,32 @@ export default function ExplorePage() {
             Mais de 10.000 alunos aprendem idiomas todos os dias. Agende sua primeira aula de teste com 100% de garantia de satisfação.
           </p>
 
-          {/* Barra de Búsqueda Principal */}
-          <div className="pt-2 flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nome do professor, especialidade ou palavra-chave..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-900/90 border border-slate-700/80 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-all shadow-inner"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+          {/* CAJA DE TEXTO PERSUASIVA PARA COMPRA (REEMPLAZA A LA BARRA DE BÚSQUEDA SEGÚN PEDIDO) */}
+          <div className="pt-2">
+            <div className="bg-slate-900/90 border-2 border-cyan-500/40 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 group">
+              <div className="space-y-1 text-center sm:text-left">
+                <div className="inline-flex items-center gap-1.5 text-xs font-black text-cyan-300 uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Encontre seu tutor nativo</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white leading-snug">
+                  Agende sua primeira aula de teste com 100% de garantia de satisfação!
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Professores nativos qualificados prontos para alavancar sua fluência no seu próprio ritmo.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => {
+                  const el = document.getElementById('tutores-list');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs sm:text-sm py-3.5 px-6 rounded-xl shadow-xl shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all hover:scale-105 shrink-0 cursor-pointer"
+              >
+                <span>Ver Tutores Disponíveis</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

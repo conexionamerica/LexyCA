@@ -2,26 +2,35 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMarketplace } from '../../contexts/MarketplaceContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import LexyAnimatedLogo from './LexyAnimatedLogo';
 import { 
   Globe, Search, UserCheck, GraduationCap, 
-  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X, ArrowRight 
+  LogIn, User, LogOut, Wallet, ShieldCheck, ChevronDown, Menu, X, ArrowRight, Headphones, Check
 } from 'lucide-react';
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
   const { student } = useMarketplace();
+  const { lang, changeLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     signOut();
     setIsUserMenuOpen(false);
     navigate('/');
+  };
+
+  const languageLabels = {
+    pt: { flag: '🇧🇷', label: 'Português, BRL' },
+    es: { flag: '🇪🇸', label: 'Español, ES' },
+    en: { flag: '🇺🇸', label: 'English, US' }
   };
 
   return (
@@ -36,24 +45,56 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* LADO DIREITO: 3 BOTÕES PRINCIPAIS + IDIOMA E SUPORTE */}
+          {/* LADO DIREITO: 3 BOTÕES PRINCIPAL + IDIOMA E SUPORTE */}
           <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-300">
             
             {/* Seletor de Idioma / Moeda */}
-            <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors mr-1">
-              <span>Português, BRL</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <div className="relative">
+              <button
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white transition-all cursor-pointer"
+              >
+                <span>{languageLabels[lang]?.flag}</span>
+                <span>{languageLabels[lang]?.label}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isLangDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isLangDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-fade-in-up space-y-1">
+                  {Object.entries(languageLabels).map(([code, item]) => (
+                    <button
+                      key={code}
+                      onClick={() => {
+                        changeLanguage(code);
+                        setIsLangDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        lang === code
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                          : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{item.flag}</span>
+                        <span>{item.label}</span>
+                      </span>
+                      {lang === code && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Ícone de Ajuda / Suporte */}
+            {/* BOTÃO DE SUPORTE MAIS INTUITIVO */}
             <a 
               href="https://wa.me/5511999999999"
               target="_blank"
               rel="noreferrer"
-              className="p-2 rounded-full hover:bg-slate-900 text-slate-400 hover:text-white transition-colors mr-1"
-              title="Suporte 24/7"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-all font-extrabold cursor-pointer"
+              title="Falar com Suporte"
             >
-              <Globe className="w-4 h-4" />
+              <Headphones className="w-4 h-4 text-emerald-400" />
+              <span>{t.support || 'Suporte'}</span>
             </a>
 
             {profile ? (

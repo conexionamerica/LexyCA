@@ -21,6 +21,8 @@ import OnboardingFlow from './pages/OnboardingFlow';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 
+import { LanguageProvider } from './contexts/LanguageContext';
+
 function ProtectedAdminRoute({ children }) {
   const { profile, loading } = useAuth();
   if (loading) return null;
@@ -75,11 +77,13 @@ function Layout() {
 function App() {
   return (
     <AuthProvider>
-      <MarketplaceProvider>
-        <Router>
-          <Layout />
-        </Router>
-      </MarketplaceProvider>
+      <LanguageProvider>
+        <MarketplaceProvider>
+          <Router>
+            <Layout />
+          </Router>
+        </MarketplaceProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

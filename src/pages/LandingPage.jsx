@@ -17,8 +17,10 @@ export default function LandingPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [openFaq, setOpenFaq] = useState(null);
 
-  // Filtrar solo tutores aprobados
-  const approvedTutors = tutors.filter(t => t.status === 'approved');
+  // Filtrar solo tutores aprobados e ordená-los pelos valores mais acessíveis (menor tarifa por hora)
+  const approvedTutors = tutors
+    .filter(t => t.status === 'approved')
+    .sort((a, b) => a.hourlyRate - b.hourlyRate);
 
   const promoMessages = announcements.filter(a => a.target === 'all' || a.target === 'landing').map(a => a.message);
   const defaultMessages = [
