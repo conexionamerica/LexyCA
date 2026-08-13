@@ -67,119 +67,100 @@ export default function LandingPage() {
   return (
     <div className="space-y-16 animate-fade-in-up pb-16">
       
-      {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY ── */}
-      <div className="relative rounded-3xl bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 border border-cyan-500/30 p-8 sm:p-14 overflow-hidden shadow-2xl">
-        <div className="absolute -right-16 -bottom-16 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY CON ESTÉTICA LEXY ── */}
+      <div className="relative rounded-3xl bg-slate-950/95 border border-cyan-500/30 p-4 sm:p-8 md:p-12 overflow-hidden shadow-2xl space-y-6">
+        <div className="absolute -right-16 -top-16 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
-          {/* Lado Izquierdo: Textos y CTAs de Registro/Login */}
-          <div className="lg:col-span-7 space-y-6">
-            
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-extrabold uppercase tracking-wider">
-              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>Lexy Idiomas • Aprende. Fala. Conecta</span>
-            </div>
+        {/* Imagen Destacada do Professor / Aula Virtual */}
+        <div className="relative rounded-2xl overflow-hidden aspect-[16/9] max-h-[360px] bg-slate-900 border border-slate-800 shadow-2xl group">
+          <img 
+            src="/lexy_hero_tutor.png" 
+            alt="Professor(a) de Idiomas Lexy" 
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur border border-cyan-400/40 text-cyan-300 text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Aula ao vivo • Lexy Space</span>
+          </div>
+        </div>
 
-            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.1]">
-              Aprenda <span className="bg-gradient-to-r from-cyan-400 to-sky-300 bg-clip-text text-transparent">Inglês</span> ou <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Espanhol</span> com tutores nativos.
-            </h1>
-
-            <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl">
-              Aulas particulares online 1-on-1 personalizadas para seus objetivos profissionais, viagens ou exames de proficiência.
-            </p>
-
-            {/* OPCIONES DE INICIO DE SESIÓN / REGISTRO DIRECTO */}
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 flex-wrap">
-              
-              {/* Botón 1: Explorar como Aluno */}
-              <button
-                onClick={() => navigate('/explore')}
-                className="bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-sm px-6 py-4 rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-              >
-                <UserCheck className="w-5 h-5" />
-                <span>Encontrar Tutores (Aluno)</span>
-              </button>
-
-              {/* Botón 2: Cadastro como Tutor */}
-              <button
-                onClick={() => navigate('/onboarding')}
-                className="bg-slate-900 hover:bg-slate-800 border border-amber-500/50 text-amber-300 font-extrabold text-sm px-6 py-4 rounded-2xl transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
-              >
-                <GraduationCap className="w-5 h-5 text-amber-400" />
-                <span>Quero me Cadastrar como Tutor</span>
-              </button>
-
-              {/* Botón 3: Já tenho conta (Login) */}
-              <button
-                onClick={() => navigate('/login')}
-                className="bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm px-6 py-4 rounded-2xl transition-all flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-5 h-5 text-cyan-400" />
-                <span>Já tenho conta (Iniciar Sessão)</span>
-              </button>
-
-            </div>
-
-            <div className="pt-4 flex items-center gap-6 text-xs font-bold text-slate-400 flex-wrap">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> +10.000 Aulas Concluídas
-              </div>
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" /> 4.9/5 Avaliação Média
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-cyan-400" /> 100% Reembolsável
-              </div>
-            </div>
-
+        {/* Título Principal */}
+        <div className="space-y-4 text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-black uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>Plataforma Oficial Lexy Idiomas</span>
           </div>
 
-          {/* Lado Derecho: Acceso Rápido de Login / Sandbox */}
-          <div className="lg:col-span-5">
-            <div className="glass-panel rounded-3xl p-6 border border-cyan-500/40 space-y-4 shadow-2xl">
-              <div className="border-b border-slate-800 pb-3">
-                <LexyAnimatedLogo size="large" showSlogan={true} />
-              </div>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-[1.15]">
+            Aprenda mais rápido com as <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">melhores aulas de idiomas</span>.
+          </h1>
+        </div>
 
-              <p className="text-xs text-slate-400">
-                Se você já possui uma conta cadastrada, selecione como deseja acessar:
-              </p>
+        {/* Botão de Ação Principal (CTA) */}
+        <div>
+          <button
+            onClick={() => navigate('/explore')}
+            className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-base sm:text-lg py-4 px-8 rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
+          >
+            <span>Encontrar seu professor</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
 
-              <div className="space-y-2">
-                <button
-                  onClick={() => { setDemoRole('student'); navigate('/dashboard/student'); }}
-                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-cyan-300 font-bold text-xs hover:border-cyan-400 flex items-center justify-between transition-all"
-                >
-                  <span className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-cyan-400" /> Acessar Painel do Aluno</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => { setDemoRole('teacher'); navigate('/dashboard/teacher'); }}
-                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-amber-300 font-bold text-xs hover:border-amber-400 flex items-center justify-between transition-all"
-                >
-                  <span className="flex items-center gap-2"><GraduationCap className="w-4 h-4 text-amber-400" /> Acessar Painel do Tutor</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => { setDemoRole('admin'); navigate('/admin'); }}
-                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-emerald-300 font-bold text-xs hover:border-emerald-400 flex items-center justify-between transition-all"
-                >
-                  <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-400" /> Acessar Painel Admin</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="pt-2 text-center">
-                <Link to="/login" className="text-xs text-cyan-400 font-bold hover:underline">
-                  Ou faça login com e-mail e senha ➔
-                </Link>
-              </div>
-            </div>
+        {/* Barra de Estatísticas em Fila */}
+        <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+            <div className="text-lg sm:text-xl font-black text-white">100.000+</div>
+            <p className="text-xs text-slate-400 font-medium">professores com experiência</p>
           </div>
 
+          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+            <div className="text-lg sm:text-xl font-black text-white">Mais de 300.000</div>
+            <p className="text-xs text-slate-400 font-medium">aulas avaliadas com 5 estrelas</p>
+          </div>
+
+          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+            <div className="text-lg sm:text-xl font-black text-amber-400 flex items-center justify-center sm:justify-start gap-1">
+              <span>4,8</span>
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 font-medium">de satisfação dos alunos</p>
+          </div>
+        </div>
+
+        {/* Categorias Rápidas de Idioma */}
+        <div className="pt-2 space-y-2">
+          <button
+            onClick={() => navigate('/explore?subject=Inglês')}
+            className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🇬🇧</span>
+              <div className="text-left">
+                <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua inglesa</span>
+                <span className="text-xs text-slate-400">25.017 professores qualificados</span>
+              </div>
+            </div>
+            <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <button
+            onClick={() => navigate('/explore?subject=Espanhol')}
+            className="w-full p-4 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-between transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🇪🇸</span>
+              <div className="text-left">
+                <span className="font-extrabold text-white text-sm block group-hover:text-cyan-300">Língua espanhola</span>
+                <span className="text-xs text-slate-400">18.420 professores qualificados</span>
+              </div>
+            </div>
+            <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
       </div>
 
