@@ -142,28 +142,20 @@ export default function LandingPage() {
 
           </div>
 
-          {/* ESTATÍSTICAS UNBOXED DIVISÓRIAS (ESTILO PREPLY ORIGINAL) */}
-          <div className="mt-12 sm:mt-16 pt-8 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-left">
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-white">100.000+</div>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">professores com experiência</p>
-            </div>
-
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-white">Mais de 300.000</div>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">aulas avaliadas com 5 estrelas</p>
-            </div>
-
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-white flex items-center justify-center sm:justify-start gap-1.5">
+          {/* ESTATÍSTICA DE AVALIAÇÃO COM ESTRELAS SOLICITADA PELO USUÁRIO */}
+          <div className="mt-10 pt-6 border-t border-slate-800/80">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
                 <span>4,8</span>
                 <div className="flex text-amber-400">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400" />
+                    <Star key={i} className="w-5 h-5 fill-amber-400" />
                   ))}
                 </div>
               </div>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium mt-1">de satisfação dos alunos</p>
+              <span className="text-xs sm:text-sm text-slate-400 font-medium border-l border-slate-800 pl-3">
+                de satisfação dos alunos
+              </span>
             </div>
           </div>
 
