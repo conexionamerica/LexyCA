@@ -221,6 +221,36 @@ export default function LandingPage() {
       {/* ── SECCIONES SECUNDARIAS (ALINEADAS LIMPIAMENTE AL CENTRO) ── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-16">
         
+        {/* ── SEÇÃO DE GARANTIA E SATISFAÇÃO 100% LEXY ── */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-cyan-500/30 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="space-y-4 text-center md:text-left max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-xs font-black uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Garantia de Satisfação Lexy</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
+              Aulas com qualidade que você vai amar. <span className="bg-gradient-to-r from-cyan-400 to-sky-300 bg-clip-text text-transparent">Nós garantimos!</span>
+            </h2>
+
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-medium">
+              Sua experiência é nossa prioridade total: se a sua primeira aula não for perfeita para você, sem complicação — basta experimentar outro professor totalmente grátis.
+            </p>
+          </div>
+
+          <div className="flex-shrink-0 w-full md:w-auto">
+            <button
+              onClick={() => navigate('/explore')}
+              className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-sm sm:text-base py-4 px-8 rounded-2xl shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all hover:scale-105"
+            >
+              <CheckCircle2 className="w-5 h-5 text-slate-950" />
+              <span>Experimentar sem risco</span>
+            </button>
+          </div>
+        </div>
+        
         {/* ── SECCIÓN DE TUTORES DESTACADOS ── */}
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
