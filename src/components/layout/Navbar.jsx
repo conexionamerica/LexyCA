@@ -59,19 +59,19 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* CENTRO: NAVEGAÇÃO UNIFICADA DO ALUNO NO HEADER PRINCIPAL (ELIMINA BARRA DUPLA) */}
+          {/* CENTRO: NAVEGAÇÃO UNIFICADA DO ALUNO NO HEADER PRINCIPAL (SHADCN TABS UI) */}
           {profile?.role === 'student' && (
-            <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 border border-slate-800/80 rounded-xl p-1 shadow-inner">
+            <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/40 border border-slate-800/80 rounded-xl p-1">
               {studentTabs.map(tab => {
                 const isActive = location.pathname.startsWith('/dashboard/student') && currentTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => navigate(`/dashboard/student?tab=${tab.id}`)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-4 py-2 rounded-lg text-sm transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                        ? 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 font-semibold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium'
                     }`}
                   >
                     {tab.label}

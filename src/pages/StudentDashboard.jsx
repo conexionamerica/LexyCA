@@ -165,11 +165,11 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* REDISEÑO DE HERO CARD (PRÓXIMA AULA - DISPOSIÇÃO FLEXBOX HORIZONTAL SEM BOTÃO GIGANTE) */}
+            {/* REDISEÑO DE HERO CARD (PRÓXIMA AULA - DISPOSIÇÃO FLEXBOX HORIZONTAL COM UI KIT DE BOTÕES) */}
             {nextBooking ? (
-              <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/30 border border-cyan-500/20 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/30 border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                     {t.confirmedBadge || "● Confirmada"}
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
@@ -198,31 +198,31 @@ export default function StudentDashboard() {
                     </div>
                   </div>
 
-                  {/* Direita: Botão compacto Entrar na Sala Virtual */}
+                  {/* Direita: Botão primário compacto com gradiente e sombra cian */}
                   <button 
                     onClick={() => navigate(`/classroom/${nextBooking.id}`)}
-                    className="h-10 px-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer w-full sm:w-auto"
+                    className="bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer text-xs sm:text-sm shrink-0 w-full sm:w-auto flex items-center justify-center gap-1.5"
                   >
                     <span>{t.enterVirtualRoom || "🎥 Entrar na Sala Virtual"}</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-5 text-center space-y-2">
+              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-5 text-center space-y-2">
                 <BookOpen className="w-8 h-8 text-cyan-400 mx-auto" />
                 <h3 className="text-sm font-semibold text-white">Nenhuma aula agendada no momento</h3>
                 <p className="text-xs text-slate-400">Escolha um tutor no catálogo e agende sua primeira aula!</p>
                 <button
                   onClick={() => setSearchParams({ tab: 'catalogo' })}
-                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-4 rounded-lg shadow-sm cursor-pointer"
+                  className="bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-5 py-2 rounded-xl text-xs shadow-md shadow-cyan-500/15 cursor-pointer"
                 >
                   Explorar Tutores
                 </button>
               </div>
             )}
 
-            {/* Lista de Aulas subsecventes (ELIMINADA REPETIÇÃO DE PRÓXIMA AULA) */}
-            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 sm:p-5 space-y-3 shadow-sm">
+            {/* Lista de Aulas subsecventes */}
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-cyan-400" />
                 <span>Minhas Aulas Agendadas</span>
@@ -251,13 +251,13 @@ export default function StudentDashboard() {
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => setSelectedBookingForReschedule(booking)}
-                          className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                          className="flex-1 sm:flex-initial bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-medium px-3 py-1.5 rounded-xl transition-all cursor-pointer"
                         >
                           Reagendar
                         </button>
                         <button
                           onClick={() => navigate(`/classroom/${booking.id}`)}
-                          className="flex-1 sm:flex-initial bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500/30 text-cyan-300 hover:text-slate-950 text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                          className="flex-1 sm:flex-initial bg-slate-800/80 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-medium px-4 py-1.5 rounded-xl text-xs transition-all shadow-sm cursor-pointer"
                         >
                           Entrar
                         </button>
@@ -273,8 +273,8 @@ export default function StudentDashboard() {
           {/* COLUMNA LATERAL / BARRA DERECHA (span-1) */}
           <div className="space-y-4">
             
-            {/* Widget Billetera LexyPay (Estilizada e Sobria) */}
-            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
+            {/* Widget Billetera LexyPay (Estilizada e Sobria com UI Kit) */}
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 flex items-center justify-center font-bold">
@@ -297,7 +297,7 @@ export default function StudentDashboard() {
 
               <button
                 onClick={() => setSearchParams({ tab: 'carteira' })}
-                className="w-full h-8 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                className="w-full bg-slate-800/80 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-medium px-4 py-2 rounded-xl text-xs transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5 text-cyan-400" />
                 <span>+ Recarregar Créditos</span>
@@ -305,7 +305,7 @@ export default function StudentDashboard() {
             </div>
 
             {/* Widget de Notificações / Anúncios Rápidos */}
-            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-3 shadow-sm">
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-cyan-400" />
                 <h3 className="font-semibold text-white text-xs">Novidades e Avisos</h3>
@@ -329,7 +329,7 @@ export default function StudentDashboard() {
             </div>
 
             {/* Suporte Rápido Widget */}
-            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-4 space-y-2.5 shadow-sm text-center">
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 space-y-2.5 text-center">
               <ShieldCheck className="w-6 h-6 text-emerald-400 mx-auto" />
               <h4 className="font-semibold text-white text-xs">Precisa de Ajuda?</h4>
               <p className="text-[11px] text-slate-400">Suporte online 24/7 via WhatsApp.</p>
@@ -337,7 +337,7 @@ export default function StudentDashboard() {
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full h-8 inline-flex items-center justify-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/30 text-emerald-300 hover:text-slate-950 font-medium text-xs rounded-lg transition-all"
+                className="w-full bg-slate-800/80 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-medium px-4 py-2 rounded-xl text-xs transition-all shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5"
               >
                 <span>Falar no WhatsApp 💬</span>
               </a>
@@ -353,7 +353,7 @@ export default function StudentDashboard() {
         <div className="space-y-4">
           
           {/* BARRA DE FILTROS SUPERIOR HORIZONTAL COMPACTA */}
-          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5">
               
               {/* Filtro Idioma */}
@@ -409,7 +409,7 @@ export default function StudentDashboard() {
             {filteredCatalogTutors.map(tutor => (
               <div 
                 key={tutor.id} 
-                className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 hover:border-cyan-500/40 rounded-xl p-4 flex flex-col justify-between space-y-3 transition-all group shadow-sm"
+                className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 hover:border-cyan-500/40 rounded-xl p-4 flex flex-col justify-between space-y-3 transition-all group"
               >
                 <div className="space-y-2.5">
                   {/* Foto Redonda com Anel Brilhante */}
@@ -447,10 +447,10 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                {/* Botão Secundário / Primário Elegante e Compacto (h-9) */}
+                {/* Botão Primário Elegante e Compacto com UI Kit */}
                 <button
                   onClick={() => navigate(`/book/${tutor.id}`)}
-                  className="w-full h-9 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs rounded-lg shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <span>Agendar Aula Experimental</span>
                 </button>

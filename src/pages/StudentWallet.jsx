@@ -163,7 +163,7 @@ export default function StudentWallet() {
           <button 
             onClick={handleRecharge}
             disabled={loading || !amount || parseFloat(amount) <= 0}
-            className="w-full h-11 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs rounded-lg shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-lg shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
               <>
