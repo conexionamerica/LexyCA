@@ -380,19 +380,112 @@ export default function TeacherDashboard() {
     }
   ]);
 
+  const [nowTimer, setNowTimer] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTimer(Date.now());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getBookingCountdownAndStatus = (booking) => {
+    if (!booking) return { statusText: '', isExpired: false, isLive: false, timeBadge: '' };
+
+    let targetDate = null;
+    if (booking.isoDateStr && booking.time) {
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      const [year, month, day] = booking.isoDateStr.split('-').map(Number);
+      targetDate = new Date(year, month - 1, day, hours || 0, minutes || 0);
+    } else if (booking.time) {
+      const [hours, minutes] = booking.time.split(':').map(Number);
+      const now = new Date();
+      targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours || 0, minutes || 0);
+    }
+
+    if (!targetDate || isNaN(targetDate.getTime())) {
+      return { 
+        statusText: `Hoje às ${booking.time || '19:00'}`, 
+        isExpired: false, 
+        isLive: false, 
+        timeBadge: `⏱️ Inicia em breve` 
+      };
+    }
+
+    const now = new Date(nowTimer);
+    const diffMs = targetDate.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMins < -10) {
+      return {
+        statusText: 'Aula Concluída / Passou de 10 min',
+        isExpired: true,
+        isLive: false,
+        timeBadge: '⏱️ Encerrada'
+      };
+    }
+
+    if (diffMins <= 0 && diffMins >= -10) {
+      const elapsed = Math.abs(diffMins);
+      return {
+        statusText: `🔴 AO VIVO • Iniciou há ${elapsed === 0 ? 'poucos segundos' : `${elapsed} min`} (Exibindo no destaque)`,
+        isExpired: false,
+        isLive: true,
+        timeBadge: `🔴 AO VIVO (${elapsed} min)`
+      };
+    }
+
+    if (diffMins < 60) {
+      return {
+        statusText: `⏱️ Inicia em ${diffMins} minuto${diffMins > 1 ? 's' : ''}`,
+        isExpired: false,
+        isLive: false,
+        timeBadge: `⏱️ Inicia em ${diffMins} min`
+      };
+    }
+
+    const hoursLeft = Math.floor(diffMins / 60);
+    const minsLeft = diffMins % 60;
+    if (hoursLeft < 24) {
+      return {
+        statusText: `⏱️ Inicia em ${hoursLeft}h ${minsLeft > 0 ? `${minsLeft}m` : ''}`,
+        isExpired: false,
+        isLive: false,
+        timeBadge: `⏱️ Inicia em ${hoursLeft}h`
+      };
+    }
+
+    const daysLeft = Math.floor(hoursLeft / 24);
+    return {
+      statusText: `📅 Inicia em ${daysLeft} dia${daysLeft > 1 ? 's' : ''}`,
+      isExpired: false,
+      isLive: false,
+      timeBadge: `📅 Inicia em ${daysLeft}d`
+    };
+  };
+
   const pendingRequests = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'pending' || b.status === 'solicitada'));
   const tutorBookings = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled'));
-  const nextBooking = tutorBookings[0] || {
+  
+  // Filter active bookings that are NOT expired by more than 10 mins and NOT completed
+  const activeTutorBookings = tutorBookings.filter(b => {
+    if (b.status === 'completed' || b.status === 'concluida' || b.status === 'rejected' || b.status === 'cancelada') return false;
+    const timing = getBookingCountdownAndStatus(b);
+    return !timing.isExpired;
+  });
+
+  const nextBooking = activeTutorBookings[0] || tutorBookings[0] || {
     id: 'booking-demo-1',
     studentName: 'Gabriel Alumno',
     studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
     day: 'Hoje',
     time: '15:00',
-    amount: hourlyRate,
+    amount: tutor.hourlyRate || hourlyRate || 23,
     bookingType: 'subscription',
     status: 'confirmed'
   };
-  const upcomingBookings = tutorBookings.filter(b => b.id !== nextBooking?.id);
+
+  const nextBookingTiming = getBookingCountdownAndStatus(nextBooking);
+  const upcomingBookings = tutorBookings.filter(b => b.id !== nextBooking?.id && b.status !== 'completed' && b.status !== 'concluida');
 
   const handleAcceptRequest = (reqId, studentName, day, time) => {
     acceptBookingRequest(reqId);
@@ -408,7 +501,10 @@ export default function TeacherDashboard() {
 
   const isNextTrial = nextBooking.bookingType === 'trial';
   const classEarnPercent = getTeacherEarnPercent(totalLessons, isNextTrial, tierRates);
-  const netEarningsNextClass = Number((nextBooking.amount * (classEarnPercent / 100)).toFixed(2));
+  const rawNextAmount = Number(nextBooking.amount || tutor.hourlyRate || hourlyRate || 23);
+  const netEarningsNextClass = isNaN(rawNextAmount * (classEarnPercent / 100))
+    ? (23 * (classEarnPercent / 100)).toFixed(2)
+    : (rawNextAmount * (classEarnPercent / 100)).toFixed(2);
 
   const handleOpenFeedbackModal = () => {
     setIsFeedbackModalOpen(true);
@@ -557,9 +653,20 @@ export default function TeacherDashboard() {
               {nextBooking ? (
                 <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/30 border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                      ● Próxima Aula
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                        ● Próxima Aula
+                      </span>
+                      {nextBookingTiming.timeBadge && (
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          nextBookingTiming.isLive 
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                            : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        }`}>
+                          {nextBookingTiming.timeBadge}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                       Repasse: <strong className="text-emerald-400">${netEarningsNextClass} USD</strong> ({classEarnPercent}%)
                     </span>
@@ -579,8 +686,16 @@ export default function TeacherDashboard() {
                         </p>
                         <p className="text-slate-300 text-xs mt-0.5 flex items-center gap-1.5 font-medium">
                           <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                          <span>{nextBooking.day} às {nextBooking.time}</span>
+                          <span>{nextBooking.colDateStr || nextBooking.day} às {nextBooking.time}</span>
                         </p>
+                        {nextBookingTiming.statusText && (
+                          <p className={`text-[11px] font-bold mt-1 flex items-center gap-1 ${
+                            nextBookingTiming.isLive ? 'text-rose-400 animate-pulse' : 'text-amber-300'
+                          }`}>
+                            <Clock className="w-3 h-3" />
+                            <span>{nextBookingTiming.statusText}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
