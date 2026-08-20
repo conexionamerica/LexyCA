@@ -1624,58 +1624,78 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* ABA: GANHOS */}
+        {/* ABA: GANHOS (ORGANIZADO IDÊNTICO AO PAINEL DE ALUNOS / FINANCEIRO) */}
         {activeTab === 'ganhos' && (
           <div className="space-y-6 animate-fade-in-up max-w-5xl mx-auto">
             
-            {/* BOTÃO DE SAQUE E SALDO NO TOPO DESTA ABA - IMMEDIATELY VISIBLE */}
+            {/* PAINEL PRINCIPAL DE SALDO E SAQUE - IGUAL AO PAINEL DO ALUNO */}
             <div className="glass-panel rounded-3xl p-6 border border-emerald-500/40 glow-emerald flex flex-col md:flex-row items-center justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+                <h2 className="text-2xl font-black text-white flex items-center gap-2">
                   <DollarSign className="w-7 h-7 text-emerald-400" />
-                  Seus Ganhos & Saques
+                  <span>Painel Financeiro & Ganhos</span>
                 </h2>
-                <p className="text-slate-400 text-sm mt-1">Acompanhe suas receitas e solicite pagamentos para sua conta bancária.</p>
+                <p className="text-slate-400 text-xs mt-1">Acompanhe suas receitas, margem de lucro e solicite resgates para sua conta.</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 min-w-[200px] text-center w-full sm:w-auto">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Saldo Liberado (Payout)</span>
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 min-w-[200px] text-center w-full sm:w-auto shadow-inner">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Saldo Liberado (Payout)</span>
                   <span className="text-3xl font-black text-emerald-400">${earnedBalance.toFixed(2)} USD</span>
                 </div>
 
                 <button
                   onClick={() => setIsPayoutModalOpen(true)}
-                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-sm px-8 py-5 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all hover:scale-105"
+                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-6 py-4 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer shrink-0"
                 >
-                  <Wallet className="w-5 h-5" />
+                  <Wallet className="w-4 h-4" />
                   <span>Solicitar Saque</span>
                 </button>
               </div>
             </div>
 
-            {/* MARGEM DE GANHO */}
-            <div className="glass-panel rounded-3xl p-6 space-y-5 border border-emerald-500/20">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            {/* CARDS DE MÉTRICAS DE RESUMO (4 CARDS COMPACTOS) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo a Resgatar</span>
+                <span className="text-xl font-black text-emerald-400">${earnedBalance.toFixed(2)}</span>
+              </div>
+              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Receita Acumulada</span>
+                <span className="text-xl font-black text-white">${(earnedBalance + 80).toFixed(2)}</span>
+              </div>
+              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Aulas Pagas</span>
+                <span className="text-xl font-black text-cyan-400">12 aulas</span>
+              </div>
+              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Margem Atual</span>
+                <span className="text-xl font-black text-amber-400">{currentEarnPercent}%</span>
+              </div>
+            </div>
+
+            {/* PROGRESSO DA MARGEM DE REPASSE */}
+            <div className="glass-panel rounded-3xl p-6 space-y-4 border border-emerald-500/20">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-lg font-extrabold text-white">Sua Margem de Repasse: {currentEarnPercent}% por aula</h3>
+                  <h3 className="text-base font-extrabold text-white">Sua Margem de Repasse: {currentEarnPercent}% por aula</h3>
                   <p className="text-xs text-slate-400">Quanto mais aulas você der, maior é a sua fatia dos lucros!</p>
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
                 <div className="flex justify-between items-center text-xs font-bold">
-                  <span className="text-white">Aulas Totais: <strong className="text-amber-400 font-extrabold text-sm">{totalLessons}</strong></span>
+                  <span className="text-white">Aulas Totais Realizadas: <strong className="text-amber-400 font-extrabold text-sm">{totalLessons}</strong></span>
                   {nextTier.remaining > 0 ? (
                     <span className="text-emerald-400">
                       Faltam <strong>{nextTier.remaining} aulas</strong> para <strong>{nextTier.nextEarn}%</strong>!
                     </span>
                   ) : (
-                    <span className="text-emerald-400 font-black">🎉 Margem Máxima!</span>
+                    <span className="text-emerald-400 font-black">🎉 Margem Máxima (85%) Alcançada!</span>
                   )}
                 </div>
 
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
                   <div
                     className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(100, (totalLessons / 51) * 100)}%` }}
@@ -1684,74 +1704,102 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* HISTÓRICO DE GANHOS */}
-              <div className="glass-panel rounded-3xl p-6 border border-slate-800 space-y-4">
+            {/* SEÇÃO 1: HISTÓRICO COMPLETO DE AULAS (TELA CHEIA LARGURA COMPLETA) */}
+            <div className="glass-panel rounded-3xl p-6 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  Histórico de Aulas
+                  <span>Histórico Detalhado de Aulas & Ganhos</span>
                 </h3>
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                  {earningsHistory.map((item) => (
-                    <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <img src={item.studentAvatar} alt={item.studentName} className="w-10 h-10 rounded-xl object-cover border border-slate-700" />
-                          <div>
-                            <h4 className="font-extrabold text-white text-sm">{item.studentName}</h4>
-                            <p className="text-xs text-slate-400">{item.date}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <strong className="text-emerald-400 font-black text-sm">+${item.netAmount} USD</strong>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <span className="text-xs text-slate-400 font-medium">Últimas aulas ministradas</span>
               </div>
 
-              {/* HISTÓRICO DE SAQUES */}
-              <div className="glass-panel rounded-3xl p-6 border border-emerald-500/30 space-y-4">
-                <h3 className="text-base font-extrabold text-white flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-emerald-400" />
-                    Solicitações de Resgate
-                  </span>
-                </h3>
-
-                <div className="space-y-3">
-                  {payoutRequests.map(req => (
-                    <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400 font-medium">{req.date}</span>
-                        <strong className="text-emerald-400 font-black">${req.amount.toFixed(2)} USD</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-500">{req.method}</span>
-                        {req.status === 'approved' ? (
-                          <span className="text-emerald-400 font-bold flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Aprovado
+              <div className="space-y-3">
+                {earningsHistory.map((item) => (
+                  <div key={item.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
+                    <div className="flex items-center gap-3.5">
+                      <img src={item.studentAvatar} alt={item.studentName} className="w-11 h-11 rounded-2xl object-cover border border-slate-700 shrink-0" />
+                      <div>
+                        <h4 className="font-extrabold text-white text-sm">{item.studentName}</h4>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 flex-wrap">
+                          <span className="bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-800 font-mono text-[10px]">
+                            {item.classType}
                           </span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-amber-400 font-bold animate-pulse">
-                              ⌛ Em Análise
-                            </span>
-                            <button
-                              onClick={() => handleSimulateAdminApprove(req.id)}
-                              className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded hover:bg-amber-400"
-                            >
-                              Aprovar (Adm)
-                            </button>
-                          </div>
-                        )}
+                          <span>•</span>
+                          <span>{item.date}</span>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Margem: {currentEarnPercent}%</span>
+                        <strong className="text-emerald-400 font-black text-base">+${item.netAmount} USD</strong>
+                      </div>
+                      <span className="bg-emerald-500/10 text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30">
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+
+            {/* SEÇÃO 2: HISTÓRICO DE SAQUES E PAYOUTS (TELA CHEIA LARGURA COMPLETA) */}
+            <div className="glass-panel rounded-3xl p-6 border border-emerald-500/30 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-emerald-400" />
+                  <span>Histórico de Solicitacões de Resgate & Payouts</span>
+                </h3>
+                <span className="text-xs text-slate-400 font-medium">Status de saques</span>
+              </div>
+
+              <div className="space-y-3">
+                {payoutRequests.map(req => (
+                  <div key={req.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
+                    <div className="flex items-center gap-3.5">
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 shrink-0">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-extrabold text-white text-sm">Resgate via {req.method}</h4>
+                          <span className="text-xs text-slate-400 font-mono">({req.date})</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">Chave / Dados: <strong className="text-slate-300">{req.pixKey || 'Chave Cadastrada'}</strong></p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Valor do Saque</span>
+                        <strong className="text-emerald-400 font-black text-base">${req.amount.toFixed(2)} USD</strong>
+                      </div>
+
+                      {req.status === 'approved' ? (
+                        <span className="bg-emerald-500/20 text-emerald-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-emerald-500/40 flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5" /> Aprovado
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="bg-amber-500/20 text-amber-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-amber-500/40 animate-pulse flex items-center gap-1">
+                            ⌛ Em Análise
+                          </span>
+                          <button
+                            onClick={() => handleSimulateAdminApprove(req.id)}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-xl shadow cursor-pointer transition-all"
+                          >
+                            Aprovar (Adm)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         )}
 
