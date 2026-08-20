@@ -1716,50 +1716,7 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            {/* SEÇÃO 1: HISTÓRICO COMPLETO DE AULAS (TELA CHEIA LARGURA COMPLETA) */}
-            <div className="glass-panel rounded-3xl p-6 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Histórico Detalhado de Aulas & Ganhos</span>
-                </h3>
-                <span className="text-xs text-slate-400 font-medium">Últimas aulas ministradas</span>
-              </div>
 
-              <div className="space-y-3">
-                {earningsHistory.map((item) => (
-                  <div key={item.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
-                    <div className="flex items-center gap-3.5">
-                      <img src={item.studentAvatar} alt={item.studentName} className="w-11 h-11 rounded-2xl object-cover border border-slate-700 shrink-0" />
-                      <div>
-                        <h4 className="font-extrabold text-white text-sm">{item.studentName}</h4>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 flex-wrap">
-                          <span className="bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-800 font-mono text-[10px]">
-                            {item.classType}
-                          </span>
-                          <span className="text-amber-400 font-mono font-bold text-[11px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                            ⏱️ {item.durationFormatted || '50 min'} em aula
-                          </span>
-                          <span>•</span>
-                          <span>{item.date}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block">Repasse ({currentEarnPercent}%):</span>
-                        <strong className="text-emerald-400 font-black text-base">+${item.netAmount} USD</strong>
-                      </div>
-                      <span className="bg-emerald-500/10 text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span>Feedback Enviado ✓</span>
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* SEÇÃO 2: HISTÓRICO DE SAQUES E PAYOUTS (TELA CHEIA LARGURA COMPLETA) */}
             <div className="glass-panel rounded-3xl p-6 border border-emerald-500/30 space-y-4">
