@@ -164,24 +164,7 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
           <X className="w-5 h-5" />
         </button>
 
-        {/* Encabezado del Profesor Seleccionado */}
-        <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-          <img
-            src={tutor.avatar || tutor.avatar_url || "https://i.pravatar.cc/150?img=47"}
-            alt={tutor.name}
-            className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shrink-0"
-          />
-          <div className="space-y-1 overflow-hidden">
-            <div className="inline-flex items-center gap-1 text-[10px] font-black text-cyan-300 uppercase tracking-wider bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>Aula Experimental de 25 min</span>
-            </div>
-            <h3 className="font-extrabold text-white text-base truncate">{tutor.name}</h3>
-            <p className="text-xs text-slate-400">
-              Valor: <strong className="text-emerald-400 font-extrabold">R$ {tutor.trialRate || 9}</strong>
-            </p>
-          </div>
-        </div>
+
 
         {/* Banner Informativo sobre la necesidad de cuenta */}
         <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-4 flex items-start gap-3">
