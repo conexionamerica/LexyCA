@@ -188,7 +188,7 @@ export default function TeacherDashboard() {
       const dayNum = String(d.getDate()).padStart(2, '0');
       const monthNum = String(d.getMonth() + 1).padStart(2, '0');
       const dateStr = `${dayNum}/${monthNum}`;
-      const isoDateStr = d.toISOString().split('T')[0];
+      const isoDateStr = `${d.getFullYear()}-${monthNum}-${dayNum}`;
 
       daysList.push({
         dateObj: d,
@@ -476,6 +476,7 @@ export default function TeacherDashboard() {
   };
   const TIME_SLOTS_15MIN = generateTimeSlots15Min();
 
+  const userTimeZone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
   const [currentTimeStr, setCurrentTimeStr] = useState(() => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -994,11 +995,15 @@ export default function TeacherDashboard() {
               
               {/* BARRA SUPERIOR DE NAVEGAÇÃO E CONTROLES */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                     <Calendar className="w-6 h-6 text-amber-400" />
                     Horários de Aula
                   </h2>
+                  <span className="text-[11px] font-medium text-slate-300 flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                    <span>Horário do seu dispositivo: <strong className="text-amber-400 font-mono font-bold text-xs">{currentTimeStr}</strong> <span className="text-slate-500 font-mono text-[10px]">({userTimeZone})</span></span>
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
