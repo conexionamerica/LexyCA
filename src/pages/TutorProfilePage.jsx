@@ -24,7 +24,7 @@ export default function TutorProfilePage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fade-in-up">
       
       {/* Botón Volver */}
       <button
@@ -240,14 +240,14 @@ export default function TutorProfilePage() {
             {/* Precio Destacado */}
             <div className="space-y-1">
               <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula de Teste (25 min)</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-white">${tutor.trialRate}</span>
-                <span className="text-xs text-slate-400">USD</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-bold text-slate-400">R$</span>
+                <span className="text-4xl font-black text-white">{tutor.trialRate}</span>
                 <span className="bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded ml-auto">
                   50% de Desconto
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Preço regular por hora: <strong>${tutor.hourlyRate} USD/h</strong></p>
+              <p className="text-[11px] text-slate-400">Preço regular por hora: <strong>R$ {tutor.hourlyRate}/h</strong></p>
             </div>
 
             {/* Garantía Preply */}

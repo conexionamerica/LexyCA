@@ -81,7 +81,7 @@ export default function ExplorePage() {
   const specialties = ['Todos', 'Conversação', 'Espanhol para Negócios', 'Business English', 'Preparação DELE/SIELE', 'TOEFL / IELTS', 'Iniciantes'];
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fade-in-up">
       
       {/* Banner de Encabezado Estilo Preply */}
       <div className="relative rounded-3xl bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 border border-cyan-500/30 p-6 sm:p-10 overflow-hidden shadow-2xl">
@@ -176,7 +176,7 @@ export default function ExplorePage() {
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Preço máximo / hora</label>
-              <span className="text-xs font-black text-cyan-400">${maxPrice} / h</span>
+              <span className="text-xs font-black text-cyan-400">R$ {maxPrice} / h</span>
             </div>
             <input
               type="range"
@@ -352,13 +352,13 @@ export default function ExplorePage() {
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block font-medium">Preço regular / hora</span>
                       <div className="text-3xl font-black text-white tracking-tight">
-                        ${tutor.hourlyRate} <span className="text-xs font-normal text-slate-400">USD</span>
+                        R$ {tutor.hourlyRate} <span className="text-xs font-normal text-slate-400">/ h</span>
                       </div>
                     </div>
 
                     <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 mt-3 text-center">
                       <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aula Experimental</span>
-                      <span className="text-sm font-extrabold text-emerald-300">Apenas ${tutor.trialRate} por 25 min</span>
+                      <span className="text-sm font-extrabold text-emerald-300">Apenas R$ {tutor.trialRate} por 25 min</span>
                     </div>
                   </div>
 
