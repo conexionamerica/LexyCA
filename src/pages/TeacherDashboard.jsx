@@ -157,7 +157,27 @@ export default function TeacherDashboard() {
 
   // Virtual Room & Booking Management States (aluno.conexionamerica.com.br system style)
   const [isVirtualRoomActive, setIsVirtualRoomActive] = useState(false);
-  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [roomElapsedSeconds, setRoomElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    let timer = null;
+    if (isVirtualRoomActive) {
+      timer = setInterval(() => {
+        setRoomElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setRoomElapsedSeconds(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isVirtualRoomActive]);
+
+  const formatTimer = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
   const [rescheduleNewDate, setRescheduleNewDate] = useState('');
   const [rescheduleNewTime, setRescheduleNewTime] = useState('');
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
@@ -1634,20 +1654,20 @@ export default function TeacherDashboard() {
         {activeTab === 'ganhos' && (
           <div className="space-y-6 animate-fade-in-up max-w-5xl mx-auto">
             
-            {/* PAINEL PRINCIPAL DE SALDO E SAQUE - IGUAL AO PAINEL DO ALUNO */}
+            {/* PAINEL PRINCIPAL DE SALDO E SAQUE - EM REAIS (R$) */}
             <div className="glass-panel rounded-3xl p-6 border border-emerald-500/40 glow-emerald flex flex-col md:flex-row items-center justify-between gap-6">
               <div>
                 <h2 className="text-2xl font-black text-white flex items-center gap-2">
                   <DollarSign className="w-7 h-7 text-emerald-400" />
-                  <span>Painel Financeiro & Ganhos</span>
+                  <span>Painel Financeiro & Ganhos em Reais (R$)</span>
                 </h2>
-                <p className="text-slate-400 text-xs mt-1">Acompanhe suas receitas, margem de lucro e solicite resgates para sua conta.</p>
+                <p className="text-slate-400 text-xs mt-1">Acompanhe suas receitas com base na sua tarifa por hora (R$ {hourlyRate}/h) e solicite saques.</p>
               </div>
 
               <div className="flex items-center gap-4 w-full md:w-auto">
                 <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 min-w-[200px] text-center w-full sm:w-auto shadow-inner">
                   <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Saldo Liberado (Payout)</span>
-                  <span className="text-3xl font-black text-emerald-400">${earnedBalance.toFixed(2)} USD</span>
+                  <span className="text-3xl font-black text-emerald-400">R$ {earnedBalance.toFixed(2)}</span>
                 </div>
 
                 <button
@@ -1660,7 +1680,7 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            {/* CARDS DE MÉTRICAS DE RESUMO (4 CARDS COMPACTOS COM CONTABILIZAÇÃO DE TEMPO) */}
+            {/* CARDS DE MÉTRICAS DE RESUMO (4 CARDS COMPACTOS COM CONTABILIZAÇÃO EM R$) */}
             {(() => {
               const totalMins = earningsHistory.reduce((acc, i) => acc + (i.durationMinutes || 50), 0);
               const hoursStr = `${Math.floor(totalMins / 60)}h ${totalMins % 60}m`;
@@ -1668,15 +1688,15 @@ export default function TeacherDashboard() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo a Resgatar</span>
-                    <span className="text-xl font-black text-emerald-400">${earnedBalance.toFixed(2)}</span>
+                    <span className="text-xl font-black text-emerald-400">R$ {earnedBalance.toFixed(2)}</span>
                   </div>
                   <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Tempo Contabilizado</span>
                     <span className="text-xl font-black text-amber-400 font-mono">{hoursStr}</span>
                   </div>
                   <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Aulas com Feedback</span>
-                    <span className="text-xl font-black text-cyan-400">{earningsHistory.length} aulas</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Tarifa por Hora</span>
+                    <span className="text-xl font-black text-white font-mono">R$ {hourlyRate}/h</span>
                   </div>
                   <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Margem Atual</span>
@@ -1747,7 +1767,7 @@ export default function TeacherDashboard() {
                     <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
                       <div className="text-right">
                         <span className="text-[10px] text-slate-400 block">Valor do Saque</span>
-                        <strong className="text-emerald-400 font-black text-base">${req.amount.toFixed(2)} USD</strong>
+                        <strong className="text-emerald-400 font-black text-base">R$ {req.amount.toFixed(2)}</strong>
                       </div>
 
                       {req.status === 'approved' ? (
@@ -1958,9 +1978,9 @@ export default function TeacherDashboard() {
 
             <form onSubmit={handleRequestPayout} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Valor a Sacar ($ USD) *</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Valor a Sacar (R$) *</label>
                 <div className="relative">
-                  <DollarSign className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <span className="text-slate-500 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">R$</span>
                   <input
                     type="number"
                     min={10}
@@ -1971,17 +1991,17 @@ export default function TeacherDashboard() {
                     className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-emerald-400"
                   />
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">Disponível: ${earnedBalance.toFixed(2)} USD</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">Disponível: R$ {earnedBalance.toFixed(2)}</span>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Valor Bruto:</span>
-                  <strong className="text-white font-bold">${payoutAmount.toFixed(2)} USD</strong>
+                  <strong className="text-white font-bold">R$ {payoutAmount.toFixed(2)}</strong>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-slate-800 text-emerald-400 font-bold">
                   <span>Valor Líquido ({currentEarnPercent}%):</span>
-                  <strong className="text-base font-black">${(payoutAmount * (currentEarnPercent / 100)).toFixed(2)} USD</strong>
+                  <strong className="text-base font-black">R$ {(payoutAmount * (currentEarnPercent / 100)).toFixed(2)}</strong>
                 </div>
               </div>
 
@@ -2175,17 +2195,21 @@ export default function TeacherDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs font-mono font-bold text-amber-400 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800">
-                ⏱️ 00:24:18
+              <span className="text-xs font-mono font-bold text-amber-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span>Tempo Decorrido: {formatTimer(roomElapsedSeconds)}</span>
+              </span>
+              <span className="text-xs font-mono font-bold text-emerald-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                💰 R$ {hourlyRate || tutor.hourlyRate || 23}/h
               </span>
               <button
                 onClick={() => {
                   setIsVirtualRoomActive(false);
                   setIsFeedbackDialogOpen(true);
                 }}
-                className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow cursor-pointer"
+                className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow cursor-pointer transition-all hover:scale-105"
               >
-                🔴 Encerrar & Avaliar Aula
+                🔴 Encerrar Aula & Avaliar
               </button>
             </div>
           </div>
@@ -2426,8 +2450,8 @@ export default function TeacherDashboard() {
             </div>
 
             <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-[11px] text-amber-300 space-y-1">
-              <span className="font-extrabold block text-amber-400">⚠️ REGRA DE CONTABILIZAÇÃO DE TEMPO & SALDO:</span>
-              <p>O tempo de aula (50 min) e o valor financeiro correspondente só serão creditados no seu saldo liberado após a confirmação da aula concluída E o envio do Feedback Obrigatório abaixo.</p>
+              <span className="font-extrabold block text-amber-400">⚠️ CONTABILIZAÇÃO DE TEMPO EM AULA & CÁLCULO EM REAIS (R$):</span>
+              <p>O tempo de aula ({roomElapsedSeconds > 5 ? Math.ceil(roomElapsedSeconds / 60) : 50} min) é contabilizado nesta sala. O repasse em R$ com base na sua tarifa configurada (R$ {hourlyRate || tutor.hourlyRate || 23}/h) só é creditado após a confirmação da aula concluída E o envio deste Feedback Obrigatório.</p>
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -2439,12 +2463,13 @@ export default function TeacherDashboard() {
               </button>
               <button
                 onClick={() => {
-                  const durationMins = selectedBookingForModal.durationMinutes || 50;
-                  const earnedAmount = Number(((durationMins / 60) * (tutor.hourlyRate || hourlyRate || 23) * (currentEarnPercent / 100)).toFixed(2));
+                  const elapsedMins = roomElapsedSeconds > 5 ? Math.ceil(roomElapsedSeconds / 60) : (selectedBookingForModal.durationMinutes || 50);
+                  const currentRate = Number(hourlyRate || tutor.hourlyRate || 23);
+                  const earnedAmountR$ = Number(((elapsedMins / 60) * currentRate * (currentEarnPercent / 100)).toFixed(2));
 
                   updateBookingStatus(selectedBookingForModal.id, 'completed');
                   incrementTutorLessons(tutor.id);
-                  setEarnedBalance(prev => Number((prev + earnedAmount).toFixed(2)));
+                  setEarnedBalance(prev => Number((prev + earnedAmountR$).toFixed(2)));
 
                   const newEarnItem = {
                     id: `earn-${Date.now()}`,
@@ -2452,11 +2477,12 @@ export default function TeacherDashboard() {
                     studentAvatar: selectedBookingForModal.studentAvatar,
                     date: `${selectedBookingForModal.day || 'Hoje'} às ${selectedBookingForModal.time || '15:00'}`,
                     classType: selectedBookingForModal.bookingType === 'trial' ? 'Aula Experimental' : 'Assinatura 28 dias',
-                    durationMinutes: durationMins,
-                    durationFormatted: `${durationMins} min`,
-                    grossAmount: selectedBookingForModal.amount || 23,
+                    durationMinutes: elapsedMins,
+                    durationFormatted: `${elapsedMins} min`,
+                    grossAmount: currentRate,
                     fee: 0,
-                    netAmount: earnedAmount,
+                    netAmount: earnedAmountR$,
+                    currency: 'R$',
                     status: 'Liberado (Feedback Enviado ✓)',
                     feedback: feedbackText || 'Excelente aula! Aluno praticou conversação e gramática.',
                     ratings: evalRatings
@@ -2465,7 +2491,7 @@ export default function TeacherDashboard() {
                   setEarningsHistory(prev => [newEarnItem, ...prev]);
                   setIsFeedbackDialogOpen(false);
                   setSelectedBookingForModal(null);
-                  setPayoutSuccessMsg(`🎉 Aula concluída com sucesso! Tempo contabilizado: ${durationMins} min. +$${earnedAmount} USD creditados no Payout após o envio do Feedback Obrigatório!`);
+                  setPayoutSuccessMsg(`🎉 Aula encerrada e avaliada! Tempo contabilizado nesta sala: ${elapsedMins} min. +R$ ${earnedAmountR$.toFixed(2)} liberados no Payout (Tarifa de R$ ${currentRate}/h com repasse de ${currentEarnPercent}%)!`);
                   setTimeout(() => setPayoutSuccessMsg(''), 6000);
                 }}
                 className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-md cursor-pointer transition-all"
