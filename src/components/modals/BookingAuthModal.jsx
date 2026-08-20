@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Sparkles, User, Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, LogIn, UserPlus, Globe, BookOpen, Award, CreditCard as CpfIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
@@ -150,7 +151,7 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
       <div className="relative w-full max-w-lg bg-slate-900 border border-cyan-500/40 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 glow-cyan max-h-[85vh] overflow-y-auto">
         
@@ -441,6 +442,7 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

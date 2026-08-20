@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Search, Star, ShieldCheck, Play, Heart, Clock, Globe, 
@@ -420,7 +421,7 @@ export default function ExplorePage() {
       </div>
 
       {/* Modal de Video de Presentación de Tutor */}
-      {activeVideoUrl && (
+      {activeVideoUrl && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
@@ -442,7 +443,8 @@ export default function ExplorePage() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal de Autenticación para Agendar Aula Experimental */}
