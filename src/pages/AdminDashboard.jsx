@@ -15,7 +15,7 @@ export default function AdminDashboard() {
     bookings, autoPurge30DaysHistory
   } = useMarketplace();
   
-  const { profile, loginAdmin } = useAuth();
+  const { profile, loginAdmin, signInWithSupabase } = useAuth();
 
   // Estados del Formulario de Login de Admin
   const [adminEmail, setAdminEmail] = useState('');
@@ -54,12 +54,12 @@ export default function AdminDashboard() {
     { id: 103, tutorName: "Sophie Martin", tutorEmail: "sophie@test.com", tutorAvatar: "https://i.pravatar.cc/150?img=23", date: "2024-05-01", requestedAmount: 200.00, teacherEarnPercent: 85, method: "PIX", pixKey: "+5511999999999", status: "approved" },
   ]);
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-    const success = loginAdmin(adminEmail, adminPassword);
-    if (!success) {
-      setLoginError('Credenciais inválidas. Acesso negado.');
+    const res = await signInWithSupabase({ email: adminEmail, password: adminPassword });
+    if (!res?.success) {
+      setLoginError(res?.error || 'Credenciais inválidas. Acesso negado.');
     }
   };
 
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
     setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
   };
 
-  const isSuperAdminLoggedIn = profile?.role === 'superadmin';
+  const isSuperAdminLoggedIn = profile?.role === 'admin' || profile?.role === 'superadmin';
 
   if (!isSuperAdminLoggedIn) {
     return (
