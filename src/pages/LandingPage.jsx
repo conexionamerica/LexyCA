@@ -70,8 +70,8 @@ export default function LandingPage() {
     <div className="space-y-16 animate-fade-in-up pb-16">
       
       {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY (EDGE-TO-EDGE 100% SEM SANGRIA OU MARGENS) ── */}
-      <div className="w-full bg-slate-950 border-b border-slate-800/80 px-2 sm:px-4 lg:px-6 py-10 sm:py-16">
-        <div className="w-full max-w-[1400px] mx-auto">
+      <div className="w-full bg-slate-950 border-b border-slate-800/80 px-4 sm:px-6 py-8 sm:py-12">
+        <div className="w-full max-w-6xl mx-auto">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             

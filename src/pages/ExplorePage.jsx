@@ -221,7 +221,7 @@ export default function ExplorePage() {
       </div>
 
       {/* Resultados de la Búsqueda */}
-      <div className="space-y-4">
+      <div id="tutores-list" className="space-y-4 scroll-mt-24">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-slate-400">
             Mostrando <strong className="text-white">{filteredTutors.length}</strong> tutores disponíveis
