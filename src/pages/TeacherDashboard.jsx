@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Calendar, Clock, DollarSign, Users, Star, 
   CheckCircle2, Video, Sparkles, Settings, Save, AlertCircle, 
-  MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home 
+  MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home,
+  ChevronLeft, Grid3x3, List, RefreshCw
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -463,7 +464,62 @@ export default function TeacherDashboard() {
     };
   };
 
-  const [gridFilterMode, setGridFilterMode] = useState('all'); // 'all' | 'active_only'
+  const generateTimeSlots15Min = () => {
+    const slots = [];
+    for (let hour = 7; hour <= 23; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        if (hour === 23 && minute > 45) break;
+        slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+      }
+    }
+    return slots;
+  };
+  const TIME_SLOTS_15MIN = generateTimeSlots15Min();
+
+  const [currentTimeStr, setCurrentTimeStr] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
+
+  const [agendaDisplayMode, setAgendaDisplayMode] = useState('week'); // 'week' | 'list'
+  const currentTimeRef = useRef(null);
+  const gridContainerRef = useRef(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setCurrentTimeStr(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getCurrentTimePosition = () => {
+    const [hours, minutes] = currentTimeStr.split(':').map(Number);
+    const currentTotalMinutes = hours * 60 + minutes;
+    const slotStartMinutes = 7 * 60;
+    const slotEndMinutes = 24 * 60;
+
+    if (currentTotalMinutes < slotStartMinutes || currentTotalMinutes > slotEndMinutes) {
+      return null;
+    }
+
+    const minutesSinceStart = currentTotalMinutes - slotStartMinutes;
+    const slotIndex = Math.floor(minutesSinceStart / 15);
+    const minutesIntoSlot = minutesSinceStart % 15;
+    const percentageIntoSlot = (minutesIntoSlot / 15) * 100;
+
+    return { slotIndex, percentageIntoSlot };
+  };
+
+  useEffect(() => {
+    if (currentTimeRef.current && gridContainerRef.current && selectedWeekOffset === 0) {
+      setTimeout(() => {
+        currentTimeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    }
+  }, [agendaViewMode, agendaDisplayMode, selectedWeekOffset]);
+
+  const [gridFilterMode, setGridFilterMode] = useState('all');
 
   const getGridTimeSlots = () => {
     const fullDaySlots = [
@@ -929,294 +985,121 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* ABA: AGENDA */}
+        {/* ABA: AGENDA (RÉPLICA EXACTA DE ALUNO.CONEXIONAMERICA.COM.BR) */}
         {activeTab === 'agenda' && (
-          <div className="animate-fade-in-up max-w-6xl mx-auto space-y-4">
+          <div className="animate-fade-in-up w-full max-w-7xl mx-auto space-y-4">
             
-            {/* SUB-HEADER CON CONMUTADOR DE VISTA (AGENDA VISUAL VS CONFIGURACIÓN) */}
-            <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/90 w-full sm:w-auto">
-                <button
-                  onClick={() => setAgendaViewMode('grid')}
-                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    agendaViewMode === 'grid'
-                      ? 'bg-amber-500 text-slate-950 shadow-md'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                  }`}
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span>📅 Agenda Visual (Aulas Agendadas)</span>
-                </button>
-
-                <button
-                  onClick={() => setAgendaViewMode('config')}
-                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    agendaViewMode === 'config'
-                      ? 'bg-cyan-500 text-slate-950 shadow-md'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                  }`}
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>⚙️ Configurar Disponibilidade</span>
-                </button>
-              </div>
-
-              <div className="text-xs text-slate-400 font-medium flex items-center gap-2">
-                <span className="hidden sm:inline">Modo:</span>
-                <span className={`px-2.5 py-0.5 rounded-full border font-bold text-[10px] uppercase ${
-                  agendaViewMode === 'grid'
-                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                    : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-                }`}>
-                  {agendaViewMode === 'grid' ? '● Grade de Aulas' : '● Configuração de Horários'}
-                </span>
-              </div>
-            </div>
-
-            {/* VISTA 1: AGENDA VISUAL DE AULAS (HORÁRIOS DE AULA EN QUADRÍCULA SEMANAL) */}
-            {agendaViewMode === 'grid' && (
-              <div className="glass-panel rounded-3xl p-4 sm:p-6 space-y-5 border border-cyan-500/30 shadow-2xl">
-                
-                {/* BARRA SUPERIOR DE CONTROL DEL CALENDARIO */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-amber-400" />
-                      Horários de Aula
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Visualização semanal dinâmica de aulas agendadas e horários abertos.
-                    </p>
-                  </div>
-
-                  {/* NAVEGADOR DE SEMANAS & CONTROLES DINÁMICOS */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1 text-xs">
-                      <button
-                        onClick={() => setSelectedWeekOffset(prev => prev - 1)}
-                        className="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-900 cursor-pointer font-black text-sm"
-                        title="Semana anterior"
-                      >
-                        ‹
-                      </button>
-                      
-                      <button
-                        onClick={() => setSelectedWeekOffset(0)}
-                        className="px-2 py-1 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-slate-900 cursor-pointer font-bold text-[11px]"
-                        title="Ir para semana atual"
-                      >
-                        Hoje
-                      </button>
-
-                      <span className="px-2 font-extrabold text-amber-300 text-xs capitalize">
-                        {monthYearHeader}
-                      </span>
-
-                      <button
-                        onClick={() => setSelectedWeekOffset(prev => prev + 1)}
-                        className="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-900 cursor-pointer font-black text-sm"
-                        title="Próxima semana"
-                      >
-                        ›
-                      </button>
-                    </div>
-
-                    <div className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 font-mono font-bold flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{rangeBannerStr}</span>
-                    </div>
-
-                    <button
-                      onClick={() => setAgendaViewMode('config')}
-                      className="bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Configurar Horários</span>
-                    </button>
-                  </div>
+            {/* CONTAINER PRINCIPAL */}
+            <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4 shadow-2xl">
+              
+              {/* BARRA SUPERIOR DE NAVEGAÇÃO E CONTROLES */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                    <Calendar className="w-6 h-6 text-amber-400" />
+                    Horários de Aula
+                  </h2>
                 </div>
 
-                {/* LEYENDA DE ESTADOS DE AULA (AGENDADA, FALTA, CANCELADA, CONCLUÍDA) E FILTRO DE HORÁRIOS */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-x-auto pb-1 text-xs scrollbar-none">
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider shrink-0">Legenda de Estados:</span>
-                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-300 font-semibold text-[11px] shrink-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                      <span>🟢 Agendada</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-lg text-rose-300 font-semibold text-[11px] shrink-0">
-                      <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                      <span>🔴 Falta / Ausência</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-amber-300 font-semibold text-[11px] shrink-0">
-                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                      <span>🟡 Cancelada</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-lg text-sky-300 font-semibold text-[11px] shrink-0">
-                      <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-                      <span>🔵 Concluída</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 text-xs">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* Navegação Mês */}
+                  <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-xs text-slate-300">
                     <button
-                      onClick={() => setGridFilterMode('all')}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                        gridFilterMode === 'all'
-                          ? 'bg-amber-500 text-slate-950 shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      onClick={() => setSelectedWeekOffset(prev => prev - 4)}
+                      className="p-1 hover:text-white cursor-pointer font-bold"
+                      title="Mês anterior"
                     >
-                      ☀️ Todos os Horários (07h - 23h)
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
+                    <span className="font-extrabold text-amber-300 min-w-[110px] text-center capitalize">
+                      {monthYearHeader}
+                    </span>
                     <button
-                      onClick={() => setGridFilterMode('active_only')}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                        gridFilterMode === 'active_only'
-                          ? 'bg-cyan-500 text-slate-950 shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      onClick={() => setSelectedWeekOffset(prev => prev + 4)}
+                      className="p-1 hover:text-white cursor-pointer font-bold"
+                      title="Próximo mês"
                     >
-                      🎯 Somente Horários Ativos
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
 
-                {/* MATRIZ DE CALENDARIO DINÁMICO DE SEMANA COMPLETA */}
-                <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950/80 shadow-inner">
-                  <table className="w-full min-w-[800px] border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-slate-800 bg-slate-900/90">
-                        <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-wider w-20 border-r border-slate-800 text-center">
-                          Horário
-                        </th>
-                        {daysList.map((d) => (
-                          <th
-                            key={d.dayName}
-                            className={`p-3 text-center border-r border-slate-800 last:border-r-0 ${
-                              d.isToday ? 'bg-amber-500/10 border-b-2 border-b-amber-400' : ''
-                            }`}
-                          >
-                            <div className="flex flex-col items-center">
-                              <span className={`text-xs font-black ${d.isToday ? 'text-amber-300' : 'text-slate-200'}`}>
-                                {d.dayName}
-                              </span>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-[10px] text-slate-400 font-mono font-medium">{d.dateStr}</span>
-                                {d.isToday && (
-                                  <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 rounded uppercase tracking-wider shadow-sm">
-                                    HOJE
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-xs">
-                      {gridTimeSlots.map((slotTime) => (
-                        <tr key={slotTime} className="hover:bg-slate-900/30 transition-colors">
-                          
-                          {/* Coluna de Hora */}
-                          <td className="p-2.5 text-center font-mono font-extrabold text-slate-400 border-r border-slate-800 bg-slate-900/40 text-[11px]">
-                            {slotTime}
-                          </td>
+                  {/* Navegação Semana */}
+                  <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-xs text-slate-300">
+                    <button
+                      onClick={() => setSelectedWeekOffset(prev => prev - 1)}
+                      className="p-1 hover:text-white cursor-pointer font-bold"
+                      title="Semana anterior"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedWeekOffset(0)}
+                      className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950 transition-all cursor-pointer uppercase"
+                    >
+                      Hoje
+                    </button>
+                    <span className="font-extrabold text-slate-200 min-w-[190px] text-center">
+                      {rangeBannerStr}
+                    </span>
+                    <button
+                      onClick={() => setSelectedWeekOffset(prev => prev + 1)}
+                      className="p-1 hover:text-white cursor-pointer font-bold"
+                      title="Próxima semana"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                          {/* 7 Columnas dinámicas de la semana */}
-                          {daysList.map((col) => {
-                            
-                            // Filtrar aulas reales de bookings que coincidan con la fecha iso/día y hora
-                            const cellBookings = bookings.filter(b => {
-                              const dateMatch = b.isoDateStr 
-                                ? (b.isoDateStr === col.isoDateStr) 
-                                : (b.day === col.dayName && selectedWeekOffset === 0);
-                              const timeMatch = b.time === slotTime;
-                              return dateMatch && timeMatch;
-                            });
-
-                            const isHourSlotActiveInSchedule = (schedule[col.dayName] || []).includes(slotTime) || (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00');
-
-                            return (
-                              <td
-                                key={col.dayName}
-                                className={`p-1.5 border-r border-slate-800 last:border-r-0 align-top min-h-[52px] ${
-                                  col.isToday ? 'bg-amber-500/[0.02]' : ''
-                                }`}
-                              >
-                                {cellBookings.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {cellBookings.map(b => {
-                                      const badge = getStatusBadge(b.status);
-                                      return (
-                                        <div
-                                          key={b.id}
-                                          onClick={() => setSelectedBookingForModal({ ...b, colDateStr: col.dateStr })}
-                                          className={`p-2 rounded-xl border text-[11px] leading-tight transition-all hover:scale-[1.03] cursor-pointer shadow-md ${badge.bg}`}
-                                        >
-                                          <div className="font-extrabold truncate flex items-center justify-between gap-1">
-                                            <span className="truncate">{b.studentName}</span>
-                                            <span className={`w-2 h-2 rounded-full ${badge.dot} shrink-0`} title={badge.label}></span>
-                                          </div>
-                                          <div className="text-[9px] opacity-90 mt-1 font-medium flex items-center justify-between gap-1">
-                                            <span className="truncate">{b.studentLevel || 'Iniciante'}</span>
-                                            <span className={`font-extrabold uppercase text-[8px] px-1 py-0.5 rounded border ${badge.badgeBg}`}>
-                                              {badge.label.split(' ')[0]}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : isHourSlotActiveInSchedule ? (
-                                  <div className="h-full min-h-[40px] rounded-lg border border-dashed border-emerald-500/20 bg-emerald-500/[0.03] p-1 flex items-center justify-center text-[10px] text-emerald-400/60 font-semibold">
-                                    <span>Livre</span>
-                                  </div>
-                                ) : (
-                                  <div className="h-full min-h-[40px]"></div>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
-                  <span>💡 Clique em qualquer aula agendada para alterar seu status (Agendada, Falta, Cancelada, Concluída) ou entrar no Meet.</span>
+                  {/* Botão Atualizar Horários */}
                   <button
-                    onClick={() => setAgendaViewMode('config')}
-                    className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer shrink-0"
+                    onClick={() => setAgendaViewMode(agendaViewMode === 'config' ? 'grid' : 'config')}
+                    className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all"
                   >
-                    Abrir Editor de Horários →
+                    <Clock className="w-4 h-4" />
+                    <span>{agendaViewMode === 'config' ? '← Voltar à Agenda' : 'Atualizar Horários'}</span>
                   </button>
+
+                  {/* Alternador de Modo de Vista (Grid3x3 vs List) */}
+                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1">
+                    <button
+                      onClick={() => { setAgendaViewMode('grid'); setAgendaDisplayMode('week'); }}
+                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                        agendaDisplayMode === 'week' && agendaViewMode === 'grid'
+                          ? 'bg-sky-600 text-white shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Visão Grade (Semanal)"
+                    >
+                      <Grid3x3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => { setAgendaViewMode('grid'); setAgendaDisplayMode('list'); }}
+                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                        agendaDisplayMode === 'list' && agendaViewMode === 'grid'
+                          ? 'bg-sky-600 text-white shadow'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Visão Lista"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* VISTA 2: EDITOR DE DISPONIBILIDADE SEMANAL (CONFIGURACIÓN DE MATRIZ DE HORARIOS) */}
-            {agendaViewMode === 'config' && (
-              <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-cyan-500/30 shadow-2xl">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div>
-                    <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                      <Settings className="w-5 h-5 text-cyan-400" />
-                      Editor de Disponibilidade Semanal (07:00 às 23:00)
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Selecione os horários abertos (verde) em que você está disponível para dar aulas aos alunos.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setAgendaViewMode('grid')}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 cursor-pointer"
-                    >
-                      ← Voltar à Agenda
-                    </button>
+              {/* EDITOR DE CONFIGURAÇÃO DE HORÁRIOS */}
+              {agendaViewMode === 'config' ? (
+                <div className="space-y-6 pt-2">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                        <Settings className="w-5 h-5 text-cyan-400" />
+                        Editor de Disponibilidade Semanal (07:00 às 23:00)
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Selecione os horários abertos (verde) em que você está disponível para lecionar.
+                      </p>
+                    </div>
 
                     <button
                       onClick={handleSaveSchedule}
@@ -1226,57 +1109,245 @@ export default function TeacherDashboard() {
                       <span>Salvar Agenda</span>
                     </button>
                   </div>
-                </div>
 
-                {isScheduleSaved && (
-                  <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Agenda de horários salva com sucesso! Os alunos já podem agendar nesses horários.</span>
+                  {isScheduleSaved && (
+                    <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>Agenda de horários salva com sucesso! Os alunos já podem agendar nesses horários.</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {days.map(day => {
+                      const activeCount = (schedule[day] || []).length;
+                      return (
+                        <div key={day} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-extrabold text-amber-400">{day}</span>
+                              <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 font-semibold">
+                                {activeCount} horários ativos
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <button onClick={() => handleSelectAllDay(day)} className="text-cyan-400 font-bold hover:underline cursor-pointer">Marcar Todos</button>
+                              <span className="text-slate-600">|</span>
+                              <button onClick={() => handleClearDay(day)} className="text-slate-400 font-bold hover:underline cursor-pointer">Limpar</button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-9 gap-1.5">
+                            {ALL_SLOTS.map(slot => {
+                              const isActive = (schedule[day] || []).includes(slot);
+                              return (
+                                <button
+                                  key={slot}
+                                  onClick={() => toggleSlot(day, slot)}
+                                  className={`py-2 rounded-xl text-[11px] font-mono font-extrabold transition-all cursor-pointer ${
+                                    isActive
+                                      ? 'bg-emerald-500 text-slate-950 shadow-md font-black hover:bg-emerald-400'
+                                      : 'bg-slate-900 border border-slate-800 text-slate-500 hover:text-slate-200'
+                                  }`}
+                                >
+                                  {slot}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
-
-                <div className="space-y-4">
-                  {days.map(day => {
-                    const activeCount = (schedule[day] || []).length;
-                    return (
-                      <div key={day} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-amber-400">{day}</span>
-                            <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800 font-semibold">
-                              {activeCount} horários ativos
+                </div>
+              ) : agendaDisplayMode === 'list' ? (
+                /* VISÃO EM LISTA DE AULAS */
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-sm font-bold text-white">Lista de Aulas da Semana ({rangeBannerStr})</h3>
+                  {tutorBookings.length > 0 ? (
+                    <div className="space-y-2">
+                      {tutorBookings.map(b => {
+                        const badge = getStatusBadge(b.status);
+                        return (
+                          <div 
+                            key={b.id} 
+                            onClick={() => setSelectedBookingForModal(b)}
+                            className="bg-slate-950 border border-slate-800 hover:border-cyan-500/40 p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <img src={b.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} alt={b.studentName} className="w-10 h-10 rounded-full object-cover border border-cyan-400/40" />
+                              <div>
+                                <h4 className="font-extrabold text-white text-xs">{b.studentName}</h4>
+                                <p className="text-[11px] text-slate-400">{b.studentLevel || 'Iniciante'} • {b.colDateStr || b.day} às {b.time}</p>
+                              </div>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${badge.badgeBg}`}>
+                              {badge.label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            <button onClick={() => handleSelectAllDay(day)} className="text-cyan-400 font-bold hover:underline cursor-pointer">Marcar Todos</button>
-                            <span className="text-slate-600">|</span>
-                            <button onClick={() => handleClearDay(day)} className="text-slate-400 font-bold hover:underline cursor-pointer">Limpar</button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-9 gap-1.5">
-                          {ALL_SLOTS.map(slot => {
-                            const isActive = (schedule[day] || []).includes(slot);
-                            return (
-                              <button
-                                key={slot}
-                                onClick={() => toggleSlot(day, slot)}
-                                className={`py-2 rounded-xl text-[11px] font-mono font-extrabold transition-all cursor-pointer ${
-                                  isActive
-                                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black hover:bg-emerald-400'
-                                    : 'bg-slate-950 border border-slate-800 text-slate-500 hover:text-slate-200'
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                      Nenhuma aula agendada para esta semana.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* VISÃO EM GRADE COM LINHA VERMELHA DE TEMPO AO VIVO */
+                <div className="space-y-3">
+                  {/* Legenda de Estados */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap text-xs">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
+                      <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider shrink-0">Legenda:</span>
+                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-300 font-semibold text-[11px] shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>🟢 Agendada</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-lg text-rose-300 font-semibold text-[11px] shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                        <span>🔴 Falta</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-amber-300 font-semibold text-[11px] shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                        <span>🟡 Cancelada</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-lg text-sky-300 font-semibold text-[11px] shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                        <span>🔵 Concluída</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* MATRIZ SEGUINTE DE HORA AO VIVO */}
+                  <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950/90 shadow-inner">
+                    <div ref={gridContainerRef} className="relative max-h-[620px] overflow-y-auto min-w-[980px]">
+                      <table className="w-full border-collapse text-left">
+                        <thead className="sticky top-0 z-20 bg-slate-900 border-b border-slate-800 shadow">
+                          <tr>
+                            <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-wider w-20 border-r border-slate-800 text-center">
+                              Horário
+                            </th>
+                            {daysList.map((d) => (
+                              <th
+                                key={d.dayName}
+                                className={`p-3 text-center border-r border-slate-800 last:border-r-0 ${
+                                  d.isToday ? 'bg-amber-500/10 border-b-2 border-b-amber-400' : ''
                                 }`}
                               >
-                                {slot}
-                              </button>
+                                <div className="flex flex-col items-center">
+                                  <span className={`text-xs font-black ${d.isToday ? 'text-amber-300 font-extrabold' : 'text-slate-200'}`}>
+                                    {d.dayName}
+                                  </span>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-[10px] text-slate-400 font-mono font-medium">{d.dateStr}</span>
+                                    {d.isToday && (
+                                      <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 rounded uppercase tracking-wider shadow-sm">
+                                        HOJE
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 text-xs">
+                          {TIME_SLOTS_15MIN.map((slotTime, timeIdx) => {
+                            const timePosition = getCurrentTimePosition();
+                            const isCurrentTimeSlot = timePosition && timePosition.slotIndex === timeIdx;
+
+                            return (
+                              <tr 
+                                key={slotTime} 
+                                ref={isCurrentTimeSlot ? currentTimeRef : null}
+                                className="hover:bg-slate-900/40 transition-colors relative min-h-[48px]"
+                              >
+                                {/* LINHA VERMELHA DE TEMPO ATUAL AO VIVO (EXACT MATCH ALUNO.CONEXIONAMERICA) */}
+                                {isCurrentTimeSlot && selectedWeekOffset === 0 && (
+                                  <td colSpan={8} className="p-0 border-none absolute left-0 right-0 z-30 pointer-events-none" style={{ top: `${timePosition.percentageIntoSlot}%` }}>
+                                    <div className="flex items-center w-full">
+                                      <div className="w-[80px] flex items-center justify-end pr-1.5 shrink-0">
+                                        <span className="text-[9px] text-rose-300 font-black bg-rose-950/90 border border-rose-500/60 px-1.5 py-0.5 rounded shadow flex items-center gap-1">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                                          {currentTimeStr}
+                                        </span>
+                                      </div>
+                                      <div className="flex-1 h-[2px] bg-rose-500 relative shadow-[0_0_8px_rgba(244,63,94,0.9)]">
+                                        <div className="absolute left-0 -top-[3px] w-2.5 h-2.5 bg-rose-500 rounded-full border border-white shadow"></div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Coluna de Hora */}
+                                <td className="p-2 text-center font-mono font-extrabold text-slate-400 border-r border-slate-800 bg-slate-900/40 text-[11px] w-20 shrink-0">
+                                  {slotTime}
+                                </td>
+
+                                {/* 7 Colunas de Ddias */}
+                                {daysList.map((col) => {
+                                  const cellBookings = bookings.filter(b => {
+                                    const dateMatch = b.isoDateStr 
+                                      ? (b.isoDateStr === col.isoDateStr) 
+                                      : (b.day === col.dayName && selectedWeekOffset === 0);
+                                    const timeMatch = b.time === slotTime;
+                                    return dateMatch && timeMatch;
+                                  });
+
+                                  const isHourSlotActiveInSchedule = (schedule[col.dayName] || []).includes(slotTime) || (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00');
+
+                                  return (
+                                    <td
+                                      key={col.dayName}
+                                      className={`p-1 border-r border-slate-800 last:border-r-0 align-top min-h-[48px] ${
+                                        col.isToday ? 'bg-amber-500/[0.03]' : ''
+                                      }`}
+                                    >
+                                      {cellBookings.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {cellBookings.map(b => {
+                                            const badge = getStatusBadge(b.status);
+                                            return (
+                                              <div
+                                                key={b.id}
+                                                onClick={() => setSelectedBookingForModal({ ...b, colDateStr: col.dateStr })}
+                                                className={`p-2 rounded-xl border text-[11px] leading-tight transition-all hover:scale-[1.02] cursor-pointer shadow-md ${badge.bg}`}
+                                              >
+                                                <div className="font-extrabold truncate flex items-center justify-between gap-1">
+                                                  <span className="truncate">{b.studentName}</span>
+                                                  <span className={`w-2 h-2 rounded-full ${badge.dot} shrink-0`} title={badge.label}></span>
+                                                </div>
+                                                <div className="text-[9px] opacity-90 mt-1 font-medium flex items-center justify-between gap-1">
+                                                  <span className="truncate">{b.studentLevel || 'Iniciante'}</span>
+                                                  <span className={`font-extrabold uppercase text-[8px] px-1 py-0.5 rounded border ${badge.badgeBg}`}>
+                                                    {badge.label.split(' ')[0]}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : isHourSlotActiveInSchedule ? (
+                                        <div className="h-full min-h-[36px] rounded-lg border border-dashed border-emerald-500/20 bg-emerald-500/[0.03] p-1 flex items-center justify-center text-[10px] text-emerald-400/60 font-semibold">
+                                          <span>Livre</span>
+                                        </div>
+                                      ) : (
+                                        <div className="h-full min-h-[36px]"></div>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
                             );
                           })}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+            </div>
 
           </div>
         )}
