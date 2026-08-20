@@ -523,29 +523,7 @@ export default function LoginPage({ forceRole }) {
                       ? (isAdmin ? 'Entrar como Administrador 🛡️' : isTeacher ? 'Entrar no Portal do Professor 🚀' : 'Entrar no Portal do Aluno 🚀') 
                       : (isTeacher ? 'Cadastrar e Entrar como Professor 🚀' : 'Cadastrar e Entrar no Portal 🚀')}
                 </span>
-                <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* BOTÃO DE ACESSO RÁPIDO AO PAINEL DE ADMINISTRAÇÃO */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setEmail('emaildeconexionamerica@gmail.com');
-                    setPassword('AlyRoberto2026*');
-                    setIsLoading(true);
-                    const res = await signInWithSupabase({ email: 'emaildeconexionamerica@gmail.com', password: 'AlyRoberto2026*' });
-                    setIsLoading(false);
-                    if (res.success) {
-                      navigate('/admin');
-                    }
-                  }}
-                  className="w-full bg-slate-900 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Acesso Direto como Administrador (Conexão América) 🛡️</span>
-                </button>
-              </div>
 
             </form>
           )}
