@@ -68,7 +68,26 @@ export default function TeacherDashboard() {
     }
   }, [directChatMessages, selectedStudentId, activeTab]);
 
-  const teacherAnnouncements = announcements.filter(a => a.target === 'all' || a.target === 'teachers');
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lexy_teacher_dismissed_announcements_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleDismissAnnouncement = (annId) => {
+    setDismissedAnnouncements(prev => {
+      const updated = [...prev, annId];
+      localStorage.setItem('lexy_teacher_dismissed_announcements_v1', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const teacherAnnouncements = (announcements || [])
+    .filter(a => a.target === 'teachers')
+    .filter(a => !dismissedAnnouncements.includes(a.id));
 
   const tutor = tutors.find(t => t.email === profile?.email || t.id === profile?.id) || tutors[0] || {
     id: 'tutor-1',
@@ -493,7 +512,7 @@ export default function TeacherDashboard() {
               )}
 
               {teacherAnnouncements.map(ann => (
-                <div key={ann.id} className="bg-slate-900/40 backdrop-blur-md border border-cyan-500/30 p-4 rounded-xl flex items-center justify-between gap-3">
+                <div key={ann.id} className="bg-slate-900/40 backdrop-blur-md border border-cyan-500/30 p-4 rounded-xl flex items-center justify-between gap-3 relative group">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
                       <Megaphone className="w-4 h-4" />
@@ -503,9 +522,18 @@ export default function TeacherDashboard() {
                       <p className="text-[11px] text-slate-300 mt-0.5">{ann.content}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/30 font-medium shrink-0">
-                    Anúncio
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/30 font-medium">
+                      Anúncio
+                    </span>
+                    <button
+                      onClick={() => handleDismissAnnouncement(ann.id)}
+                      title="Fechar anúncio"
+                      className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4 text-slate-400 hover:text-white" />
+                    </button>
+                  </div>
                 </div>
               ))}
 

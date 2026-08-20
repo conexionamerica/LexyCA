@@ -73,9 +73,17 @@ export const MarketplaceProvider = ({ children }) => {
     return [
       {
         id: 'ann-1',
-        target: 'all',
+        target: 'students',
         title: '🎉 Bem-vindo à Plataforma Lexy PRO!',
         content: 'Aproveite nossa garantia de satisfação nas aulas experimentais e faça seu agendamento direto com os professores nativos.',
+        level: 'info',
+        createdAt: new Date().toLocaleDateString()
+      },
+      {
+        id: 'ann-teacher-1',
+        target: 'teachers',
+        title: '🚀 Visibilidade e Novos Alunos!',
+        content: 'Após a aprovação do seu perfil pela coordenação, ele será exibido para centenas de alunos interessados em agendar aulas com você.',
         level: 'info',
         createdAt: new Date().toLocaleDateString()
       }
