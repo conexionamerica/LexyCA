@@ -6,7 +6,7 @@ import {
   Calendar, Clock, DollarSign, Users, Star, 
   CheckCircle2, Video, Sparkles, Settings, Save, AlertCircle, 
   MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home,
-  ChevronLeft, Grid3x3, List, RefreshCw
+  ChevronLeft, Grid3x3, List, RefreshCw, Search
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
