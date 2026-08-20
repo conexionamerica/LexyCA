@@ -113,6 +113,7 @@ export const MarketplaceProvider = ({ children }) => {
       {
         id: 'chat-1',
         studentId: 'stud-1',
+        tutorId: 'tutor-1',
         senderName: 'María Fernández (Tutor)',
         senderRole: 'teacher',
         text: '¡Hola Gabriel! Bienvenido a nossa plataforma. Quando quiser, podemos combinar o foco da nossa próxima aula.',
@@ -121,6 +122,7 @@ export const MarketplaceProvider = ({ children }) => {
       {
         id: 'chat-2',
         studentId: 'stud-1',
+        tutorId: 'tutor-1',
         senderName: 'Gabriel Alumno',
         senderRole: 'student',
         text: '¡Hola María! Excelente, gostaria de focar em conversação de negócios.',
@@ -129,12 +131,33 @@ export const MarketplaceProvider = ({ children }) => {
     ];
   });
 
-  const sendDirectMessage = ({ studentId, senderName, senderRole, text }) => {
+  const sendDirectMessage = (payload, roleFallback, studentIdFallback, nameFallback) => {
+    let studentId = 'stud-1';
+    let tutorId = 'tutor-1';
+    let senderName = 'Aluno';
+    let senderRole = 'student';
+    let text = '';
+
+    if (payload && typeof payload === 'object') {
+      studentId = payload.studentId || studentIdFallback || 'stud-1';
+      tutorId = payload.tutorId || 'tutor-1';
+      senderRole = payload.senderRole || roleFallback || 'student';
+      senderName = payload.senderName || nameFallback || (senderRole === 'teacher' ? 'Tutor' : 'Aluno');
+      text = payload.text || payload.content || '';
+    } else if (typeof payload === 'string') {
+      text = payload;
+      senderRole = roleFallback || 'student';
+      senderName = nameFallback || (senderRole === 'teacher' ? 'Tutor' : 'Aluno');
+      studentId = studentIdFallback || 'stud-1';
+    }
+
     const newMsg = {
-      id: `msg-${Date.now()}`,
-      studentId: studentId || 'stud-1',
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      studentId,
+      tutorId,
       senderName,
       senderRole,
+      sender: senderRole,
       text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
@@ -204,17 +227,135 @@ export const MarketplaceProvider = ({ children }) => {
     return [];
   });
 
+  // Helper for generating initial bookings dynamically matching current week
+  const getInitialDefaultBookings = () => {
+    const now = new Date();
+    const currentDay = now.getDay();
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - currentDay);
+
+    const getDateStr = (dayOffset) => {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + dayOffset);
+      return d.toISOString().split('T')[0];
+    };
+
+    return [
+      {
+        id: 'booking-101',
+        tutorId: 'tutor-1',
+        studentId: 'stud-1',
+        studentName: 'Willyam Giovanni Soares de Castro',
+        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Iniciante',
+        day: 'Segunda',
+        isoDateStr: getDateStr(1),
+        time: '19:15',
+        bookingType: 'subscription',
+        status: 'agendada',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-102',
+        tutorId: 'tutor-1',
+        studentId: 'stud-1',
+        studentName: 'Willyam Giovanni Soares de Castro',
+        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Iniciante',
+        day: 'Terça',
+        isoDateStr: getDateStr(2),
+        time: '19:15',
+        bookingType: 'trial',
+        status: 'agendada',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-103',
+        tutorId: 'tutor-1',
+        studentId: 'stud-1',
+        studentName: 'Willyam Giovanni Soares de Castro',
+        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Iniciante',
+        day: 'Terça',
+        isoDateStr: getDateStr(2),
+        time: '20:00',
+        bookingType: 'subscription',
+        status: 'agendada',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-104',
+        tutorId: 'tutor-1',
+        studentId: 'stud-2',
+        studentName: 'Bruno Heitor de Oliveira',
+        studentAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Intermediário',
+        day: 'Terça',
+        isoDateStr: getDateStr(2),
+        time: '21:00',
+        bookingType: 'subscription',
+        status: 'agendada',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-105',
+        tutorId: 'tutor-1',
+        studentId: 'stud-1',
+        studentName: 'Willyam Giovanni Soares de Castro',
+        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Iniciante',
+        day: 'Quarta',
+        isoDateStr: getDateStr(3),
+        time: '20:00',
+        bookingType: 'trial',
+        status: 'falta',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-106',
+        tutorId: 'tutor-1',
+        studentId: 'stud-3',
+        studentName: 'Gabriel Alumno Silva',
+        studentAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'B2 Intermediário',
+        day: 'Quinta',
+        isoDateStr: getDateStr(4),
+        time: '19:15',
+        bookingType: 'subscription',
+        status: 'cancelada',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-107',
+        tutorId: 'tutor-1',
+        studentId: 'stud-2',
+        studentName: 'Bruno Heitor de Oliveira',
+        studentAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Intermediário',
+        day: 'Quinta',
+        isoDateStr: getDateStr(4),
+        time: '21:00',
+        bookingType: 'subscription',
+        status: 'agendada',
+        createdAt: new Date().toISOString()
+      }
+    ];
+  };
+
   // Bookings
   const [bookings, setBookings] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       } catch (e) {
         console.error('Error cargando reservas', e);
       }
     }
-    return [];
+    return getInitialDefaultBookings();
   });
 
   // Persistencia
@@ -422,13 +563,17 @@ export const MarketplaceProvider = ({ children }) => {
     return { success: true, booking: newBooking };
   };
 
-  const completeBooking = (bookingId) => {
+  const updateBookingStatus = (bookingId, newStatus) => {
     setBookings(prev => prev.map(b => {
       if (b.id === bookingId) {
-        return { ...b, status: 'completed', completedAt: new Date().toISOString() };
+        return { ...b, status: newStatus, updatedAt: new Date().toISOString() };
       }
       return b;
     }));
+  };
+
+  const completeBooking = (bookingId) => {
+    updateBookingStatus(bookingId, 'completed');
   };
 
   const autoPurge30DaysHistory = () => {
@@ -468,6 +613,7 @@ export const MarketplaceProvider = ({ children }) => {
       topUpWallet,
       createBooking,
       completeBooking,
+      updateBookingStatus,
       autoPurge30DaysHistory
     }}>
       {children}

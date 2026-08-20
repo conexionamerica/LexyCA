@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,7 +7,8 @@ import {
   Calendar, Video, CreditCard, MessageSquare, 
   Search, Star, CheckCircle2, Award, Heart, Plus, Sparkles, 
   BookOpen, ChevronRight, Wallet, UserCheck, ShieldCheck, 
-  RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown 
+  RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown,
+  Camera, Save, Upload
 } from 'lucide-react';
 import StudentWallet from './StudentWallet';
 
@@ -18,7 +19,7 @@ export default function StudentDashboard() {
     student, tutors, bookings, completeBooking, 
     announcements, directChatMessages, sendDirectMessage 
   } = useMarketplace();
-  const { profile, logout } = useAuth();
+  const { profile, signOut, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
 
   // Tab control via URL searchParams (unificado no Header superior)
@@ -74,6 +75,96 @@ export default function StudentDashboard() {
 
   const [studentChatMessage, setStudentChatMessage] = useState('');
   const [activeChatTutorId, setActiveChatTutorId] = useState(assignedTutor?.id || 'tutor-1');
+  const messagesContainerRef = useRef(null);
+
+  const activeTutor = useMemo(() => {
+    return approvedTutors.find(t => t.id === activeChatTutorId) || assignedTutor;
+  }, [approvedTutors, activeChatTutorId, assignedTutor]);
+
+  const activeChatMessages = useMemo(() => {
+    return directChatMessages.filter(msg => {
+      if (msg.tutorId) {
+        return msg.tutorId === activeTutor.id;
+      }
+      // Mensagens iniciais de mockup / fallback por nome do tutor
+      if (activeTutor.id === approvedTutors[0]?.id || activeTutor.id === 'tutor-1') {
+        return true;
+      }
+      return msg.senderName?.toLowerCase().includes(activeTutor.name.toLowerCase());
+    });
+  }, [directChatMessages, activeTutor, approvedTutors]);
+
+  // Rolar apenas o container interno do chat sem rolar a página web inteira
+  useEffect(() => {
+    if (activeTab === 'chat' && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, [directChatMessages, activeChatTutorId, activeTab]);
+
+  // Estado de edição de Perfil e Foto
+  const [profileAvatar, setProfileAvatar] = useState(profile?.avatar_url || '');
+  const [editLanguage, setEditLanguage] = useState(profile?.study_language || 'Inglês 🇬🇧🇺🇸');
+  const [editLevel, setEditLevel] = useState(profile?.language_level || 'B2 - Intermediário Avançado 🎓');
+  const [editMotivation, setEditMotivation] = useState(profile?.study_motivation || 'Carreira Profissional 📈');
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.avatar_url) setProfileAvatar(profile.avatar_url);
+      if (profile.study_language) setEditLanguage(profile.study_language);
+      if (profile.language_level) setEditLevel(profile.language_level);
+      if (profile.study_motivation) setEditMotivation(profile.study_motivation);
+    }
+  }, [profile]);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 300;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setProfileAvatar(resizedDataUrl);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    if (updateProfile) {
+      updateProfile({
+        avatar_url: profileAvatar,
+        study_language: editLanguage,
+        language_level: editLevel,
+        study_motivation: editMotivation
+      });
+    }
+    setProfileSaveSuccess(true);
+    setTimeout(() => setProfileSaveSuccess(false), 4000);
+  };
 
   const [myBookingsList, setMyBookingsList] = useState(() => {
     return bookings.length > 0 ? bookings : [
@@ -108,11 +199,14 @@ export default function StudentDashboard() {
 
   const handleLogout = async () => {
     try {
-      await logout();
-      navigate('/login/student');
+      const doSignOut = signOut || logout;
+      if (doSignOut) {
+        await doSignOut();
+      }
     } catch (error) {
       console.error("Error logging out", error);
     }
+    navigate('/');
   };
 
   // Determinar a próxima aula principal e as aulas subsecventes (sem repetição)
@@ -462,81 +556,101 @@ export default function StudentDashboard() {
 
       {/* TAB 3: CHAT SPLIT-VIEW (2 COLUMNAS ESTÁNDAR 30% / 70%) */}
       {activeTab === 'chat' && (
-        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-220px)] min-h-[480px] shadow-sm">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-180px)] min-h-[480px] max-h-[680px] shadow-sm">
           
           {/* SIDEBAR IZQUIERDA (30% - md:col-span-4) */}
-          <div className="md:col-span-4 bg-slate-950/80 border-b md:border-b-0 md:border-r border-slate-800/60 p-3 space-y-3 flex flex-col overflow-y-auto">
-            <h3 className="font-semibold text-white text-xs uppercase tracking-wider px-1">Conversas Ativas</h3>
+          <div className="md:col-span-4 bg-slate-950/80 border-b md:border-b-0 md:border-r border-slate-800/60 p-3 flex flex-col h-full overflow-hidden">
+            <h3 className="font-semibold text-white text-xs uppercase tracking-wider px-1 mb-2 shrink-0">Conversas Ativas</h3>
             
-            <div className="space-y-1">
-              {approvedTutors.slice(0, 3).map((tutor) => (
-                <button
-                  key={tutor.id}
-                  onClick={() => setActiveChatTutorId(tutor.id)}
-                  className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left cursor-pointer ${
-                    activeChatTutorId === tutor.id
-                      ? 'bg-cyan-500/15 border border-cyan-500/30 text-white'
-                      : 'hover:bg-slate-900 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <img src={tutor.avatar} alt={tutor.name} className="w-9 h-9 rounded-full object-cover border border-cyan-400/40 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-xs text-white truncate">{tutor.name}</span>
-                      <span className="text-[10px] text-slate-500">Hoje</span>
+            <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
+              {approvedTutors.map((tutor) => {
+                const isSelected = activeChatTutorId === tutor.id;
+                return (
+                  <button
+                    key={tutor.id}
+                    onClick={() => setActiveChatTutorId(tutor.id)}
+                    className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-cyan-500/20 border border-cyan-500/40 text-white shadow-sm font-semibold'
+                        : 'hover:bg-slate-900 text-slate-400 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <img src={tutor.avatar} alt={tutor.name} className="w-9 h-9 rounded-full object-cover border border-cyan-400/40 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-xs text-white truncate">{tutor.name}</span>
+                        <span className="text-[10px] text-slate-500">Hoje</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 truncate">{tutor.subject} • ${tutor.hourlyRate}/h</p>
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate">Olá! Tudo pronto para nossa aula?</p>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* ÁREA DE CHAT DERECHA (70% - md:col-span-8) */}
-          <div className="md:col-span-8 flex flex-col justify-between bg-slate-950/40">
+          <div className="md:col-span-8 flex flex-col h-full overflow-hidden bg-slate-950/40">
             
-            {/* Header del Tutor Activo */}
-            <div className="p-3 bg-slate-950/80 border-b border-slate-800/60 flex items-center justify-between">
+            {/* Header del Tutor Activo - FIJO */}
+            <div className="p-3 bg-slate-950/80 border-b border-slate-800/60 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <img src={assignedTutor.avatar} alt={assignedTutor.name} className="w-8 h-8 rounded-full object-cover border border-cyan-400/40" />
+                <img src={activeTutor.avatar} alt={activeTutor.name} className="w-8 h-8 rounded-full object-cover border border-cyan-400/40" />
                 <div>
-                  <h4 className="font-semibold text-white text-xs">{assignedTutor.name}</h4>
-                  <span className="text-[10px] text-emerald-400 font-medium">● Online • {assignedTutor.subject}</span>
+                  <h4 className="font-semibold text-white text-xs">{activeTutor.name}</h4>
+                  <span className="text-[10px] text-emerald-400 font-medium">● Online • {activeTutor.subject}</span>
                 </div>
               </div>
             </div>
 
-            {/* Ventana de Mensajes Scrollable */}
-            <div className="p-4 overflow-y-auto space-y-2 flex-1">
-              {directChatMessages.length === 0 ? (
+            {/* Ventana de Mensajes Scrollable - ÚNICO ÁREA QUE HACE SCROLL */}
+            <div ref={messagesContainerRef} className="p-4 overflow-y-auto space-y-3 flex-1 min-h-0">
+              {activeChatMessages.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 text-xs">
-                  Nenhuma mensagem trocada ainda. Digite sua dúvida ou mensagem abaixo!
+                  Nenhuma mensagem trocada com {activeTutor.name} ainda. Digite sua dúvida ou mensagem abaixo!
                 </div>
               ) : (
-                directChatMessages.map(msg => (
-                  <div key={msg.id} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`p-2.5 rounded-lg max-w-xs sm:max-w-sm text-xs leading-relaxed ${
-                      msg.sender === 'student' 
-                        ? 'bg-cyan-500 text-slate-950 font-medium shadow-sm' 
-                        : 'bg-slate-900 border border-slate-800 text-slate-200'
-                    }`}>
-                      {msg.text}
+                activeChatMessages.map(msg => {
+                  const isStudent = msg.senderRole === 'student' || msg.sender === 'student';
+                  return (
+                    <div key={msg.id} className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
+                        isStudent 
+                          ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm' 
+                          : 'bg-slate-900 border border-slate-800 text-slate-200'
+                      }`}>
+                        {msg.senderName && (
+                          <span className={`text-[10px] opacity-80 block font-black mb-0.5 ${isStudent ? 'text-slate-950' : 'text-cyan-400'}`}>
+                            {msg.senderName}
+                          </span>
+                        )}
+                        <p className="break-words">{msg.text || msg.content}</p>
+                      </div>
+                      {msg.timestamp && (
+                        <span className="text-[10px] text-slate-500 mt-0.5 font-mono px-1">{msg.timestamp}</span>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
-            {/* Input Fijo al Pie */}
-            <div className="p-3 border-t border-slate-800/60 bg-slate-950/80 flex gap-2">
+            {/* Input Fijo al Pie - FIJO */}
+            <div className="p-3 border-t border-slate-800/60 bg-slate-950/80 flex gap-2 shrink-0">
               <input
                 type="text"
-                placeholder="Escreva sua mensagem..."
+                placeholder={`Escreva sua mensagem para ${activeTutor.name}...`}
                 value={studentChatMessage}
                 onChange={(e) => setStudentChatMessage(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && studentChatMessage.trim()) {
-                    sendDirectMessage(studentChatMessage.trim(), 'student');
+                    sendDirectMessage({
+                      studentId: 'stud-1',
+                      tutorId: activeTutor.id,
+                      senderName: profile?.full_name || currentName,
+                      senderRole: 'student',
+                      text: studentChatMessage.trim()
+                    });
                     setStudentChatMessage('');
                   }
                 }}
@@ -545,7 +659,13 @@ export default function StudentDashboard() {
               <button
                 onClick={() => {
                   if (studentChatMessage.trim()) {
-                    sendDirectMessage(studentChatMessage.trim(), 'student');
+                    sendDirectMessage({
+                      studentId: 'stud-1',
+                      tutorId: activeTutor.id,
+                      senderName: profile?.full_name || currentName,
+                      senderRole: 'student',
+                      text: studentChatMessage.trim()
+                    });
                     setStudentChatMessage('');
                   }
                 }}
@@ -574,24 +694,45 @@ export default function StudentDashboard() {
             <p className="text-xs text-slate-400 mt-0.5">Gerencie seus dados cadastrais, preferências de ensino e segurança da conta.</p>
           </div>
           
-          <div className="space-y-4">
+          {profileSaveSuccess && (
+            <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3.5 rounded-xl flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Configurações e preferências salvas com sucesso!</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-4">
             
-            {/* SEÇÃO 1: DADOS PESSOAIS */}
+            {/* SEÇÃO 1: DADOS PESSOAIS E FOTO DE PERFIL */}
             <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 space-y-3">
               <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
-                <span>Seção 1: Dados Pessoais</span>
+                <span>Seção 1: Dados Pessoais & Foto de Perfil</span>
               </h3>
 
-              <div className="flex items-center gap-3 pb-2 border-b border-slate-800/60">
-                <img 
-                  src={profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'} 
-                  alt="Avatar Aluno" 
-                  className="w-12 h-12 rounded-full object-cover border border-cyan-400/50" 
-                />
-                <div>
-                  <span className="font-semibold text-white text-xs block">{currentName}</span>
-                  <span className="text-[11px] text-slate-400 block">{currentEmail}</span>
+              <div className="flex flex-col sm:flex-row items-center gap-4 pb-3 border-b border-slate-800/60">
+                <div className="relative group shrink-0">
+                  <img 
+                    src={profileAvatar || profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'} 
+                    alt="Avatar Aluno" 
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400/80 shadow-md" 
+                  />
+                  <label className="absolute inset-0 bg-slate-950/75 rounded-2xl flex flex-col items-center justify-center text-cyan-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold">
+                    <Camera className="w-4 h-4 mb-0.5" />
+                    <span>Trocar</span>
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="flex-1 text-center sm:text-left space-y-1">
+                  <span className="font-extrabold text-white text-sm block">{currentName}</span>
+                  <span className="text-xs text-slate-400 block">{currentEmail}</span>
+                  
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-bold transition-all cursor-pointer mt-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Carregar / Trocar Foto de Perfil</span>
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
                 </div>
               </div>
 
@@ -618,7 +759,7 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            {/* SEÇÃO 2: PREFERÊNCIAS DE APRENDIZADO */}
+            {/* SEÇÃO 2: PREFERÊNCIAS DE APRENDIZADO (COM DROPDOWNS EDITÁVEIS E BOTÃO SALVAR) */}
             <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 space-y-3">
               <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -627,40 +768,83 @@ export default function StudentDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <span className="text-slate-500 block mb-0.5 font-medium">Idioma de Interesse</span>
-                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentLanguage}</span>
+                  <label className="text-slate-400 block mb-1 font-bold">Idioma de Interesse *</label>
+                  <select
+                    value={editLanguage}
+                    onChange={(e) => setEditLanguage(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-cyan-400 cursor-pointer"
+                  >
+                    <option value="Inglês 🇬🇧🇺🇸">Inglês 🇬🇧🇺🇸</option>
+                    <option value="Espanhol 🇪🇸">Espanhol 🇪🇸</option>
+                    <option value="Ambos (Inglês e Espanhol) 🌐">Ambos (Inglês e Espanhol) 🌐</option>
+                  </select>
                 </div>
 
                 <div>
-                  <span className="text-slate-500 block mb-0.5 font-medium">Nível Atual</span>
-                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentLevel}</span>
+                  <label className="text-slate-400 block mb-1 font-bold">Nível Atual *</label>
+                  <select
+                    value={editLevel}
+                    onChange={(e) => setEditLevel(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-cyan-400 cursor-pointer"
+                  >
+                    <option value="Iniciante (A1)">Iniciante (A1)</option>
+                    <option value="Básico (A2)">Básico (A2)</option>
+                    <option value="Intermediário (B1)">Intermediário (B1)</option>
+                    <option value="B2 - Intermediário Avançado 🎓">B2 - Intermediário Avançado 🎓</option>
+                    <option value="Avançado (C1)">Avançado (C1)</option>
+                    <option value="Fluente (C2)">Fluente (C2)</option>
+                  </select>
                 </div>
 
                 <div>
-                  <span className="text-slate-500 block mb-0.5 font-medium">Objetivo dos Estudos</span>
-                  <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentMotivation}</span>
+                  <label className="text-slate-400 block mb-1 font-bold">Objetivo dos Estudos *</label>
+                  <select
+                    value={editMotivation}
+                    onChange={(e) => setEditMotivation(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-cyan-400 cursor-pointer"
+                  >
+                    <option value="Viagens ✈️">Viagens ✈️</option>
+                    <option value="Negócios 💼">Negócios 💼</option>
+                    <option value="Carreira Profissional 📈">Carreira Profissional 📈</option>
+                    <option value="Cultura e Entretenimento 🎬">Cultura e Entretenimento 🎬</option>
+                    <option value="Estudos Acadêmicos 🎓">Estudos Acadêmicos 🎓</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
               </div>
-            </div>
 
-            {/* SEÇÃO 3: SEGURANÇA E ENCERRAMENTO (BOTÃO DISCRETO SECUNDÁRIO) */}
-            <div className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div>
-                <h4 className="font-semibold text-white text-xs">Segurança da Conta</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Encerre sua sessão com segurança neste dispositivo.</p>
+              {/* BOTÃO SALVAR ALTERAÇÕES */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-md shadow-cyan-500/20 flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Salvar Alterações</span>
+                </button>
               </div>
-
-              {/* Botão Secundário Discreto com Borda Vermelha Sutil */}
-              <button
-                onClick={handleLogout}
-                className="h-9 px-4 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-medium text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Encerrar Sessão</span>
-              </button>
             </div>
 
+          </form>
+
+          {/* SEÇÃO 3: SEGURANÇA E ENCERRAMENTO (BOTÃO DISCRETO SECUNDÁRIO) */}
+          <div className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="font-semibold text-white text-xs">Segurança da Conta</h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">Encerre sua sessão com segurança neste dispositivo.</p>
+            </div>
+
+            {/* Botão Secundário Discreto com Borda Vermelha Sutil */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="h-9 px-4 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-medium text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Encerrar Sessão</span>
+            </button>
           </div>
+
         </div>
       )}
 

@@ -30,17 +30,30 @@ export const AuthProvider = ({ children }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && mounted) {
           const userMeta = session.user.user_metadata || {};
+          let dbProfile = {};
+          try {
+            const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+            if (data) dbProfile = data;
+          } catch (dbErr) {
+            console.warn('Profiles fetch warning:', dbErr);
+          }
+
+          const localAvatar = localStorage.getItem('lexy_avatar_' + session.user.id) || localStorage.getItem('lexy_avatar_' + session.user.email);
+
           const userProfile = {
             id: session.user.id,
-            full_name: userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
+            full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
             email: session.user.email,
-            role: userMeta.role || 'student',
-            documentNumber: userMeta.documentNumber || '',
-            residenceCountry: userMeta.residenceCountry || 'Brasil 🇧🇷',
-            avatar_url: userMeta.avatar_url || (userMeta.role === 'teacher' 
+            role: dbProfile.role || userMeta.role || 'student',
+            documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
+            residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
+            study_language: dbProfile.study_language || userMeta.study_language || '',
+            language_level: dbProfile.language_level || userMeta.language_level || '',
+            study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
+            avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || (userMeta.role === 'teacher' 
               ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
               : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
-            hourly_rate: userMeta.hourlyRate || 20
+            hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
           };
           setProfile(userProfile);
         }
@@ -57,17 +70,30 @@ export const AuthProvider = ({ children }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const userMeta = session.user.user_metadata || {};
+        let dbProfile = {};
+        try {
+          const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+          if (data) dbProfile = data;
+        } catch (dbErr) {
+          console.warn('Profiles fetch warning:', dbErr);
+        }
+
+        const localAvatar = localStorage.getItem('lexy_avatar_' + session.user.id) || localStorage.getItem('lexy_avatar_' + session.user.email);
+
         const userProfile = {
           id: session.user.id,
-          full_name: userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
+          full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
           email: session.user.email,
-          role: userMeta.role || 'student',
-          documentNumber: userMeta.documentNumber || '',
-          residenceCountry: userMeta.residenceCountry || 'Brasil 🇧🇷',
-          avatar_url: userMeta.avatar_url || (userMeta.role === 'teacher' 
+          role: dbProfile.role || userMeta.role || 'student',
+          documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
+          residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
+          study_language: dbProfile.study_language || userMeta.study_language || '',
+          language_level: dbProfile.language_level || userMeta.language_level || '',
+          study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
+          avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || (userMeta.role === 'teacher' 
             ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
             : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
-          hourly_rate: userMeta.hourlyRate || 20
+          hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
         };
         setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
@@ -263,6 +289,54 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(LOCAL_STORAGE_KEY_AUTH);
   };
 
+  const updateProfile = async (updatedData) => {
+    setProfile(prev => {
+      const merged = { ...prev, ...updatedData };
+      localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, JSON.stringify(merged));
+      if (merged.id && updatedData.avatar_url) {
+        localStorage.setItem('lexy_avatar_' + merged.id, updatedData.avatar_url);
+      }
+      if (merged.email && updatedData.avatar_url) {
+        localStorage.setItem('lexy_avatar_' + merged.email, updatedData.avatar_url);
+      }
+      return merged;
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        if (updatedData.avatar_url) {
+          localStorage.setItem('lexy_avatar_' + session.user.id, updatedData.avatar_url);
+          if (session.user.email) {
+            localStorage.setItem('lexy_avatar_' + session.user.email, updatedData.avatar_url);
+          }
+        }
+
+        await supabase.auth.updateUser({
+          data: {
+            avatar_url: updatedData.avatar_url,
+            study_language: updatedData.study_language,
+            language_level: updatedData.language_level,
+            study_motivation: updatedData.study_motivation
+          }
+        });
+
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          full_name: updatedData.full_name || profile?.full_name,
+          email: session.user.email,
+          avatar_url: updatedData.avatar_url,
+          study_language: updatedData.study_language,
+          language_level: updatedData.language_level,
+          study_motivation: updatedData.study_motivation,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.warn('Error syncing profile update to Supabase:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user: profile,
@@ -271,7 +345,9 @@ export const AuthProvider = ({ children }) => {
       loginAdmin,
       signInWithSupabase,
       signUpWithSupabase,
-      signOut
+      signOut,
+      logout: signOut,
+      updateProfile
     }}>
       {children}
     </AuthContext.Provider>

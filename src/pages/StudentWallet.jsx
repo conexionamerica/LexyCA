@@ -173,7 +173,7 @@ export default function StudentWallet() {
             ) : (
               <>
                 <CreditCard className="w-4 h-4" />
-                <span>Pagar com Mercado Pago</span>
+                <span>Pagar</span>
               </>
             )}
           </button>

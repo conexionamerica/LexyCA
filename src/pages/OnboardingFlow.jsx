@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
+import { validateCPF, formatCPF } from '../lib/cpfValidator';
 import { 
   User, Mail, Phone, Globe, Clock, DollarSign, Award, 
   Video, FileText, CheckCircle2, ArrowRight, ArrowLeft, 
-  Sparkles, ShieldCheck, AlertCircle, GraduationCap, Lock, Eye, EyeOff 
+  Sparkles, ShieldCheck, AlertCircle, GraduationCap, Lock, Eye, EyeOff,
+  Camera, Upload
 } from 'lucide-react';
 
 const COUNTRIES = [
@@ -62,8 +64,10 @@ export default function OnboardingFlow() {
   // Form Data State de Cadastro
   const [formData, setFormData] = useState({
     full_name: '',
+    birth_date: '',
     email: '',
     phone: '',
+    document_number: '',
     password: '',
     country: 'Espanha',
     timezone: 'America/Sao_Paulo (GMT-3)',
@@ -72,21 +76,45 @@ export default function OnboardingFlow() {
     other_languages: 'Português (Avançado), Inglês (B2)',
     specialties: ['Conversação'],
     experience_years: 5,
-    certifications: 'Licenciatura em Letras / Certificado TEFL',
+    certifications: '',
     hourly_rate: 20,
     headline: 'Professor(a) Nativo(a) com Foco em Conversação Fluida e Prática',
     bio: `¡Hola! Meu nome é professor(a) apaixonado(a) por ensinar idiomas. Utilizo uma metodologia 100% prática e personalizada focada na comunicação oral desde a primeira aula. Já ajudei dezenas de alunos a alcançarem a fluência.`,
     video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     presentation_photo: '',
-    avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'
+    avatar_url: ''
   });
 
   const handlePhotoUpload = (field) => (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField(field, reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 300;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          updateField(field, resizedDataUrl);
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -140,8 +168,16 @@ export default function OnboardingFlow() {
   const validateStep = (step) => {
     if (step === 1) {
       if (!formData.full_name.trim()) return 'Por favor, informe seu nome completo.';
+      if (!formData.birth_date) return 'Por favor, informe sua data de nascimento.';
       if (!formData.email.trim() || !formData.email.includes('@')) return 'Por favor, informe um e-mail válido.';
       if (!formData.phone.trim()) return 'Por favor, informe seu telefone/WhatsApp.';
+      if (formData.country === 'Brasil') {
+        const cleanCPF = formData.document_number.replace(/\D/g, '');
+        if (!cleanCPF) return 'Por favor, informe seu CPF.';
+        if (!validateCPF(cleanCPF)) return '❌ CPF inválido! Por favor, informe um CPF verdadeiro e válido registrado na Receita Federal.';
+      } else {
+        if (!formData.document_number.trim()) return 'Por favor, informe seu Número de Identificação ou Passaporte.';
+      }
       if (!formData.password || formData.password.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
     }
     if (step === 2) {
@@ -186,27 +222,32 @@ export default function OnboardingFlow() {
   };
 
   const handleSubmitRegistration = async (e) => {
-    e.preventDefault();
-    const error = validateStep(4);
-    if (error) {
-      setErrorMessage(error);
-      return;
+    if (e) e.preventDefault();
+    if (currentStep !== 4) return;
+
+    for (let s = 1; s <= 4; s++) {
+      const stepError = validateStep(s);
+      if (stepError) {
+        setCurrentStep(s);
+        setErrorMessage(stepError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
     setErrorMessage('');
 
     try {
-      // 1. Registrar el tutor en el marketplace (estado local)
       const newTutor = registerTutor(formData);
       setCreatedTutorId(newTutor.id);
 
-      // 2. Registrar el usuario en Supabase Auth
       const result = await signUpWithSupabase({
         name: formData.full_name,
         email: formData.email,
         password: formData.password,
         role: 'teacher',
+        documentNumber: formData.document_number,
+        residenceCountry: formData.country,
         hourlyRate: formData.hourly_rate
       });
 
@@ -435,19 +476,32 @@ export default function OnboardingFlow() {
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-400 block mb-1">Foto de Perfil *</label>
                     <div className="flex items-center gap-4">
-                      {formData.avatar_url && (
-                        <img 
-                          src={formData.avatar_url} 
-                          alt="Avatar Preview" 
-                          className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md"
+                      <div className="relative group w-16 h-16 rounded-2xl bg-slate-900 border-2 border-dashed border-amber-400/60 flex flex-col items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                        {formData.avatar_url ? (
+                          <img 
+                            src={formData.avatar_url} 
+                            alt="Avatar Preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-amber-400 p-1 text-center">
+                            <Camera className="w-6 h-6 mb-0.5" />
+                            <span className="text-[9px] font-bold text-amber-300/80 leading-none">+ Foto</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload('avatar_url')}
+                          className="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 cursor-pointer"
                         />
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload('avatar_url')}
-                        className="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400 cursor-pointer"
-                      />
+                        <span className="text-[11px] text-slate-400 block mt-1">
+                          Envie sua foto de perfil profissional para que os alunos possam te identificar.
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -460,6 +514,17 @@ export default function OnboardingFlow() {
                       onChange={(e) => updateField('full_name', e.target.value)}
                       placeholder="Ex: María Fernández Silva"
                       className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Data de Nascimento *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.birth_date}
+                      onChange={(e) => updateField('birth_date', e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-medium outline-none focus:border-amber-400 cursor-pointer"
                     />
                   </div>
 
@@ -488,7 +553,7 @@ export default function OnboardingFlow() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-400 block mb-1">País de Origem *</label>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">País de Residência / Origem *</label>
                     <select
                       value={formData.country}
                       onChange={(e) => updateField('country', e.target.value)}
@@ -496,6 +561,24 @@ export default function OnboardingFlow() {
                     >
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">
+                      {formData.country === 'Brasil' ? 'CPF (Brasil) *' : 'Número de Identificação / Passaporte *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.document_number}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const formatted = formData.country === 'Brasil' ? formatCPF(val) : val;
+                        updateField('document_number', formatted);
+                      }}
+                      placeholder={formData.country === 'Brasil' ? 'Ex: 000.000.000-00' : 'Ex: Nº de Identidade ou Passaporte'}
+                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-amber-400 font-medium"
+                    />
                   </div>
                 </div>
 
@@ -763,9 +846,10 @@ export default function OnboardingFlow() {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmitRegistration}
                   disabled={isSubmitting}
-                  className={`bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <span>{isSubmitting ? 'Registrando...' : 'Finalizar Cadastro de Tutor 🚀'}</span>
                 </button>

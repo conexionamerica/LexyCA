@@ -240,7 +240,8 @@ export default function LoginPage({ forceRole }) {
           {/* Convenios & Parcerias Row */}
           <div className="relative z-10 pt-4 border-t border-slate-800/80 text-center space-y-1 hidden sm:block">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parcerias e Convênios</p>
-            <div className="flex items-center justify-center gap-6 opacity-75 text-xs font-black text-slate-400">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 opacity-75 text-xs font-black text-slate-400 flex-wrap">
+              <span className="tracking-wider text-cyan-400 font-extrabold">CA IDIOMAS</span>
               <span>You<span className="text-cyan-400">Huul</span></span>
               <span className="italic font-serif">New Value</span>
               <span className="uppercase tracking-wider">allya</span>

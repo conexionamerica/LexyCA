@@ -42,6 +42,15 @@ export default function Navbar() {
     { id: 'perfil', label: '👤 Perfil' }
   ];
 
+  const teacherTabs = [
+    { id: 'inicio', label: '🏠 Início' },
+    { id: 'agenda', label: '📅 Agenda' },
+    { id: 'alunos', label: '👥 Alunos' },
+    { id: 'chat', label: '💬 Chat' },
+    { id: 'ganhos', label: '💰 Ganhos' },
+    { id: 'perfil', label: '⚙️ Perfil' }
+  ];
+
   const currentTab = searchParams.get('tab') || 'inicio';
 
   // Verificar se o usuário está dentro de qualquer painel
@@ -81,57 +90,30 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* LADO DIREITO: IDIOMA, SUPORTE E MENÚ DE USUARIO */}
+          {/* CENTRO: NAVEGAÇÃO UNIFICADA DO PROFESSOR NO HEADER PRINCIPAL */}
+          {profile?.role === 'teacher' && (
+            <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/40 border border-slate-800/80 rounded-xl p-1">
+              {teacherTabs.map(tab => {
+                const isActive = (location.pathname.startsWith('/dashboard/teacher') || location.pathname.startsWith('/tutor')) && currentTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => navigate(`/dashboard/teacher?tab=${tab.id}`)}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all cursor-pointer ${
+                      isActive
+                        ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20 font-semibold shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* LADO DIREITO: MENÚ DE USUARIO */}
           <div className="hidden md:flex items-center gap-3 text-xs font-bold text-slate-300">
-            
-            {/* Seletor de Idioma / Moeda */}
-            <div className="relative">
-              <button
-                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white transition-all cursor-pointer"
-              >
-                <span>{languageLabels[lang]?.flag}</span>
-                <span>{languageLabels[lang]?.label}</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isLangDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isLangDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 animate-fade-in-up space-y-1">
-                  {Object.entries(languageLabels).map(([code, item]) => (
-                    <button
-                      key={code}
-                      onClick={() => {
-                        changeLanguage(code);
-                        setIsLangDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        lang === code
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                          : 'text-slate-300 hover:bg-slate-900 hover:text-white'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>{item.flag}</span>
-                        <span>{item.label}</span>
-                      </span>
-                      {lang === code && <Check className="w-3.5 h-3.5 text-cyan-400" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* BOTÃO DE SUPORTE MAIS INTUITIVO */}
-            <a 
-              href="https://wa.me/5511999999999"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-all font-extrabold cursor-pointer"
-              title="Falar com Suporte"
-            >
-              <Headphones className="w-4 h-4 text-emerald-400" />
-              <span>{t.support || 'Suporte'}</span>
-            </a>
 
             {profile ? (
               /* MENU DO USUÁRIO CONECTADO */
