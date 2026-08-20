@@ -373,10 +373,12 @@ export default function TeacherDashboard() {
       studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
       date: '11/08/2026 às 15:00',
       classType: 'Assinatura 28 dias',
+      durationMinutes: 50,
+      durationFormatted: '50 min',
       grossAmount: 23.00,
       fee: 0,
       netAmount: Number((23.00 * (currentEarnPercent / 100)).toFixed(2)),
-      status: 'Liberado',
+      status: 'Liberado (Feedback Enviado ✓)',
       feedback: 'Excelente aula! Praticamos conversação fluida.'
     }
   ]);
@@ -603,6 +605,8 @@ export default function TeacherDashboard() {
   const handleSubmitFeedbackAndCompleteClass = (e) => {
     e.preventDefault();
 
+    const durationMins = nextBooking.durationMinutes || 50;
+
     incrementTutorLessons(tutor.id);
     setEarnedBalance(prev => Number((prev + netEarningsNextClass).toFixed(2)));
 
@@ -612,10 +616,12 @@ export default function TeacherDashboard() {
       studentAvatar: nextBooking.studentAvatar,
       date: `${nextBooking.day} às ${nextBooking.time}`,
       classType: isNextTrial ? 'Aula Experimental' : 'Assinatura 28 dias',
+      durationMinutes: durationMins,
+      durationFormatted: `${durationMins} min`,
       grossAmount: nextBooking.amount,
       fee: 0,
       netAmount: netEarningsNextClass,
-      status: 'Liberado',
+      status: 'Liberado (Feedback Enviado ✓)',
       feedback: feedbackText
     };
 
@@ -625,7 +631,7 @@ export default function TeacherDashboard() {
     
     completeBooking(nextBooking.id);
 
-    setPayoutSuccessMsg(`🎉 Aula Concluída! +$${netEarningsNextClass} USD adicionados ao seu Saldo Liberado Payout (Margem de ${classEarnPercent}%)!`);
+    setPayoutSuccessMsg(`🎉 Aula Concluída & Feedback Obrigatório Enviado! Tempo contabilizado: ${durationMins} min. +$${netEarningsNextClass} USD adicionados ao seu Saldo Payout!`);
     setTimeout(() => setPayoutSuccessMsg(''), 6000);
   };
 
@@ -1654,25 +1660,31 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            {/* CARDS DE MÉTRICAS DE RESUMO (4 CARDS COMPACTOS) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo a Resgatar</span>
-                <span className="text-xl font-black text-emerald-400">${earnedBalance.toFixed(2)}</span>
-              </div>
-              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Receita Acumulada</span>
-                <span className="text-xl font-black text-white">${(earnedBalance + 80).toFixed(2)}</span>
-              </div>
-              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Aulas Pagas</span>
-                <span className="text-xl font-black text-cyan-400">12 aulas</span>
-              </div>
-              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Margem Atual</span>
-                <span className="text-xl font-black text-amber-400">{currentEarnPercent}%</span>
-              </div>
-            </div>
+            {/* CARDS DE MÉTRICAS DE RESUMO (4 CARDS COMPACTOS COM CONTABILIZAÇÃO DE TEMPO) */}
+            {(() => {
+              const totalMins = earningsHistory.reduce((acc, i) => acc + (i.durationMinutes || 50), 0);
+              const hoursStr = `${Math.floor(totalMins / 60)}h ${totalMins % 60}m`;
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Saldo a Resgatar</span>
+                    <span className="text-xl font-black text-emerald-400">${earnedBalance.toFixed(2)}</span>
+                  </div>
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Tempo Contabilizado</span>
+                    <span className="text-xl font-black text-amber-400 font-mono">{hoursStr}</span>
+                  </div>
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Aulas com Feedback</span>
+                    <span className="text-xl font-black text-cyan-400">{earningsHistory.length} aulas</span>
+                  </div>
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl text-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Margem Atual</span>
+                    <span className="text-xl font-black text-emerald-300">{currentEarnPercent}%</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* PROGRESSO DA MARGEM DE REPASSE */}
             <div className="glass-panel rounded-3xl p-6 space-y-4 border border-emerald-500/20">
@@ -1725,6 +1737,9 @@ export default function TeacherDashboard() {
                           <span className="bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-800 font-mono text-[10px]">
                             {item.classType}
                           </span>
+                          <span className="text-amber-400 font-mono font-bold text-[11px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                            ⏱️ {item.durationFormatted || '50 min'} em aula
+                          </span>
                           <span>•</span>
                           <span>{item.date}</span>
                         </div>
@@ -1733,11 +1748,12 @@ export default function TeacherDashboard() {
 
                     <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
                       <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block">Margem: {currentEarnPercent}%</span>
+                        <span className="text-[10px] text-slate-400 block">Repasse ({currentEarnPercent}%):</span>
                         <strong className="text-emerald-400 font-black text-base">+${item.netAmount} USD</strong>
                       </div>
-                      <span className="bg-emerald-500/10 text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30">
-                        {item.status}
+                      <span className="bg-emerald-500/10 text-emerald-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span>Feedback Enviado ✓</span>
                       </span>
                     </div>
                   </div>
@@ -2452,6 +2468,11 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-[11px] text-amber-300 space-y-1">
+              <span className="font-extrabold block text-amber-400">⚠️ REGRA DE CONTABILIZAÇÃO DE TEMPO & SALDO:</span>
+              <p>O tempo de aula (50 min) e o valor financeiro correspondente só serão creditados no seu saldo liberado após a confirmação da aula concluída E o envio do Feedback Obrigatório abaixo.</p>
+            </div>
+
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setIsFeedbackDialogOpen(false)}
@@ -2461,18 +2482,38 @@ export default function TeacherDashboard() {
               </button>
               <button
                 onClick={() => {
+                  const durationMins = selectedBookingForModal.durationMinutes || 50;
+                  const earnedAmount = Number(((durationMins / 60) * (tutor.hourlyRate || hourlyRate || 23) * (currentEarnPercent / 100)).toFixed(2));
+
                   updateBookingStatus(selectedBookingForModal.id, 'completed');
                   incrementTutorLessons(tutor.id);
-                  setEarnedBalance(prev => Number((prev + hourlyRate).toFixed(2)));
+                  setEarnedBalance(prev => Number((prev + earnedAmount).toFixed(2)));
 
+                  const newEarnItem = {
+                    id: `earn-${Date.now()}`,
+                    studentName: selectedBookingForModal.studentName,
+                    studentAvatar: selectedBookingForModal.studentAvatar,
+                    date: `${selectedBookingForModal.day || 'Hoje'} às ${selectedBookingForModal.time || '15:00'}`,
+                    classType: selectedBookingForModal.bookingType === 'trial' ? 'Aula Experimental' : 'Assinatura 28 dias',
+                    durationMinutes: durationMins,
+                    durationFormatted: `${durationMins} min`,
+                    grossAmount: selectedBookingForModal.amount || 23,
+                    fee: 0,
+                    netAmount: earnedAmount,
+                    status: 'Liberado (Feedback Enviado ✓)',
+                    feedback: feedbackText || 'Excelente aula! Aluno praticou conversação e gramática.',
+                    ratings: evalRatings
+                  };
+
+                  setEarningsHistory(prev => [newEarnItem, ...prev]);
                   setIsFeedbackDialogOpen(false);
                   setSelectedBookingForModal(null);
-                  setPayoutSuccessMsg(`🎉 Aula concluída e avaliada com sucesso! Saldo creditado.`);
+                  setPayoutSuccessMsg(`🎉 Aula concluída com sucesso! Tempo contabilizado: ${durationMins} min. +$${earnedAmount} USD creditados no Payout após o envio do Feedback Obrigatório!`);
                   setTimeout(() => setPayoutSuccessMsg(''), 6000);
                 }}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-md cursor-pointer"
+                className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-md cursor-pointer transition-all"
               >
-                Concluir Aula & Salvar
+                Concluir Aula & Enviar Feedback Obrigatório
               </button>
             </div>
           </div>
