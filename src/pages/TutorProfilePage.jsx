@@ -5,6 +5,8 @@ import {
   CheckCircle2, Award, ArrowLeft, MessageSquare, Sparkles, ChevronRight 
 } from 'lucide-react';
 import { mockTutors } from '../data/mockTutors';
+import { useAuth } from '../contexts/AuthContext';
+import BookingAuthModal from '../components/modals/BookingAuthModal';
 
 export default function TutorProfilePage() {
   const { id } = useParams();
@@ -13,14 +15,27 @@ export default function TutorProfilePage() {
   // Buscar tutor por ID o tomar el primero por defecto
   const tutor = mockTutors.find(t => t.id === id) || mockTutors[0];
 
+  const { profile } = useAuth();
   const [selectedDay, setSelectedDay] = useState('Segunda');
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [targetBookingTab, setTargetBookingTab] = useState('trial');
 
   const availableDays = Object.keys(tutor.weeklySchedule || {});
   const slotsForDay = tutor.weeklySchedule?.[selectedDay] || [];
 
+  const handleBookClick = (tab = 'trial', timeSlot = null) => {
+    setTargetBookingTab(tab);
+    if (profile) {
+      const slotQuery = timeSlot ? `&day=${selectedDay}&time=${timeSlot}` : '';
+      navigate(`/book/${tutor.id}?tab=${tab}${slotQuery}`);
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
   const handleBookSlot = (timeSlot) => {
-    navigate(`/book/${tutor.id}?day=${selectedDay}&time=${timeSlot}`);
+    handleBookClick('trial', timeSlot);
   };
 
   return (
@@ -262,16 +277,16 @@ export default function TutorProfilePage() {
             {/* Botón Principal de Reserva */}
             <div className="space-y-3">
               <button
-                onClick={() => navigate(`/book/${tutor.id}`)}
-                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 hover:to-sky-300 text-slate-950 font-black text-sm py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2"
+                onClick={() => handleBookClick('trial')}
+                className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 hover:to-sky-300 text-slate-950 font-black text-sm py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Agendar Aula Experimental</span>
               </button>
 
               <button
-                onClick={() => navigate(`/book/${tutor.id}?tab=packages`)}
-                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs py-3 rounded-xl transition-all"
+                onClick={() => handleBookClick('package')}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
               >
                 Ver Pacotes de Aulas Mensais
               </button>
@@ -287,6 +302,14 @@ export default function TutorProfilePage() {
         </div>
 
       </div>
+
+      {/* Modal de Autenticación para Agendar Aula Experimental */}
+      <BookingAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        tutor={tutor}
+        onSuccessNavigate={() => navigate(`/book/${tutor.id}?tab=${targetBookingTab}`)}
+      />
 
     </div>
   );

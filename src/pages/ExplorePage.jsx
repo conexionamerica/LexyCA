@@ -6,12 +6,28 @@ import {
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import BookingAuthModal from '../components/modals/BookingAuthModal';
 
 export default function ExplorePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { tutors } = useMarketplace();
   const { t } = useLanguage();
+  const { profile } = useAuth();
+
+  // Modal Auth para reserva de aula experimental
+  const [selectedTutorForAuth, setSelectedTutorForAuth] = useState(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const handleBookTrialClick = (tutor) => {
+    if (profile) {
+      navigate(`/book/${tutor.id}`);
+    } else {
+      setSelectedTutorForAuth(tutor);
+      setIsAuthModalOpen(true);
+    }
+  };
 
   // URL subject param handler
   const initialSubject = searchParams.get('subject') || 'Todos';
@@ -364,8 +380,8 @@ export default function ExplorePage() {
 
                   <div className="space-y-2">
                     <button
-                      onClick={() => navigate(`/book/${tutor.id}`)}
-                      className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 hover:to-sky-300 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2"
+                      onClick={() => handleBookTrialClick(tutor)}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 hover:to-sky-300 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>Agendar Aula de Teste</span>
                       <ChevronRight className="w-4 h-4" />
@@ -418,6 +434,18 @@ export default function ExplorePage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Autenticación para Agendar Aula Experimental */}
+      <BookingAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        tutor={selectedTutorForAuth}
+        onSuccessNavigate={() => {
+          if (selectedTutorForAuth) {
+            navigate(`/book/${selectedTutorForAuth.id}?tab=trial`);
+          }
+        }}
+      />
 
     </div>
   );

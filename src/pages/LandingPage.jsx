@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import LexyAnimatedLogo from '../components/layout/LexyAnimatedLogo';
+import BookingAuthModal from '../components/modals/BookingAuthModal';
 import { 
   Sparkles, ArrowRight, Play, Star, CheckCircle2, 
   Globe, ShieldCheck, UserCheck, GraduationCap, Clock, LogIn, Heart,
@@ -12,10 +13,23 @@ import {
 export default function LandingPage() {
   const navigate = useNavigate();
   const { tutors, announcements = [] } = useMarketplace();
-  const { setDemoRole } = useAuth();
+  const { profile, setDemoRole } = useAuth();
   
   const [currentSlide, setCurrentSlide] = useState(0);
   const [openFaq, setOpenFaq] = useState(null);
+
+  // Modal Auth para agendamento de aula experimental
+  const [selectedTutorForAuth, setSelectedTutorForAuth] = useState(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const handleBookTrialClick = (tutor) => {
+    if (profile) {
+      navigate(`/book/${tutor.id}`);
+    } else {
+      setSelectedTutorForAuth(tutor);
+      setIsAuthModalOpen(true);
+    }
+  };
 
   // Filtrar solo tutores aprobados e ordená-los pelos valores mais acessíveis (menor tarifa por hora)
   const approvedTutors = tutors
@@ -269,8 +283,8 @@ export default function LandingPage() {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/book/${tutor.id}`)}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20"
+                  onClick={() => handleBookTrialClick(tutor)}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 cursor-pointer"
                 >
                   Agendar Aula Experimental
                 </button>
@@ -449,6 +463,18 @@ export default function LandingPage() {
         </div>
 
       </div>
+
+      {/* Modal de Autenticación para Agendar Aula Experimental */}
+      <BookingAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        tutor={selectedTutorForAuth}
+        onSuccessNavigate={() => {
+          if (selectedTutorForAuth) {
+            navigate(`/book/${selectedTutorForAuth.id}?tab=trial`);
+          }
+        }}
+      />
 
     </div>
   );
