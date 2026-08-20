@@ -463,6 +463,39 @@ export default function TeacherDashboard() {
     };
   };
 
+  const [gridFilterMode, setGridFilterMode] = useState('all'); // 'all' | 'active_only'
+
+  const getGridTimeSlots = () => {
+    const fullDaySlots = [
+      '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+      '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+      '19:00', '19:15', '19:30', '19:45',
+      '20:00', '20:15', '20:30', '20:45',
+      '21:00', '21:15', '22:00', '23:00'
+    ];
+
+    const bookedTimes = bookings.map(b => b.time).filter(Boolean);
+    const configSlots = Object.values(schedule || {}).flat().filter(Boolean);
+    const allSlotsCombined = Array.from(new Set([...fullDaySlots, ...bookedTimes, ...configSlots]));
+
+    const sortedSlots = allSlotsCombined.sort((a, b) => {
+      const [hA, mA] = a.split(':').map(Number);
+      const [hB, mB] = b.split(':').map(Number);
+      if (hA !== hB) return hA - hB;
+      return mA - mB;
+    });
+
+    if (gridFilterMode === 'active_only') {
+      const activeTimesSet = new Set([...bookedTimes, ...configSlots]);
+      const filtered = sortedSlots.filter(s => activeTimesSet.has(s));
+      return filtered.length > 0 ? filtered : sortedSlots;
+    }
+
+    return sortedSlots;
+  };
+
+  const gridTimeSlots = getGridTimeSlots();
+
   const pendingRequests = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'pending' || b.status === 'solicitada'));
   const tutorBookings = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled'));
   
@@ -1003,24 +1036,49 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                {/* LEYENDA DE ESTADOS DE AULA (AGENDADA, FALTA, CANCELADA, CONCLUÍDA) */}
-                <div className="flex items-center gap-3 overflow-x-auto pb-1 text-xs scrollbar-none">
-                  <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider shrink-0">Legenda de Estados:</span>
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-300 font-semibold text-[11px] shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span>🟢 Agendada</span>
+                {/* LEYENDA DE ESTADOS DE AULA (AGENDADA, FALTA, CANCELADA, CONCLUÍDA) E FILTRO DE HORÁRIOS */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-x-auto pb-1 text-xs scrollbar-none">
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider shrink-0">Legenda de Estados:</span>
+                    <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-emerald-300 font-semibold text-[11px] shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span>🟢 Agendada</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-lg text-rose-300 font-semibold text-[11px] shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                      <span>🔴 Falta / Ausência</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-amber-300 font-semibold text-[11px] shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                      <span>🟡 Cancelada</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-lg text-sky-300 font-semibold text-[11px] shrink-0">
+                      <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                      <span>🔵 Concluída</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-lg text-rose-300 font-semibold text-[11px] shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
-                    <span>🔴 Falta / Ausência</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg text-amber-300 font-semibold text-[11px] shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                    <span>🟡 Cancelada</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-sky-500/10 border border-sky-500/30 px-2.5 py-1 rounded-lg text-sky-300 font-semibold text-[11px] shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-                    <span>🔵 Concluída</span>
+
+                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 text-xs">
+                    <button
+                      onClick={() => setGridFilterMode('all')}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                        gridFilterMode === 'all'
+                          ? 'bg-amber-500 text-slate-950 shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      ☀️ Todos os Horários (07h - 23h)
+                    </button>
+                    <button
+                      onClick={() => setGridFilterMode('active_only')}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                        gridFilterMode === 'active_only'
+                          ? 'bg-cyan-500 text-slate-950 shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      🎯 Somente Horários Ativos
+                    </button>
                   </div>
                 </div>
 
@@ -1057,11 +1115,7 @@ export default function TeacherDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 text-xs">
-                      {[
-                        '19:15', '19:30', '19:45', 
-                        '20:00', '20:15', '20:30', 
-                        '20:45', '21:00', '21:15'
-                      ].map((slotTime) => (
+                      {gridTimeSlots.map((slotTime) => (
                         <tr key={slotTime} className="hover:bg-slate-900/30 transition-colors">
                           
                           {/* Coluna de Hora */}
@@ -1081,7 +1135,7 @@ export default function TeacherDashboard() {
                               return dateMatch && timeMatch;
                             });
 
-                            const isHourSlotActiveInSchedule = (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00');
+                            const isHourSlotActiveInSchedule = (schedule[col.dayName] || []).includes(slotTime) || (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00');
 
                             return (
                               <td
