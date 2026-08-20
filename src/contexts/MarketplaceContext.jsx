@@ -346,6 +346,36 @@ export const MarketplaceProvider = ({ children }) => {
         bookingType: 'subscription',
         status: 'agendada',
         createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-pending-1',
+        tutorId: 'tutor-1',
+        studentId: 'stud-3',
+        studentName: 'Mariana Costa Ferreira',
+        studentAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Iniciante (A1)',
+        day: 'Sexta',
+        isoDateStr: getDateStr(5),
+        time: '18:00',
+        bookingType: 'trial',
+        amount: 15.00,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'booking-pending-2',
+        tutorId: 'tutor-1',
+        studentId: 'stud-2',
+        studentName: 'Carlos Eduardo Silveira',
+        studentAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+        studentLevel: 'Intermediário (B1)',
+        day: 'Sábado',
+        isoDateStr: getDateStr(6),
+        time: '10:00',
+        bookingType: 'subscription',
+        amount: 23.00,
+        status: 'pending',
+        createdAt: new Date().toISOString()
       }
     ];
   };
@@ -595,6 +625,67 @@ export const MarketplaceProvider = ({ children }) => {
     }));
   };
 
+  const acceptBookingRequest = (bookingId) => {
+    let acceptedBooking = null;
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        acceptedBooking = { ...b, status: 'confirmed', updatedAt: new Date().toISOString() };
+        return acceptedBooking;
+      }
+      return b;
+    }));
+
+    if (acceptedBooking) {
+      const tutor = tutors.find(t => t.id === acceptedBooking.tutorId);
+      if (tutor && tutor.weeklySchedule && acceptedBooking.day && acceptedBooking.time) {
+        const day = acceptedBooking.day;
+        const time = acceptedBooking.time;
+        if (tutor.weeklySchedule[day]) {
+          const updatedSchedule = {
+            ...tutor.weeklySchedule,
+            [day]: tutor.weeklySchedule[day].filter(slot => slot !== time)
+          };
+          updateTutorSchedule(acceptedBooking.tutorId, updatedSchedule);
+        }
+      }
+
+      const dateText = acceptedBooking.colDateStr || acceptedBooking.day || 'sua aula';
+      sendDirectMessage({
+        studentId: acceptedBooking.studentId || 'stud-1',
+        tutorId: acceptedBooking.tutorId,
+        senderName: acceptedBooking.tutorName ? `${acceptedBooking.tutorName} (Tutor)` : 'Tutor',
+        senderRole: 'teacher',
+        text: `🎉 Sua solicitação de aula (${acceptedBooking.bookingType === 'trial' ? 'Aula Experimental' : 'Plano de Aulas'}) para ${dateText} às ${acceptedBooking.time} foi ACEITA! O horário está confirmado em sua agenda.`
+      });
+    }
+
+    return acceptedBooking;
+  };
+
+  const rejectBookingRequest = (bookingId) => {
+    let rejectedBooking = null;
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        rejectedBooking = { ...b, status: 'rejected', updatedAt: new Date().toISOString() };
+        return rejectedBooking;
+      }
+      return b;
+    }));
+
+    if (rejectedBooking) {
+      const dateText = rejectedBooking.colDateStr || rejectedBooking.day || 'sua aula';
+      sendDirectMessage({
+        studentId: rejectedBooking.studentId || 'stud-1',
+        tutorId: rejectedBooking.tutorId,
+        senderName: rejectedBooking.tutorName ? `${rejectedBooking.tutorName} (Tutor)` : 'Tutor',
+        senderRole: 'teacher',
+        text: `⚠️ Sua solicitação de aula para ${dateText} às ${rejectedBooking.time} foi recusada pelo tutor. Por favor, selecione outro horário disponível.`
+      });
+    }
+
+    return rejectedBooking;
+  };
+
   return (
     <MarketplaceContext.Provider value={{
       tutors,
@@ -611,6 +702,8 @@ export const MarketplaceProvider = ({ children }) => {
       deleteAnnouncement,
       directChatMessages,
       sendDirectMessage,
+      acceptBookingRequest,
+      rejectBookingRequest,
       canBookTrial,
       registerTutor,
       approveTutor,
