@@ -27,16 +27,17 @@ export default function LoginPage({ forceRole }) {
   const { registerStudentAccount, tutors } = useMarketplace();
 
   // Role estrictamente determinado por prop o ruta (SEPARADOS)
-  const activeRole = forceRole || (searchParams.get('role') === 'teacher' ? 'teacher' : 'student');
+  const activeRole = forceRole || (searchParams.get('role') === 'teacher' ? 'teacher' : searchParams.get('role') === 'admin' ? 'admin' : 'student');
   const isTeacher = activeRole === 'teacher';
+  const isAdmin = activeRole === 'admin';
 
   const [isLogin, setIsLogin] = useState(true); // true: Iniciar Sessão, false: Criar Conta
   const [showPassword, setShowPassword] = useState(false);
   
   // Campos del formulario
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(isAdmin ? 'emaildeconexionamerica@gmail.com' : '');
+  const [password, setPassword] = useState(isAdmin ? 'AlyRoberto2026*' : '');
   const [residenceCountry, setResidenceCountry] = useState('Brasil 🇧🇷');
   const [cpf, setCpf] = useState('');
   const [passport, setPassport] = useState('');
@@ -254,23 +255,25 @@ export default function LoginPage({ forceRole }) {
 
           <div className="space-y-1.5">
             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase border ${
-              activeRole === 'teacher' ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+              isAdmin ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : isTeacher ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
             }`}>
-              {activeRole === 'teacher' ? <GraduationCap className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-cyan-400" />}
-              <span>{activeRole === 'teacher' ? 'Área do Tutor / Professor' : 'Portal do Aluno'}</span>
+              {isAdmin ? <ShieldCheck className="w-4 h-4 text-emerald-400" /> : isTeacher ? <GraduationCap className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-cyan-400" />}
+              <span>{isAdmin ? 'Painel de Administração 🛡️' : isTeacher ? 'Área do Tutor / Professor' : 'Portal do Aluno'}</span>
             </div>
 
             <h1 className="text-2xl font-extrabold text-white">
               {isLogin 
-                ? (activeRole === 'teacher' ? 'Acessar Portal do Professor' : 'Acessar Portal do Aluno')
-                : (activeRole === 'teacher' ? 'Criar Conta de Professor' : 'Criar Conta de Aluno')}
+                ? (isAdmin ? 'Acessar como Administrador' : isTeacher ? 'Acessar Portal do Professor' : 'Acessar Portal do Aluno')
+                : (isTeacher ? 'Criar Conta de Professor' : 'Criar Conta de Aluno')}
             </h1>
             <p className="text-xs text-slate-400">
               {isLogin 
-                ? (activeRole === 'teacher' 
-                    ? '👋 Bem-vindo de volta, Professor! Entre com seu e-mail e senha para acessar sua agenda.' 
-                    : '👋 Bem-vindo de volta! Entre com seu e-mail e senha para acessar suas aulas.')
-                : (activeRole === 'teacher'
+                ? (isAdmin
+                    ? '🛡️ Painel de Controle e Gestão Global da Lexy Idiomas.'
+                    : isTeacher 
+                      ? '👋 Bem-vindo de volta, Professor! Entre com seu e-mail e senha para acessar sua agenda.' 
+                      : '👋 Bem-vindo de volta! Entre com seu e-mail e senha para acessar suas aulas.')
+                : (isTeacher
                     ? 'Preencha seus dados para cadastrar-se como tutor na Lexy Idiomas.'
                     : 'Preencha seus dados para criar sua conta de aluno.')}
             </p>
@@ -506,20 +509,43 @@ export default function LoginPage({ forceRole }) {
                 type="submit"
                 disabled={isLoading}
                 className={`w-full font-black text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer ${
-                  activeRole === 'teacher'
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 shadow-amber-500/20'
-                    : 'bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 shadow-cyan-500/20'
+                  isAdmin
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-emerald-500/20'
+                    : isTeacher
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 shadow-amber-500/20'
+                      : 'bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 shadow-cyan-500/20'
                 }`}
               >
                 <span>
                   {isLoading 
                     ? 'Entrando no Portal...' 
                     : isLogin 
-                      ? (activeRole === 'teacher' ? 'Entrar no Portal do Professor 🚀' : 'Entrar no Portal do Aluno 🚀') 
-                      : (activeRole === 'teacher' ? 'Cadastrar e Entrar como Professor 🚀' : 'Cadastrar e Entrar no Portal 🚀')}
+                      ? (isAdmin ? 'Entrar como Administrador 🛡️' : isTeacher ? 'Entrar no Portal do Professor 🚀' : 'Entrar no Portal do Aluno 🚀') 
+                      : (isTeacher ? 'Cadastrar e Entrar como Professor 🚀' : 'Cadastrar e Entrar no Portal 🚀')}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {/* BOTÃO DE ACESSO RÁPIDO AO PAINEL DE ADMINISTRAÇÃO */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setEmail('emaildeconexionamerica@gmail.com');
+                    setPassword('AlyRoberto2026*');
+                    setIsLoading(true);
+                    const res = await signInWithSupabase({ email: 'emaildeconexionamerica@gmail.com', password: 'AlyRoberto2026*' });
+                    setIsLoading(false);
+                    if (res.success) {
+                      navigate('/admin');
+                    }
+                  }}
+                  className="w-full bg-slate-900 hover:bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Acesso Direto como Administrador (Conexão América) 🛡️</span>
+                </button>
+              </div>
 
             </form>
           )}
