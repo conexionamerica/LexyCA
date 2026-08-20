@@ -122,22 +122,24 @@ export default function TutorProfilePage() {
             </div>
           </div>
 
-          {/* Reproductor de Video de Presentación */}
-          <div className="glass-panel rounded-3xl p-6 space-y-4">
-            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-              <Play className="w-5 h-5 text-cyan-400" />
-              Vídeo de Apresentação
-            </h3>
-            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl">
-              <iframe
-                src={tutor.videoUrl}
-                title={`Apresentação de ${tutor.name}`}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+          {/* Reproductor de Video de Presentación (SÓLO SE MUESTRA SI EL TUTOR ELIGIÓ MOSTRAR VÍDEO) */}
+          {tutor.hasVideo !== false && tutor.videoUrl && tutor.videoUrl !== '' && tutor.videoUrl !== 'none' && (
+            <div className="glass-panel rounded-3xl p-6 space-y-4">
+              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <Play className="w-5 h-5 text-cyan-400" />
+                Vídeo de Apresentação
+              </h3>
+              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl">
+                <iframe
+                  src={tutor.videoUrl}
+                  title={`Apresentação de ${tutor.name}`}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Biografía y Metodología */}
           <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4">

@@ -281,26 +281,36 @@ export default function ExplorePage() {
                   <Heart className={`w-5 h-5 ${favorites.includes(tutor.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
                 </button>
 
-                {/* Columna 1: Video Thumbnail & Avatar (3 columnas) */}
+                {/* Columna 1: Video Thumbnail ou Foto (3 columnas) */}
                 <div className="lg:col-span-4 flex flex-col gap-3">
-                  <div 
-                    className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 group-hover:border-cyan-500/50 transition-colors cursor-pointer"
-                    onClick={() => setActiveVideoUrl(tutor.videoUrl)}
-                  >
-                    <img
-                      src={tutor.videoThumbnail}
-                      alt={tutor.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="video-preview-overlay">
-                      <div className="play-button-pulse">
-                        <Play className="w-6 h-6 fill-white ml-0.5" />
+                  {tutor.hasVideo !== false && tutor.videoUrl && tutor.videoUrl !== '' && tutor.videoUrl !== 'none' ? (
+                    <div 
+                      className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 group-hover:border-cyan-500/50 transition-colors cursor-pointer"
+                      onClick={() => setActiveVideoUrl(tutor.videoUrl)}
+                    >
+                      <img
+                        src={tutor.videoThumbnail || tutor.avatar}
+                        alt={tutor.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="video-preview-overlay">
+                        <div className="play-button-pulse">
+                          <Play className="w-6 h-6 fill-white ml-0.5" />
+                        </div>
+                        <span className="absolute bottom-2 left-2 text-[10px] font-black bg-slate-950/80 text-white px-2 py-0.5 rounded-md border border-white/10">
+                          Assistir Apresentação (1:30)
+                        </span>
                       </div>
-                      <span className="absolute bottom-2 left-2 text-[10px] font-black bg-slate-950/80 text-white px-2 py-0.5 rounded-md border border-white/10">
-                        Assistir Apresentação (1:30)
-                      </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 flex items-center justify-center">
+                      <img
+                        src={tutor.presentation_photo || tutor.avatar}
+                        alt={tutor.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
 
                   {/* Detalle rápido de idioma y nativo */}
                   <div className="flex items-center gap-2 flex-wrap">
