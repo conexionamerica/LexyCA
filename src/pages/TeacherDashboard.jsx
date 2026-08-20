@@ -178,6 +178,8 @@ export default function TeacherDashboard() {
     const s = sec % 60;
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
+
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [rescheduleNewDate, setRescheduleNewDate] = useState('');
   const [rescheduleNewTime, setRescheduleNewTime] = useState('');
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
