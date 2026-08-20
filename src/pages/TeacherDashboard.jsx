@@ -1846,11 +1846,34 @@ export default function TeacherDashboard() {
                     <button
                       type="button"
                       onClick={() => setHourlyRate(RECOMMENDED_RATE)}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow"
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow cursor-pointer"
                     >
                       Aplicar R$ {RECOMMENDED_RATE}
                     </button>
                   </div>
+                </div>
+
+                {/* CASILLA DE CONFIGURACIÓN DE CHAVE PIX PARA RESGATES */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-slate-300 block">Chave PIX Cadastrada para Resgate de Ganhos *</label>
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold">Transferência PIX</span>
+                  </div>
+
+                  <div className="relative">
+                    <span className="text-slate-500 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">🔑</span>
+                    <input
+                      type="text"
+                      required
+                      value={pixKey}
+                      onChange={(e) => setPixKey(e.target.value)}
+                      placeholder="E-mail, CPF, Telefone ou Chave Aleatória PIX"
+                      className="w-full bg-slate-900 border border-slate-800 text-amber-300 font-mono font-bold text-xs rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Sua chave PIX fica salva e será usada automaticamente sempre que solicitar um resgate de saldo.
+                  </span>
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
