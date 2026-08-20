@@ -391,6 +391,7 @@ export default function TeacherDashboard() {
     bookingType: 'subscription',
     status: 'confirmed'
   };
+  const upcomingBookings = tutorBookings.filter(b => b.id !== nextBooking?.id);
 
   const isNextTrial = nextBooking.bookingType === 'trial';
   const classEarnPercent = getTeacherEarnPercent(totalLessons, isNextTrial, tierRates);
@@ -600,6 +601,73 @@ export default function TeacherDashboard() {
                   <p className="text-xs text-slate-400">Verifique sua agenda e mantenha seus horários abertos para novos alunos!</p>
                 </div>
               )}
+
+              {/* CARD AULAS A SEGUIR / PRÓXIMAS AULAS AGENDADAS */}
+              <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <span>Aulas Agendadas a Seguir</span>
+                  </h3>
+                  <span className="text-[10px] text-cyan-300 font-semibold bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                    {upcomingBookings.length} aulas encontradas
+                  </span>
+                </div>
+
+                {upcomingBookings.length === 0 ? (
+                  <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4 text-center text-xs text-slate-400 space-y-1">
+                    <p className="font-semibold text-slate-300">Nenhuma outra aula agendada a seguir</p>
+                    <p className="text-[11px] text-slate-500">Mantenha seus horários atualizados na aba Agenda para receber novos agendamentos.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {upcomingBookings.map((booking) => (
+                      <div 
+                        key={booking.id} 
+                        className="bg-slate-950/70 border border-slate-800/80 hover:border-cyan-500/40 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={booking.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} 
+                            alt={booking.studentName} 
+                            className="w-10 h-10 rounded-full object-cover border border-cyan-400/40 shrink-0" 
+                          />
+                          <div>
+                            <h4 className="font-bold text-white text-xs">{booking.studentName}</h4>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                              <span className="text-cyan-300 font-semibold">{booking.studentLevel || 'Aluno'}</span>
+                              <span>• {booking.bookingType === 'trial' ? 'Aula Experimental' : 'Aula Individual'}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1.5 font-medium">
+                              <Clock className="w-3.5 h-3.5 text-amber-400" />
+                              <span>{booking.colDateStr || booking.day} às {booking.time}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            onClick={() => setSelectedBookingForModal(booking)}
+                            className="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all cursor-pointer"
+                          >
+                            Detalhes
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedBookingForModal(booking);
+                              setIsVirtualRoomActive(true);
+                            }}
+                            className="flex-1 sm:flex-initial bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black px-4 py-1.5 rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>Entrar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
             </div>
 
