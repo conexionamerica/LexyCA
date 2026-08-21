@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { 
   Calendar, Clock, CheckCircle2, ShieldCheck, CreditCard, 
-  Wallet, FileText, ArrowLeft, Sparkles, Lock, Gift, AlertCircle, RefreshCw 
+  Wallet, FileText, ArrowLeft, Sparkles, Lock, Gift, AlertCircle, RefreshCw, X 
 } from 'lucide-react';
 import { subscriptionPackages } from '../data/mockTutors';
 
@@ -154,7 +155,7 @@ export default function BookingPage() {
 
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400 font-medium">Valor Descontado do Saldo:</span>
-              <strong className="text-emerald-400 font-black text-sm">${totalAmount} USD</strong>
+              <strong className="text-emerald-400 font-black text-sm">R$ {totalAmount}</strong>
             </div>
           </div>
 
@@ -191,29 +192,55 @@ export default function BookingPage() {
         Voltar para o perfil de {tutor.name}
       </button>
 
-      {/* Alerta de Saldo Insuficiente */}
-      {insufficientBalanceError && (
-        <div className="bg-rose-500/20 border-2 border-rose-500 text-rose-200 p-5 rounded-3xl space-y-3 animate-shake">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-rose-400 shrink-0" />
-            <div>
-              <h3 className="font-extrabold text-white text-base">Saldo Insuficiente na Billetera!</h3>
-              <p className="text-xs text-rose-200 mt-0.5">
-                Você possui <strong className="text-white">${insufficientBalanceError.current.toFixed(2)} USD</strong> e o valor necessário é <strong className="text-white">${insufficientBalanceError.required.toFixed(2)} USD</strong>.
+      {/* Modal Popup de Saldo Insuficiente na Carteira (Centralizado com React Portal) */}
+      {insufficientBalanceError && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="relative w-full max-w-md bg-slate-900 border-2 border-rose-500/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 glow-rose text-center">
+            
+            {/* Botão Cerrar */}
+            <button
+              onClick={() => setInsufficientBalanceError(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              title="Fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Ícono de Alerta */}
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center mx-auto text-rose-400 animate-bounce">
+              <AlertCircle className="w-8 h-8 text-rose-500" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl sm:text-2xl font-black text-white">Saldo Insuficiente na Carteira!</h3>
+              <p className="text-xs sm:text-sm text-rose-200 leading-relaxed font-medium">
+                Você possui <strong className="text-white font-bold">R$ {insufficientBalanceError.current.toFixed(2)}</strong> e o valor necessário para confirmar esta reserva é <strong className="text-white font-bold">R$ {insufficientBalanceError.required.toFixed(2)}</strong>.
               </p>
             </div>
-          </div>
 
-          <div className="pt-2 flex gap-3">
-            <Link
-              to="/dashboard/student/wallet"
-              className="bg-rose-500 hover:bg-rose-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5"
-            >
-              <Wallet className="w-4 h-4" />
-              <span>Recarregar Saldo Agora</span>
-            </Link>
+            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setInsufficientBalanceError(null);
+                  navigate('/dashboard/student/wallet');
+                }}
+                className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 text-white font-black text-xs sm:text-sm py-3.5 px-6 rounded-xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Wallet className="w-4 h-4" />
+                <span>Recarregar Saldo Agora</span>
+              </button>
+
+              <button
+                onClick={() => setInsufficientBalanceError(null)}
+                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 px-4 rounded-xl transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Error genérico */}
@@ -238,7 +265,7 @@ export default function BookingPage() {
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-right">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Seu Saldo Atual</span>
-            <span className="text-xl font-black text-emerald-400">${student.walletBalance.toFixed(2)} USD</span>
+            <span className="text-xl font-black text-emerald-400">R$ {student.walletBalance.toFixed(2)}</span>
           </div>
         </div>
 
@@ -271,7 +298,7 @@ export default function BookingPage() {
               <h3 className="font-extrabold text-white text-base">Aula Experimental (25 min)</h3>
               <p className="text-xs text-slate-400 mt-1">Conheça o tutor, defina seus objetivos e faça o teste de nível.</p>
               <div className="mt-3 text-lg font-black text-cyan-300">
-                ${tutor.trialRate} USD {!isTrialAllowed && '(Já Utilizada)'}
+                R$ {tutor.trialRate} {!isTrialAllowed && '(Já Utilizada)'}
               </div>
             </div>
 
@@ -295,7 +322,7 @@ export default function BookingPage() {
               <h3 className="font-extrabold text-white text-base">Assinatura de 28 Dias</h3>
               <p className="text-xs text-slate-400 mt-1">Pacote completo cobrado a cada 28 dias do seu saldo da billetera.</p>
               <div className="mt-3 text-lg font-black text-amber-300">
-                A partir de ${ (tutor.hourlyRate * 4 * 0.9).toFixed(0) } USD / 28 dias
+                A partir de R$ { (tutor.hourlyRate * 4 * 0.9).toFixed(0) } / 28 dias
               </div>
             </div>
 
@@ -323,7 +350,7 @@ export default function BookingPage() {
                   <span className="text-xs font-black block">{pkg.hours} Horas / 28 dias</span>
                   <span className="text-[10px] font-bold text-amber-400 block my-0.5">{pkg.hours / 4} aula(s) por semana</span>
                   <span className="text-sm font-extrabold text-white block">
-                    ${ (tutor.hourlyRate * pkg.hours * (1 - pkg.discountPercent/100)).toFixed(2) } USD
+                    R$ { (tutor.hourlyRate * pkg.hours * (1 - pkg.discountPercent/100)).toFixed(2) }
                   </span>
                 </div>
               ))}
@@ -405,7 +432,7 @@ export default function BookingPage() {
         <form onSubmit={handleConfirmBooking} className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <span className="text-xs text-slate-400 block font-medium">Valor Total com Saldo da Billetera:</span>
-            <span className="text-3xl font-black text-emerald-400">${totalAmount} USD</span>
+            <span className="text-3xl font-black text-emerald-400">R$ {totalAmount}</span>
           </div>
 
           <button
