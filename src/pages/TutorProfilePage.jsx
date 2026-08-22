@@ -5,21 +5,43 @@ import {
   CheckCircle2, Award, ArrowLeft, MessageSquare, Sparkles, ChevronRight 
 } from 'lucide-react';
 import { mockTutors } from '../data/mockTutors';
+import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import BookingAuthModal from '../components/modals/BookingAuthModal';
 
 export default function TutorProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  // Buscar tutor por ID o tomar el primero por defecto
-  const tutor = mockTutors.find(t => t.id === id) || mockTutors[0];
-
+  const { tutors } = useMarketplace();
   const { profile } = useAuth();
+
+  // Buscar tutor por ID
+  const tutor = tutors.find(t => t.id === id) || tutors[0];
+
   const [selectedDay, setSelectedDay] = useState('Segunda');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [targetBookingTab, setTargetBookingTab] = useState('trial');
+
+  if (!tutor) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4 text-center space-y-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
+          <Sparkles className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-white">Em breve...</h2>
+        <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+          Perfil de professor não encontrado ou indisponível. Novos tutores reais estão finalizando seus cadastros na plataforma Lexy.
+        </p>
+        <button
+          onClick={() => navigate('/explore')}
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer"
+        >
+          Explorar Professores
+        </button>
+      </div>
+    );
+  }
 
   const availableDays = Object.keys(tutor.weeklySchedule || {});
   const slotsForDay = tutor.weeklySchedule?.[selectedDay] || [];

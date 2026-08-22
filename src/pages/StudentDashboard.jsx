@@ -499,68 +499,78 @@ export default function StudentDashboard() {
           </div>
 
           {/* GRILLA DE TARJETAS DE TUTORES COMPACTAS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCatalogTutors.map(tutor => (
-              <div 
-                key={tutor.id} 
-                className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 hover:border-cyan-500/40 rounded-xl p-4 flex flex-col justify-between space-y-3 transition-all group"
-              >
-                <div className="space-y-2.5">
-                  {/* Foto Redonda com Anel Brilhante */}
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={tutor.avatar} 
-                      alt={tutor.name} 
-                      className="w-12 h-12 rounded-full object-cover border border-cyan-400/50 ring-2 ring-cyan-500/30 group-hover:scale-105 transition-transform shrink-0" 
-                    />
-                    <div>
-                      <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
-                        {tutor.name}
-                      </h3>
-                      <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/20 mt-0.5">
-                        {tutor.subject} • Nativo {tutor.flag}
+          {filteredCatalogTutors.length === 0 ? (
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-2xl p-10 text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-white">Em breve...</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Em breve teremos professores cadastrados nesta categoria! Novos tutores reais estão concluindo seus cadastros na plataforma.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredCatalogTutors.map(tutor => (
+                <div 
+                  key={tutor.id} 
+                  className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 hover:border-cyan-500/40 rounded-xl p-4 flex flex-col justify-between space-y-3 transition-all group"
+                >
+                  <div className="space-y-2.5">
+                    {/* Foto Redonda com Anel Brilhante */}
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={tutor.avatar} 
+                        alt={tutor.name} 
+                        className="w-12 h-12 rounded-full object-cover border border-cyan-400/50 ring-2 ring-cyan-500/30 group-hover:scale-105 transition-transform shrink-0" 
+                      />
+                      <div>
+                        <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
+                          {tutor.name}
+                        </h3>
+                        <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/20 mt-0.5">
+                          {tutor.subject} • Nativo {tutor.flag}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed font-normal">
+                      "{tutor.headline || tutor.bio}"
+                    </p>
+
+                    {/* Preço e Avaliação */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                      <div className="flex items-center gap-1 font-bold text-amber-300 text-xs">
+                        <Star className="w-3.5 h-3.5 fill-amber-400" />
+                        <span>{tutor.rating || 5.0}</span>
+                        <span className="text-slate-400 font-normal">({tutor.reviewCount || 0})</span>
+                      </div>
+                      <span className="font-black text-emerald-400 text-sm font-mono">
+                        R$ {tutor.hourlyRate}/h
                       </span>
                     </div>
                   </div>
 
-                  {/* Biografía Corta de 2 Líneas */}
-                  <p className="text-xs text-slate-400 leading-snug line-clamp-2">
-                    {tutor.bio}
-                  </p>
+                  <div className="space-y-2 pt-1">
+                    <button
+                      onClick={() => navigate(`/book/${tutor.id}`)}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span>Agendar Aula Experimental</span>
+                    </button>
 
-                  {/* Rating & Preço por Hora */}
-                  <div className="flex items-center justify-between border-t border-slate-800/60 pt-2 text-xs">
-                    <div className="flex items-center gap-1 text-amber-300 font-semibold">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span>{tutor.rating}</span>
-                      <span className="text-[10px] text-slate-500">({tutor.reviewCount})</span>
-                    </div>
-                    <span className="font-bold text-white text-sm">
-                      R$ {tutor.hourlyRate}/h
-                    </span>
+                    <button
+                      onClick={() => navigate(`/tutor/${tutor.id}`)}
+                      className="w-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs border border-slate-700/80 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <User className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Ver Perfil do Professor</span>
+                    </button>
                   </div>
                 </div>
-
-                {/* Botões de Ação: Agendar Aula & Ver Perfil */}
-                <div className="space-y-2 pt-1">
-                  <button
-                    onClick={() => navigate(`/book/${tutor.id}`)}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <span>Agendar Aula Experimental</span>
-                  </button>
-
-                  <button
-                    onClick={() => navigate(`/tutor/${tutor.id}`)}
-                    className="w-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs border border-slate-700/80 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <User className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Ver Perfil do Professor</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

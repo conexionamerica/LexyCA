@@ -16,6 +16,26 @@ export default function BookingPage() {
 
   const tutor = tutors.find(t => t.id === id) || tutors[0];
 
+  if (!tutor) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4 text-center space-y-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
+          <Sparkles className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-white">Em breve...</h2>
+        <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
+          Professor não encontrado para agendamento. Novos tutores reais estão cadastrando seus horários na plataforma Lexy.
+        </p>
+        <button
+          onClick={() => navigate('/explore')}
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer"
+        >
+          Explorar Professores
+        </button>
+      </div>
+    );
+  }
+
   // Verificar si el alumno YA usó la aula experimental única con este profesor
   const isTrialAllowed = canBookTrial(tutor.id);
 

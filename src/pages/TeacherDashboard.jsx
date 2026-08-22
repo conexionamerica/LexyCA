@@ -162,17 +162,8 @@ export default function TeacherDashboard() {
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState(100);
   const [payoutMethod, setPayoutMethod] = useState('PIX Brasil 🇧🇷');
-  const [pixKey, setPixKey] = useState('maria.tutor@pix.com.br');
-  const [payoutRequests, setPayoutRequests] = useState([
-    {
-      id: 'pay-1',
-      date: '10/08/2026',
-      amount: 80.00,
-      method: 'PIX Brasil 🇧🇷',
-      status: 'approved',
-      processedAt: '10/08/2026 14:20'
-    }
-  ]);
+  const [pixKey, setPixKey] = useState(profile?.pixKey || tutor?.pixKey || '');
+  const [payoutRequests, setPayoutRequests] = useState([]);
   const [payoutSuccessMsg, setPayoutSuccessMsg] = useState('');
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -1868,47 +1859,57 @@ export default function TeacherDashboard() {
               </div>
 
               <div className="space-y-3">
-                {payoutRequests.map(req => (
-                  <div key={req.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
-                    <div className="flex items-center gap-3.5">
-                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 shrink-0">
-                        <DollarSign className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-extrabold text-white text-sm">Resgate via {req.method}</h4>
-                          <span className="text-xs text-slate-400 font-mono">({req.date})</span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5">Chave / Dados: <strong className="text-slate-300">{req.pixKey || 'Chave Cadastrada'}</strong></p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block">Valor do Saque</span>
-                        <strong className="text-emerald-400 font-black text-base">R$ {req.amount.toFixed(2)}</strong>
-                      </div>
-
-                      {req.status === 'approved' ? (
-                        <span className="bg-emerald-500/20 text-emerald-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-emerald-500/40 flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5" /> Aprovado
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="bg-amber-500/20 text-amber-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-amber-500/40 animate-pulse flex items-center gap-1">
-                            ⌛ Em Análise
-                          </span>
-                          <button
-                            onClick={() => handleSimulateAdminApprove(req.id)}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-xl shadow cursor-pointer transition-all"
-                          >
-                            Aprovar (Adm)
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                {payoutRequests.length === 0 ? (
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-8 text-center space-y-2">
+                    <Sparkles className="w-6 h-6 text-amber-400 mx-auto" />
+                    <h4 className="font-extrabold text-white text-sm">Em breve...</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                      Você ainda não realizou solicitações de resgate de saldo. Seus saques efetuados aparecerão registrados aqui.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  payoutRequests.map(req => (
+                    <div key={req.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 shrink-0">
+                          <DollarSign className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-white text-sm">Resgate via {req.method}</h4>
+                            <span className="text-xs text-slate-400 font-mono">({req.date})</span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-0.5">Chave / Dados: <strong className="text-slate-300">{req.pixKey || 'Chave Cadastrada'}</strong></p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-900 pt-2 sm:pt-0">
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block">Valor do Saque</span>
+                          <strong className="text-emerald-400 font-black text-base">R$ {req.amount.toFixed(2)}</strong>
+                        </div>
+
+                        {req.status === 'approved' ? (
+                          <span className="bg-emerald-500/20 text-emerald-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-emerald-500/40 flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5" /> Aprovado
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-500/20 text-amber-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-amber-500/40 animate-pulse flex items-center gap-1">
+                              ⌛ Em Análise
+                            </span>
+                            <button
+                              onClick={() => handleSimulateAdminApprove(req.id)}
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-xl shadow cursor-pointer transition-all"
+                            >
+                              Aprovar (Adm)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

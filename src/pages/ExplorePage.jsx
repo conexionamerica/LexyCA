@@ -247,12 +247,16 @@ export default function ExplorePage() {
 
         {/* Grilla de Tarjetas de Tutores Estilo Preply */}
         {filteredTutors.length === 0 ? (
-          <div className="glass-panel rounded-2xl p-12 text-center space-y-4">
-            <Search className="w-12 h-12 text-slate-600 mx-auto" />
-            <h3 className="text-xl font-bold text-white">Nenhum tutor encontrado</h3>
-            <p className="text-sm text-slate-400 max-w-md mx-auto">
-              Tente ajustar seus filtros de preço, idioma ou especialidade para ver mais resultados.
-            </p>
+          <div className="glass-panel rounded-3xl p-12 text-center space-y-4 glow-cyan border border-slate-800">
+            <div className="w-16 h-16 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
+              <Sparkles className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-white">Em breve...</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                Em breve teremos professores cadastrados nesta categoria! Novos tutores estão concluindo seus cadastros na plataforma.
+              </p>
+            </div>
             <button
               onClick={() => {
                 setSearchQuery('');
@@ -261,9 +265,9 @@ export default function ExplorePage() {
                 setOnlyNative(false);
                 setSelectedSpecialty('Todos');
               }}
-              className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow"
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow cursor-pointer transition-all"
             >
-              Limpar Todos os Filtros
+              Limpar Filtros de Busca
             </button>
           </div>
         ) : (

@@ -107,6 +107,13 @@ export const MarketplaceProvider = ({ children }) => {
     setAnnouncements(prev => prev.filter(a => a.id !== id));
   };
 
+const isFakeMockTutor = (t) => {
+  if (!t) return true;
+  const fakeIds = ['tutor-1', 'tutor-2', 'tutor-3', 'tutor-4', 'tutor-5', 'tutor-6'];
+  const fakeNames = ['María Fernández', 'David Miller', 'Sarah Jenkins', 'Carlos Rodríguez', 'Lucía Fernández', 'Alex Rivera'];
+  return fakeIds.includes(t.id) || fakeNames.includes(t.name);
+};
+
   // Chat Direto por Aluno Selecionado
   const [directChatMessages, setDirectChatMessages] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_DIRECT_CHAT);
@@ -117,26 +124,7 @@ export const MarketplaceProvider = ({ children }) => {
         console.error('Error cargando chat directo', e);
       }
     }
-    return [
-      {
-        id: 'chat-1',
-        studentId: 'stud-1',
-        tutorId: 'tutor-1',
-        senderName: 'María Fernández (Tutor)',
-        senderRole: 'teacher',
-        text: '¡Hola Gabriel! Bienvenido a nossa plataforma. Quando quiser, podemos combinar o foco da nossa próxima aula.',
-        timestamp: '18:30'
-      },
-      {
-        id: 'chat-2',
-        studentId: 'stud-1',
-        tutorId: 'tutor-1',
-        senderName: 'Gabriel Alumno',
-        senderRole: 'student',
-        text: '¡Hola María! Excelente, gostaria de focar em conversação de negócios.',
-        timestamp: '18:32'
-      }
-    ];
+    return [];
   });
 
   const sendDirectMessage = (payload, roleFallback, studentIdFallback, nameFallback) => {
@@ -173,22 +161,20 @@ export const MarketplaceProvider = ({ children }) => {
     return newMsg;
   };
 
-  // Tutores
+  // Tutores (Apenas cadastros reais de teste)
   const [tutors, setTutors] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TUTORS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(t => !isFakeMockTutor(t));
+        }
       } catch (e) {
         console.error('Error cargando tutores de localStorage', e);
       }
     }
-    return initialMockTutors.map(t => ({ 
-      ...t, 
-      status: t.status || 'approved', 
-      earnedBalance: t.earnedBalance || 0,
-      totalLessons: t.totalLessons || 12
-    }));
+    return [];
   });
 
   // Alumno

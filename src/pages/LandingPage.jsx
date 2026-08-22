@@ -246,51 +246,63 @@ export default function LandingPage() {
           </div>
 
           {/* Grilla de Tutores */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {approvedTutors.slice(0, 3).map((tutor) => (
-              <div
-                key={tutor.id}
-                className="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-4 group"
-              >
-                <div className="space-y-3">
-                  <div className="relative rounded-xl overflow-hidden aspect-video bg-slate-950">
-                    <img src={tutor.videoThumbnail} alt={tutor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg">
-                        <Play className="w-5 h-5 fill-slate-950 ml-0.5" />
+          {approvedTutors.length === 0 ? (
+            <div className="bg-slate-900/60 rounded-3xl p-10 border border-slate-800 text-center space-y-3 glow-cyan">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-extrabold text-white">Em breve...</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Em breve teremos professores em destaque! Novos tutores nativos estão finalizando seus cadastros na plataforma.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {approvedTutors.slice(0, 3).map((tutor) => (
+                <div
+                  key={tutor.id}
+                  className="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-4 group"
+                >
+                  <div className="space-y-3">
+                    <div className="relative rounded-xl overflow-hidden aspect-video bg-slate-950">
+                      <img src={tutor.videoThumbnail || tutor.avatar} alt={tutor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg">
+                          <Play className="w-5 h-5 fill-slate-950 ml-0.5" />
+                        </div>
                       </div>
                     </div>
+
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-extrabold text-white text-base group-hover:text-cyan-300 transition-colors">
+                          {tutor.name}
+                        </h3>
+                        <span className="text-xs">{tutor.flag || '🌐'} {tutor.countryCode || ''}</span>
+                      </div>
+                      <p className="text-xs text-cyan-400 font-semibold">{tutor.subject} • {tutor.title || 'Professor(a)'}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <div className="flex items-center gap-1 font-bold text-amber-300">
+                        <Star className="w-4 h-4 fill-amber-400" />
+                        <span>{tutor.rating || 5.0}</span>
+                        <span className="text-slate-400 font-normal">({tutor.reviewCount || 0})</span>
+                      </div>
+                      <span className="font-black text-emerald-400 text-sm font-mono">R$ {tutor.hourlyRate}/h</span>
+                    </div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-extrabold text-white text-base group-hover:text-cyan-300 transition-colors">
-                        {tutor.name}
-                      </h3>
-                      <span className="text-xs">{tutor.flag} {tutor.countryCode}</span>
-                    </div>
-                    <p className="text-xs text-cyan-400 font-semibold">{tutor.subject} • {tutor.title}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <div className="flex items-center gap-1 font-bold text-amber-300">
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <span>{tutor.rating}</span>
-                      <span className="text-slate-400 font-normal">({tutor.reviewCount})</span>
-                    </div>
-                    <span className="font-black text-white text-sm">${tutor.hourlyRate} USD/h</span>
-                  </div>
+                  <button
+                    onClick={() => handleBookTrialClick(tutor)}
+                    className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 cursor-pointer"
+                  >
+                    Agendar Aula Experimental
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => handleBookTrialClick(tutor)}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 cursor-pointer"
-                >
-                  Agendar Aula Experimental
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── COMO FUNCIONA (3 PASOS CLAROS) ── */}
