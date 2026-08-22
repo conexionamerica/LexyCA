@@ -10,6 +10,8 @@ import {
   Camera, Upload
 } from 'lucide-react';
 
+import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
+
 const COUNTRIES = [
   'Espanha', 'Estados Unidos', 'México', 'Colômbia', 'Reino Unido', 
   'Canadá', 'Argentina', 'Chile', 'Peru', 'Brasil'
@@ -47,6 +49,8 @@ export default function OnboardingFlow() {
   
   // Use photo instead of video for presentation
   const [usePhotoInsteadOfVideo, setUsePhotoInsteadOfVideo] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Estados de Login do Tutor
   const [loginEmail, setLoginEmail] = useState('');
@@ -199,6 +203,7 @@ export default function OnboardingFlow() {
       } else {
         if (!formData.video_url.trim()) return 'Informe o link do seu vídeo de apresentação ou escolha a opção de foto.';
       }
+      if (!acceptedTerms) return 'Você precisa ler e aceitar os Termos de Uso do Tutor e a Política de Privacidade para concluir o cadastro.';
     }
     return null;
   };
@@ -820,6 +825,37 @@ export default function OnboardingFlow() {
                     </div>
                   )}
                 </div>
+
+                {/* Checkbox obrigatoria de Termos de Uso para Tutores */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3 mt-4">
+                  <input
+                    type="checkbox"
+                    id="termsTutorOnboarding"
+                    required
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0"
+                  />
+                  <label htmlFor="termsTutorOnboarding" className="text-xs text-slate-300 leading-relaxed cursor-pointer select-none">
+                    Li e concordo com os{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-amber-400 font-bold underline hover:text-amber-300"
+                    >
+                      Termos de Uso do Tutor
+                    </button>{' '}
+                    e a{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-amber-400 font-bold underline hover:text-amber-300"
+                    >
+                      Política de Privacidade
+                    </button>{' '}
+                    da Lexy. *
+                  </label>
+                </div>
               </div>
             )}
 
@@ -848,8 +884,8 @@ export default function OnboardingFlow() {
                 <button
                   type="button"
                   onClick={handleSubmitRegistration}
-                  disabled={isSubmitting}
-                  className={`bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={isSubmitting || !acceptedTerms}
+                  className={`bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer ${(isSubmitting || !acceptedTerms) ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <span>{isSubmitting ? 'Registrando...' : 'Finalizar Cadastro de Tutor 🚀'}</span>
                 </button>
@@ -860,6 +896,8 @@ export default function OnboardingFlow() {
 
         </div>
       )}
+
+      <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
     </div>
   );

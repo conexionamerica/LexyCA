@@ -4,6 +4,8 @@ import { X, Sparkles, User, Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Lo
 import { useAuth } from '../../contexts/AuthContext';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
 
+import TermsPrivacyModal from './TermsPrivacyModal';
+
 const RESIDENCE_COUNTRIES = [
   'Brasil 🇧🇷',
   'Estados Unidos 🇺🇸',
@@ -30,6 +32,8 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
   const [passport, setPassport] = useState('');
   const [studyLanguage, setStudyLanguage] = useState(tutor?.subject || 'Espanhol');
   const [languageLevel, setLanguageLevel] = useState('Iniciante (A1/A2)');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [cpfError, setCpfError] = useState('');
 
   // Login Form State
@@ -65,6 +69,11 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
     e.preventDefault();
     setErrorMsg('');
     setCpfError('');
+
+    if (!acceptedTerms) {
+      setErrorMsg('Você precisa ler e concordar com os Termos de Uso e a Política de Privacidade para concluir o cadastro.');
+      return;
+    }
 
     if (!regName.trim()) {
       setErrorMsg('Por favor, informe seu nome completo.');
@@ -369,9 +378,40 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
               </div>
             </div>
 
+            {/* Checkbox obrigatoria de Termos de Uso */}
+            <div className="flex items-start gap-2.5 pt-1">
+              <input
+                type="checkbox"
+                id="termsBookingStudent"
+                required
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-cyan-500 cursor-pointer shrink-0"
+              />
+              <label htmlFor="termsBookingStudent" className="text-xs text-slate-300 leading-snug cursor-pointer select-none">
+                Li e concordo com os{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(true)}
+                  className="text-cyan-400 font-bold underline hover:text-cyan-300"
+                >
+                  Termos de Uso
+                </button>{' '}
+                e a{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(true)}
+                  className="text-cyan-400 font-bold underline hover:text-cyan-300"
+                >
+                  Política de Privacidade
+                </button>{' '}
+                da Lexy. *
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !acceptedTerms}
               className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3.5 px-4 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 mt-2 cursor-pointer"
             >
               <span>{isLoading ? 'Criando conta...' : 'Criar Conta e Continuar Agendamento'}</span>
@@ -379,6 +419,8 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
             </button>
           </form>
         )}
+
+        <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
         {/* TAB 2: FORMULARIO DE LOGIN */}
         {activeTab === 'login' && (

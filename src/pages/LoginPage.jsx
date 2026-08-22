@@ -9,6 +9,8 @@ import {
   Sparkles, Star, Gift, Zap, FileText, CreditCard as CpfIcon 
 } from 'lucide-react';
 
+import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
+
 const RESIDENCE_COUNTRIES = [
   'Brasil 🇧🇷',
   'Estados Unidos 🇺🇸',
@@ -33,6 +35,8 @@ export default function LoginPage({ forceRole }) {
 
   const [isLogin, setIsLogin] = useState(true); // true: Iniciar Sessão, false: Criar Conta
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   // Campos del formulario
   const [name, setName] = useState('');
@@ -120,6 +124,12 @@ export default function LoginPage({ forceRole }) {
       }
     } else {
       // ── CRIAR NOVA CONTA REAL REGISTRADA NA SUPABASE ──
+      if (!acceptedTerms) {
+        setIsLoading(false);
+        setErrorMessage('Você precisa ler e concordar com os Termos de Uso e a Política de Privacidade para concluir o cadastro.');
+        return;
+      }
+
       if (!name.trim()) {
         setIsLoading(false);
         setErrorMessage('Por favor, informe seu nome completo.');
@@ -505,9 +515,41 @@ export default function LoginPage({ forceRole }) {
                 </>
               )}
 
+              {!isLogin && (
+                <div className="flex items-start gap-2.5 pt-2">
+                  <input
+                    type="checkbox"
+                    id="termsLoginPage"
+                    required
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 cursor-pointer shrink-0"
+                  />
+                  <label htmlFor="termsLoginPage" className="text-xs text-slate-300 leading-snug cursor-pointer select-none">
+                    Li e concordo com os{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-cyan-400 font-bold underline hover:text-cyan-300"
+                    >
+                      Termos de Uso
+                    </button>{' '}
+                    e a{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-cyan-400 font-bold underline hover:text-cyan-300"
+                    >
+                      Política de Privacidade
+                    </button>{' '}
+                    da Lexy. *
+                  </label>
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (!isLogin && !acceptedTerms)}
                 className={`w-full font-black text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer ${
                   isAdmin
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-emerald-500/20'
@@ -527,6 +569,8 @@ export default function LoginPage({ forceRole }) {
 
             </form>
           )}
+
+          <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
           {/* Student Support Section */}
           <div className="pt-6 border-t border-slate-800/80 text-center space-y-3">
