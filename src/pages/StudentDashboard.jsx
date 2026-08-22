@@ -536,18 +536,28 @@ export default function StudentDashboard() {
                       <span className="text-[10px] text-slate-500">({tutor.reviewCount})</span>
                     </div>
                     <span className="font-bold text-white text-sm">
-                      ${tutor.hourlyRate} USD/h
+                      R$ {tutor.hourlyRate}/h
                     </span>
                   </div>
                 </div>
 
-                {/* Botão Primário Elegante e Compacto com UI Kit */}
-                <button
-                  onClick={() => navigate(`/book/${tutor.id}`)}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <span>Agendar Aula Experimental</span>
-                </button>
+                {/* Botões de Ação: Agendar Aula & Ver Perfil */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={() => navigate(`/book/${tutor.id}`)}
+                    className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md shadow-cyan-500/15 border border-cyan-300/30 transition-all duration-200 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Agendar Aula Experimental</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate(`/tutor/${tutor.id}`)}
+                    className="w-full bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl text-xs border border-slate-700/80 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <User className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Ver Perfil do Professor</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
