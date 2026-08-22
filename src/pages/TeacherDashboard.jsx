@@ -6,7 +6,7 @@ import {
   Calendar, Clock, DollarSign, Users, Star, 
   CheckCircle2, Video, Sparkles, Settings, Save, AlertCircle, 
   MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home,
-  ChevronLeft, Grid3x3, List, RefreshCw, Search, Camera, Upload
+  ChevronLeft, Grid3x3, List, RefreshCw, Search, Camera, Upload, Lock, Globe, Mail
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -140,6 +140,19 @@ export default function TeacherDashboard() {
       setTeacherAvatar(profile.avatar_url);
     }
   }, [profile?.avatar_url]);
+
+  // Profile editable states initialized from tutor / profile
+  const [tutorPhone, setTutorPhone] = useState(tutor?.phone || profile?.phone || '+55 (11) 98765-4321');
+  const [tutorCountry, setTutorCountry] = useState(tutor?.country || profile?.residenceCountry || 'Espanha');
+  const [tutorTimezone, setTutorTimezone] = useState(tutor?.timezone || 'America/Sao_Paulo (GMT-3)');
+  const [tutorSubject, setTutorSubject] = useState(tutor?.subject || 'Espanhol');
+  const [tutorNativeLang, setTutorNativeLang] = useState(tutor?.nativeLanguage || 'Espanhol');
+  const [tutorOtherLangs, setTutorOtherLangs] = useState(tutor?.otherLanguages || 'Português (Avançado), Inglês (B2)');
+  const [tutorHeadline, setTutorHeadline] = useState(tutor?.headline || 'Professor(a) Nativo(a) com Foco em Conversação Fluida e Prática');
+  const [tutorBio, setTutorBio] = useState(tutor?.bio || '¡Hola! Meu nome é professor(a) apaixonado(a) por ensinar idiomas. Utilizo uma metodologia 100% prática e personalizada focada na comunicação oral desde a primeira aula.');
+  const [tutorVideoUrl, setTutorVideoUrl] = useState(tutor?.videoUrl || tutor?.video_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ');
+  const [tutorExpYears, setTutorExpYears] = useState(tutor?.experienceYears || 5);
+  const [tutorCertifications, setTutorCertifications] = useState(tutor?.certifications || 'Certificação de Ensino de Idiomas, Graduação em Letras');
 
   const [schedule, setSchedule] = useState(tutor.weeklySchedule || {});
   const [isScheduleSaved, setIsScheduleSaved] = useState(false);
@@ -400,11 +413,29 @@ export default function TeacherDashboard() {
 
     tutor.hourlyRate = rateNum;
     tutor.meetUrl = meetUrl;
+    tutor.phone = tutorPhone;
+    tutor.country = tutorCountry;
+    tutor.timezone = tutorTimezone;
+    tutor.subject = tutorSubject;
+    tutor.nativeLanguage = tutorNativeLang;
+    tutor.otherLanguages = tutorOtherLangs;
+    tutor.headline = tutorHeadline;
+    tutor.bio = tutorBio;
+    tutor.videoUrl = tutorVideoUrl;
+    tutor.video_url = tutorVideoUrl;
+    tutor.experienceYears = tutorExpYears;
+    tutor.certifications = tutorCertifications;
+
     if (teacherAvatar) {
       tutor.avatar = teacherAvatar;
       tutor.avatar_url = teacherAvatar;
       if (updateProfile) {
-        updateProfile({ avatar_url: teacherAvatar, hourly_rate: rateNum });
+        updateProfile({
+          avatar_url: teacherAvatar,
+          hourly_rate: rateNum,
+          phone: tutorPhone,
+          residenceCountry: tutorCountry
+        });
       }
       if (profile?.id) {
         localStorage.setItem('lexy_avatar_' + profile.id, teacherAvatar);
@@ -412,7 +443,14 @@ export default function TeacherDashboard() {
       if (profile?.email) {
         localStorage.setItem('lexy_avatar_' + profile.email, teacherAvatar);
       }
+    } else if (updateProfile) {
+      updateProfile({
+        hourly_rate: rateNum,
+        phone: tutorPhone,
+        residenceCountry: tutorCountry
+      });
     }
+
     setIsRateSaved(true);
     setTimeout(() => setIsRateSaved(false), 3000);
   };
@@ -1877,32 +1915,85 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* ABA: PERFIL */}
+        {/* ABA: PERFIL DO PROFESSOR */}
         {activeTab === 'perfil' && (
-          <div className="animate-fade-in-up max-w-2xl mx-auto">
-            <div className="glass-panel rounded-3xl p-6 space-y-5 border border-amber-500/30">
-              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                <Settings className="w-4 h-4 text-amber-400" />
-                Configurações do Perfil & Tarifa
-              </h3>
+          <div className="animate-fade-in-up max-w-3xl mx-auto space-y-4">
+            <div className="glass-panel rounded-3xl p-6 space-y-6 border border-amber-500/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-amber-400" />
+                    Configurações do Perfil do Tutor
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Edite seus dados didáticos, contatos, biografia, vídeo de apresentação e tarifa por hora.
+                  </p>
+                </div>
+                <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-3 py-1 rounded-full border border-amber-500/20 self-start sm:self-center">
+                  Perfil de Tutor Ativo
+                </span>
+              </div>
 
               {isRateSaved && (
-                <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Configurações salvas com sucesso!</span>
+                <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3.5 rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Perfil e configurações atualizados com sucesso!</span>
                 </div>
               )}
 
               {rateErrorMsg && (
-                <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3.5 rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{rateErrorMsg}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSaveSettings} className="space-y-4">
+              <form onSubmit={handleSaveSettings} className="space-y-6">
                 
-                {/* SEÇÃO FOTO DE PERFIL DO TUTOR */}
+                {/* MÓDULO 1: DADOS SENSÍVEIS DE CADASTRO (PROTEGIDOS / NÃO EDITÁVEIS) */}
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-rose-400" />
+                      <span>Dados Identificadores de Cadastro (Bloqueados)</span>
+                    </h4>
+                    <span className="text-[10px] bg-rose-500/10 text-rose-300 font-semibold px-2 py-0.5 rounded border border-rose-500/20">
+                      🔒 Não editável após cadastro
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-400 block mb-1">Nome Completo</label>
+                      <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center gap-2 cursor-not-allowed">
+                        <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{profile?.full_name || tutor?.name || 'Professor'}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-400 block mb-1">E-mail de Cadastro</label>
+                      <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center gap-2 cursor-not-allowed">
+                        <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{profile?.email || tutor?.email || 'professor@lexy.com'}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-400 block mb-1">CPF / Documento</label>
+                      <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center gap-2 cursor-not-allowed">
+                        <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span className="truncate">{profile?.documentNumber || tutor?.documentNumber || '123.456.789-00'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 leading-relaxed pt-1">
+                    ⚠️ Por razões de segurança e integridade cadastral, Nome, E-mail e CPF não podem ser alterados após o registro inicial.
+                  </p>
+                </div>
+
+                {/* MÓDULO 2: FOTO DE PERFIL DO TUTOR */}
                 <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
                   <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                     <Camera className="w-4 h-4 text-amber-400" />
@@ -1925,7 +2016,7 @@ export default function TeacherDashboard() {
 
                     <div className="flex-1 text-center sm:text-left space-y-2">
                       <p className="text-xs text-slate-300 leading-relaxed">
-                        Esta foto é a mesma enviada no cadastro e é exibida no seu perfil público para os alunos e no menu superior.
+                        Esta foto é exibida aos alunos no seu perfil público, no catálogo de tutores e no menu superior.
                       </p>
                       <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition-all cursor-pointer">
                         <Upload className="w-4 h-4" />
@@ -1936,82 +2027,250 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-slate-400 block">Tarifa por Hora (R$ BRL) *</label>
-                    <span className="text-[10px] text-amber-300 font-mono font-bold">R$ 13,00 a R$ 40,00</span>
-                  </div>
+                {/* MÓDULO 3: DADOS DE CONTATO E LOCALIZAÇÃO (EDITÁVEIS) */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    <span>Contato & Localização</span>
+                  </h4>
 
-                  <div className="relative">
-                    <span className="text-slate-400 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">R$</span>
-                    <input
-                      type="number"
-                      min={MIN_RATE}
-                      max={MAX_RATE}
-                      required
-                      value={hourlyRate}
-                      onChange={(e) => setHourlyRate(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Telefone / WhatsApp *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tutorPhone}
+                        onChange={(e) => setTutorPhone(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                      />
+                    </div>
 
-                  <div className="mt-2 bg-amber-500/15 border border-amber-500/30 p-2.5 rounded-xl text-[11px] flex items-center justify-between">
-                    <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ {RECOMMENDED_RATE},00/h</span>
-                    <button
-                      type="button"
-                      onClick={() => setHourlyRate(RECOMMENDED_RATE)}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow cursor-pointer"
-                    >
-                      Aplicar R$ {RECOMMENDED_RATE}
-                    </button>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">País de Residência *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tutorCountry}
+                        onChange={(e) => setTutorCountry(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Fuso Horário (Timezone) *</label>
+                      <select
+                        value={tutorTimezone}
+                        onChange={(e) => setTutorTimezone(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400 cursor-pointer"
+                      >
+                        <option value="America/Sao_Paulo (GMT-3)">America/Sao_Paulo (GMT-3)</option>
+                        <option value="America/Mexico_City (GMT-6)">America/Mexico_City (GMT-6)</option>
+                        <option value="America/Bogota (GMT-5)">America/Bogota (GMT-5)</option>
+                        <option value="America/New_York (GMT-5)">America/New_York (GMT-5)</option>
+                        <option value="Europe/Madrid (GMT+1)">Europe/Madrid (GMT+1)</option>
+                        <option value="Europe/London (GMT+0)">Europe/London (GMT+0)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* CASILLA DE CONFIGURACIÓN DE CHAVE PIX PARA RESGATES */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-slate-300 block">Chave PIX Cadastrada para Resgate de Ganhos *</label>
-                    <span className="text-[10px] text-emerald-400 font-mono font-bold">Transferência PIX</span>
+                {/* MÓDULO 4: INFORMAÇÕES ACADÊMICAS E DIDÁTICAS (EDITÁVEIS) */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                    <Award className="w-4 h-4" />
+                    <span>Idiomas, Experiência & Certificações</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Idioma Principal Ensinado *</label>
+                      <select
+                        value={tutorSubject}
+                        onChange={(e) => setTutorSubject(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400 cursor-pointer"
+                      >
+                        <option value="Espanhol">Espanhol 🇪🇸</option>
+                        <option value="Inglês">Inglês 🇬🇧🇺🇸</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Idioma Nativo *</label>
+                      <select
+                        value={tutorNativeLang}
+                        onChange={(e) => setTutorNativeLang(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400 cursor-pointer"
+                      >
+                        <option value="Espanhol">Espanhol 🇪🇸</option>
+                        <option value="Inglês">Inglês 🇬🇧🇺🇸</option>
+                        <option value="Português">Português 🇧🇷</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Anos de Experiência *</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        required
+                        value={tutorExpYears}
+                        onChange={(e) => setTutorExpYears(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                      />
+                    </div>
                   </div>
 
-                  <div className="relative">
-                    <span className="text-slate-500 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">🔑</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Outros Idiomas Falados</label>
+                      <input
+                        type="text"
+                        value={tutorOtherLangs}
+                        onChange={(e) => setTutorOtherLangs(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 block mb-1">Certificações e Formação</label>
+                      <input
+                        type="text"
+                        value={tutorCertifications}
+                        onChange={(e) => setTutorCertifications(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* MÓDULO 5: APRESENTAÇÃO PÚBLICA & VÍDEO (EDITÁVEIS) */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span>Apresentação Pública & Vídeo Embed</span>
+                  </h4>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Título do Perfil (Headline) *</label>
                     <input
                       type="text"
                       required
-                      value={pixKey}
-                      onChange={(e) => setPixKey(e.target.value)}
-                      placeholder="E-mail, CPF, Telefone ou Chave Aleatória PIX"
-                      className="w-full bg-slate-900 border border-slate-800 text-amber-300 font-mono font-bold text-xs rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
+                      value={tutorHeadline}
+                      onChange={(e) => setTutorHeadline(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
                     />
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Sua chave PIX fica salva e será usada automaticamente sempre que solicitar um resgate de saldo.
-                  </span>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Biografia Pública (Apresentação aos Alunos) *</label>
+                    <textarea
+                      rows={4}
+                      required
+                      value={tutorBio}
+                      onChange={(e) => setTutorBio(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl p-3 text-xs font-medium outline-none focus:border-amber-400 leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 block mb-1">Link do Vídeo de Apresentação (YouTube / Vimeo Embed URL) *</label>
+                    <div className="relative">
+                      <Video className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="url"
+                        required
+                        value={tutorVideoUrl}
+                        onChange={(e) => setTutorVideoUrl(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl pl-9 pr-3 py-2 text-xs font-medium outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Preço Regular por Hora:</span>
-                    <strong className="text-white font-black text-sm">R$ {hourlyRate},00 / h</strong>
+                {/* MÓDULO 6: TARIFA POR HORA & CHAVE PIX DE RESGATE */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    <span>Tarifa por Hora & Dados Financeiros</span>
+                  </h4>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-slate-400 block">Tarifa por Hora (R$ BRL) *</label>
+                      <span className="text-[10px] text-amber-300 font-mono font-bold">R$ 13,00 a R$ 40,00</span>
+                    </div>
+
+                    <div className="relative">
+                      <span className="text-slate-400 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">R$</span>
+                      <input
+                        type="number"
+                        min={MIN_RATE}
+                        max={MAX_RATE}
+                        required
+                        value={hourlyRate}
+                        onChange={(e) => setHourlyRate(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-emerald-400 font-black text-base rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div className="mt-2 bg-amber-500/15 border border-amber-500/30 p-2.5 rounded-xl text-[11px] flex items-center justify-between">
+                      <span className="text-amber-200">💡 <strong>Recomendada:</strong> R$ {RECOMMENDED_RATE},00/h</span>
+                      <button
+                        type="button"
+                        onClick={() => setHourlyRate(RECOMMENDED_RATE)}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-lg shadow cursor-pointer"
+                      >
+                        Aplicar R$ {RECOMMENDED_RATE}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                    <span className="text-slate-400">Aula Experimental:</span>
-                    <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.75).toFixed(2)}</strong>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-slate-300 block">Chave PIX Cadastrada para Resgate de Ganhos *</label>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold">Transferência PIX</span>
+                    </div>
+
+                    <div className="relative">
+                      <span className="text-slate-500 font-bold text-xs absolute left-3 top-1/2 -translate-y-1/2">🔑</span>
+                      <input
+                        type="text"
+                        required
+                        value={pixKey}
+                        onChange={(e) => setPixKey(e.target.value)}
+                        placeholder="E-mail, CPF, Telefone ou Chave Aleatória PIX"
+                        className="w-full bg-slate-950 border border-slate-800 text-amber-300 font-mono font-bold text-xs rounded-xl pl-9 pr-3.5 py-2.5 outline-none focus:border-amber-400"
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                    <span className="text-slate-400">Seu Repasse Líquido ({currentEarnPercent}%):</span>
-                    <strong className="text-amber-300 font-bold">R$ {(hourlyRate * (currentEarnPercent/100)).toFixed(2)} / h</strong>
+
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400 font-medium">Preço Regular por Hora:</span>
+                      <strong className="text-white font-black text-sm">R$ {hourlyRate},00 / h</strong>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                      <span className="text-slate-400 font-medium">Aula Experimental:</span>
+                      <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.75).toFixed(2)}</strong>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                      <span className="text-slate-400 font-medium">Seu Repasse Líquido ({currentEarnPercent}%):</span>
+                      <strong className="text-amber-300 font-bold">R$ {(hourlyRate * (currentEarnPercent/100)).toFixed(2)} / h</strong>
+                    </div>
                   </div>
                 </div>
 
+                {/* BOTÃO SALVAR GERAL */}
                 <button
                   type="submit"
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5"
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm py-3.5 rounded-xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-95"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Salvar Configurações & Tarifa</span>
+                  <span>Salvar Configurações do Perfil</span>
                 </button>
+
               </form>
             </div>
           </div>
