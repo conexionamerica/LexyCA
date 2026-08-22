@@ -157,7 +157,7 @@ export default function Navbar() {
                       {profile.role === 'student' && (
                         <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
                           <span className="text-slate-400 font-medium">Saldo:</span>
-                          <strong className="text-emerald-400 font-black">${student.walletBalance.toFixed(2)} USD</strong>
+                          <strong className="text-emerald-400 font-black">R$ {(profile.wallet_balance ?? student.walletBalance ?? 0).toFixed(2)}</strong>
                         </div>
                       )}
                     </div>
@@ -172,11 +172,11 @@ export default function Navbar() {
                           <User className="w-4 h-4 text-cyan-400" /> Meu Painel de Aluno
                         </Link>
                         <Link
-                          to="/dashboard/student/wallet"
+                          to="/dashboard/student?tab=carteira"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:bg-cyan-500/20 hover:text-cyan-300 flex items-center gap-2 transition-colors"
                         >
-                          <Wallet className="w-4 h-4 text-emerald-400" /> Minha Billetera
+                          <Wallet className="w-4 h-4 text-emerald-400" /> LexyPay
                         </Link>
                       </>
                     )}
