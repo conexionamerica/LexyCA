@@ -222,7 +222,7 @@ export default function BookingPage() {
               <button
                 onClick={() => {
                   setInsufficientBalanceError(null);
-                  navigate('/dashboard/student/wallet');
+                  navigate('/dashboard/student?tab=carteira');
                 }}
                 className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 text-white font-black text-xs sm:text-sm py-3.5 px-6 rounded-xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
