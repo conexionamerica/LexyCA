@@ -78,21 +78,26 @@ export default function StudentDashboard() {
   const messagesContainerRef = useRef(null);
 
   const activeTutor = useMemo(() => {
-    return approvedTutors.find(t => t.id === activeChatTutorId) || assignedTutor;
-  }, [approvedTutors, activeChatTutorId, assignedTutor]);
+    if (!approvedTutors.length) return null;
+    return approvedTutors.find(t => t.id === activeChatTutorId) || approvedTutors[0];
+  }, [approvedTutors, activeChatTutorId]);
 
   const activeChatMessages = useMemo(() => {
-    return directChatMessages.filter(msg => {
-      if (msg.tutorId) {
-        return msg.tutorId === activeTutor.id;
-      }
-      // Mensagens iniciais de mockup / fallback por nome do tutor
-      if (activeTutor.id === approvedTutors[0]?.id || activeTutor.id === 'tutor-1') {
-        return true;
-      }
-      return msg.senderName?.toLowerCase().includes(activeTutor.name.toLowerCase());
-    });
-  }, [directChatMessages, activeTutor, approvedTutors]);
+    if (!activeTutor) return [];
+    return directChatMessages.filter(msg => msg.tutorId === activeTutor.id);
+  }, [directChatMessages, activeTutor]);
+
+  const renderAvatar = (url, name, className = "w-9 h-9 rounded-full shrink-0") => {
+    if (url && !url.includes('images.unsplash.com')) {
+      return <img src={url} alt={name || 'Avatar'} className={`${className} object-cover`} />;
+    }
+    const initial = (name || 'U').charAt(0).toUpperCase();
+    return (
+      <div className={`${className} bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-500/40 text-xs shrink-0 shadow-sm`}>
+        {initial}
+      </div>
+    );
+  };
 
   // Rolar apenas o container interno do chat sem rolar a página web inteira
   useEffect(() => {
@@ -166,22 +171,11 @@ export default function StudentDashboard() {
     setTimeout(() => setProfileSaveSuccess(false), 4000);
   };
 
-  const [myBookingsList, setMyBookingsList] = useState(() => {
-    return bookings.length > 0 ? bookings : [
-      {
-        id: 'booking-demo-1',
-        tutorId: assignedTutor.id,
-        tutorName: assignedTutor.name,
-        tutorAvatar: assignedTutor.avatar,
-        tutorSubject: assignedTutor.subject,
-        studentId: student.id,
-        day: 'Segunda-feira',
-        time: '15:00',
-        amount: assignedTutor.hourlyRate,
-        status: 'confirmed'
-      }
-    ];
-  });
+  const [myBookingsList, setMyBookingsList] = useState(bookings || []);
+
+  useEffect(() => {
+    setMyBookingsList(bookings || []);
+  }, [bookings]);
 
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState(null);
   const [rescheduleDay, setRescheduleDay] = useState('Quarta-feira');
@@ -274,13 +268,9 @@ export default function StudentDashboard() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   {/* Esquerda: Avatar + Detalhes + Calendário */}
                   <div className="flex items-center gap-3.5">
-                    <img 
-                      src={nextBooking.tutorAvatar || assignedTutor.avatar} 
-                      alt={nextBooking.tutorName || assignedTutor.name}
-                      className="w-12 h-12 rounded-full border border-cyan-400/50 object-cover ring-2 ring-cyan-500/40 shrink-0" 
-                    />
+                    {renderAvatar(nextBooking.tutorAvatar || assignedTutor?.avatar, nextBooking.tutorName || assignedTutor?.name, "w-12 h-12 rounded-full ring-2 ring-cyan-500/40")}
                     <div>
-                      <h3 className="text-base font-semibold text-white">{nextBooking.tutorName || assignedTutor.name}</h3>
+                      <h3 className="text-base font-semibold text-white">{nextBooking.tutorName || assignedTutor?.name}</h3>
                       <p className="text-cyan-400 text-xs font-medium">
                         {nextBooking.tutorSubject || assignedTutor.subject} • Aula Individual
                       </p>
@@ -331,7 +321,7 @@ export default function StudentDashboard() {
                   {subsequentBookings.map(booking => (
                     <div key={booking.id} className="bg-slate-950/60 border border-slate-800/60 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <img src={booking.tutorAvatar} alt={booking.tutorName} className="w-10 h-10 rounded-full object-cover border border-cyan-400/30 shrink-0" />
+                        {renderAvatar(booking.tutorAvatar, booking.tutorName, "w-10 h-10 rounded-full")}
                         <div>
                           <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
                           <p className="text-[11px] text-cyan-400 font-medium">{booking.tutorSubject}</p>
@@ -577,73 +567,84 @@ export default function StudentDashboard() {
       {/* TAB 3: CHAT SPLIT-VIEW (2 COLUMNAS ESTÁNDAR 30% / 70%) */}
       {activeTab === 'chat' && (
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-180px)] min-h-[480px] max-h-[680px] shadow-sm">
-          
-          {/* SIDEBAR IZQUIERDA (30% - md:col-span-4) */}
-          <div className="md:col-span-4 bg-slate-950/80 border-b md:border-b-0 md:border-r border-slate-800/60 p-3 flex flex-col h-full overflow-hidden">
-            <h3 className="font-semibold text-white text-xs uppercase tracking-wider px-1 mb-2 shrink-0">Conversas Ativas</h3>
-            
-            <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
-              {approvedTutors.map((tutor) => {
-                const isSelected = activeChatTutorId === tutor.id;
-                return (
-                  <button
-                    key={tutor.id}
-                    onClick={() => setActiveChatTutorId(tutor.id)}
-                    className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left cursor-pointer ${
-                      isSelected
-                        ? 'bg-cyan-500/20 border border-cyan-500/40 text-white shadow-sm font-semibold'
-                        : 'hover:bg-slate-900 text-slate-400 hover:text-white border border-transparent'
-                    }`}
-                  >
-                    <img src={tutor.avatar} alt={tutor.name} className="w-9 h-9 rounded-full object-cover border border-cyan-400/40 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-white truncate">{tutor.name}</span>
-                        <span className="text-[10px] text-slate-500">Hoje</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate">{tutor.subject} • ${tutor.hourlyRate}/h</p>
-                    </div>
-                  </button>
-                );
-              })}
+          {approvedTutors.length === 0 ? (
+            <div className="md:col-span-12 flex flex-col items-center justify-center text-center p-12 space-y-3 my-auto">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-white">Em breve...</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                Nenhum professor disponível para conversa no momento. Assim que novos tutores reais concluírem o cadastro, você poderá conversar diretamente com eles aqui!
+              </p>
             </div>
-          </div>
-
-          {/* ÁREA DE CHAT DERECHA (70% - md:col-span-8) */}
-          <div className="md:col-span-8 flex flex-col h-full overflow-hidden bg-slate-950/40">
-            
-            {/* Header del Tutor Activo - FIJO */}
-            <div className="p-3 bg-slate-950/80 border-b border-slate-800/60 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <img src={activeTutor.avatar} alt={activeTutor.name} className="w-8 h-8 rounded-full object-cover border border-cyan-400/40" />
-                <div>
-                  <h4 className="font-semibold text-white text-xs">{activeTutor.name}</h4>
-                  <span className="text-[10px] text-emerald-400 font-medium">● Online • {activeTutor.subject}</span>
+          ) : (
+            <>
+              {/* SIDEBAR IZQUIERDA (30% - md:col-span-4) */}
+              <div className="md:col-span-4 bg-slate-950/80 border-b md:border-b-0 md:border-r border-slate-800/60 p-3 flex flex-col h-full overflow-hidden">
+                <h3 className="font-semibold text-white text-xs uppercase tracking-wider px-1 mb-2 shrink-0">Conversas Ativas</h3>
+                
+                <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
+                  {approvedTutors.map((tutor) => {
+                    const isSelected = activeTutor?.id === tutor.id;
+                    return (
+                      <button
+                        key={tutor.id}
+                        onClick={() => setActiveChatTutorId(tutor.id)}
+                        className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 transition-all text-left cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 border border-cyan-500/40 text-white shadow-sm font-semibold'
+                            : 'hover:bg-slate-900 text-slate-400 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        {renderAvatar(tutor.avatar, tutor.name, "w-9 h-9 rounded-full")}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-xs text-white truncate">{tutor.name}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">{tutor.subject} • R$ {tutor.hourlyRate}/h</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
 
-            {/* Ventana de Mensajes Scrollable - ÚNICO ÁREA QUE HACE SCROLL */}
-            <div ref={messagesContainerRef} className="p-4 overflow-y-auto space-y-3 flex-1 min-h-0">
-              {activeChatMessages.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 text-xs">
-                  Nenhuma mensagem trocada com {activeTutor.name} ainda. Digite sua dúvida ou mensagem abaixo!
-                </div>
-              ) : (
-                activeChatMessages.map(msg => {
-                  const isStudent = msg.senderRole === 'student' || msg.sender === 'student';
-                  return (
-                    <div key={msg.id} className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
-                        isStudent 
-                          ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm' 
-                          : 'bg-slate-900 border border-slate-800 text-slate-200'
-                      }`}>
-                        {msg.senderName && (
-                          <span className={`text-[10px] opacity-80 block font-black mb-0.5 ${isStudent ? 'text-slate-950' : 'text-cyan-400'}`}>
-                            {msg.senderName}
-                          </span>
-                        )}
+              {/* ÁREA DE CHAT DERECHA (70% - md:col-span-8) */}
+              <div className="md:col-span-8 flex flex-col h-full overflow-hidden bg-slate-950/40">
+                {/* Header del Tutor Activo - FIJO */}
+                {activeTutor && (
+                  <div className="p-3 bg-slate-950/80 border-b border-slate-800/60 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2.5">
+                      {renderAvatar(activeTutor.avatar, activeTutor.name, "w-8 h-8 rounded-full")}
+                      <div>
+                        <h4 className="font-semibold text-white text-xs">{activeTutor.name}</h4>
+                        <span className="text-[10px] text-emerald-400 font-medium">● Online • {activeTutor.subject}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ventana de Mensajes Scrollable - ÚNICO ÁREA QUE HACE SCROLL */}
+                <div ref={messagesContainerRef} className="p-4 overflow-y-auto space-y-3 flex-1 min-h-0">
+                  {activeChatMessages.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 text-xs">
+                      Nenhuma mensagem trocada com {activeTutor?.name || 'o professor'} ainda. Digite sua mensagem abaixo!
+                    </div>
+                  ) : (
+                    activeChatMessages.map(msg => {
+                      const isStudent = msg.senderRole === 'student' || msg.sender === 'student';
+                      return (
+                        <div key={msg.id} className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'}`}>
+                          <div className={`max-w-[80%] rounded-2xl p-3 text-xs leading-relaxed ${
+                            isStudent 
+                              ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm' 
+                              : 'bg-slate-900 border border-slate-800 text-slate-200'
+                          }`}>
+                            {msg.senderName && (
+                              <span className={`text-[10px] opacity-80 block font-black mb-0.5 ${isStudent ? 'text-slate-950' : 'text-cyan-400'}`}>
+                                {msg.senderName}
+                              </span>
+                            )}
                         <p className="break-words">{msg.text || msg.content}</p>
                       </div>
                       {msg.timestamp && (
@@ -697,9 +698,10 @@ export default function StudentDashboard() {
             </div>
 
           </div>
-
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* TAB 4: CARTEIRA DIGITAL */}
       {activeTab === 'carteira' && (

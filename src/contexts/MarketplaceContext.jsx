@@ -221,165 +221,26 @@ const isFakeMockTutor = (t) => {
     return [];
   });
 
-  // Helper for generating initial bookings dynamically matching current week
-  const getInitialDefaultBookings = () => {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const sunday = new Date(now);
-    sunday.setDate(now.getDate() - currentDay);
-
-    const getDateStr = (dayOffset) => {
-      const d = new Date(sunday);
-      d.setDate(sunday.getDate() + dayOffset);
-      return d.toISOString().split('T')[0];
-    };
-
-    return [
-      {
-        id: 'booking-101',
-        tutorId: 'tutor-1',
-        studentId: 'stud-1',
-        studentName: 'Willyam Giovanni Soares de Castro',
-        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Iniciante',
-        day: 'Segunda',
-        isoDateStr: getDateStr(1),
-        time: '19:15',
-        bookingType: 'subscription',
-        status: 'agendada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-102',
-        tutorId: 'tutor-1',
-        studentId: 'stud-1',
-        studentName: 'Willyam Giovanni Soares de Castro',
-        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Iniciante',
-        day: 'Terça',
-        isoDateStr: getDateStr(2),
-        time: '19:15',
-        bookingType: 'trial',
-        status: 'agendada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-103',
-        tutorId: 'tutor-1',
-        studentId: 'stud-1',
-        studentName: 'Willyam Giovanni Soares de Castro',
-        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Iniciante',
-        day: 'Terça',
-        isoDateStr: getDateStr(2),
-        time: '20:00',
-        bookingType: 'subscription',
-        status: 'agendada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-104',
-        tutorId: 'tutor-1',
-        studentId: 'stud-2',
-        studentName: 'Bruno Heitor de Oliveira',
-        studentAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Intermediário',
-        day: 'Terça',
-        isoDateStr: getDateStr(2),
-        time: '21:00',
-        bookingType: 'subscription',
-        status: 'agendada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-105',
-        tutorId: 'tutor-1',
-        studentId: 'stud-1',
-        studentName: 'Willyam Giovanni Soares de Castro',
-        studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Iniciante',
-        day: 'Quarta',
-        isoDateStr: getDateStr(3),
-        time: '20:00',
-        bookingType: 'trial',
-        status: 'falta',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-106',
-        tutorId: 'tutor-1',
-        studentId: 'stud-3',
-        studentName: 'Gabriel Alumno Silva',
-        studentAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'B2 Intermediário',
-        day: 'Quinta',
-        isoDateStr: getDateStr(4),
-        time: '19:15',
-        bookingType: 'subscription',
-        status: 'cancelada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-107',
-        tutorId: 'tutor-1',
-        studentId: 'stud-2',
-        studentName: 'Bruno Heitor de Oliveira',
-        studentAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Intermediário',
-        day: 'Quinta',
-        isoDateStr: getDateStr(4),
-        time: '21:00',
-        bookingType: 'subscription',
-        status: 'agendada',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-pending-1',
-        tutorId: 'tutor-1',
-        studentId: 'stud-3',
-        studentName: 'Mariana Costa Ferreira',
-        studentAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Iniciante (A1)',
-        day: 'Sexta',
-        isoDateStr: getDateStr(5),
-        time: '18:00',
-        bookingType: 'trial',
-        amount: 15.00,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'booking-pending-2',
-        tutorId: 'tutor-1',
-        studentId: 'stud-2',
-        studentName: 'Carlos Eduardo Silveira',
-        studentAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-        studentLevel: 'Intermediário (B1)',
-        day: 'Sábado',
-        isoDateStr: getDateStr(6),
-        time: '10:00',
-        bookingType: 'subscription',
-        amount: 23.00,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      }
-    ];
+  const isFakeBooking = (b) => {
+    if (!b || !b.id) return true;
+    const fakePrefixes = ['booking-10', 'booking-demo', 'booking-pending'];
+    return fakePrefixes.some(prefix => String(b.id).startsWith(prefix));
   };
 
-  // Bookings
+  // Bookings (Apenas reservas reais criadas por testes)
   const [bookings, setBookings] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(b => !isFakeBooking(b));
         }
       } catch (e) {
         console.error('Error cargando reservas', e);
       }
     }
-    return getInitialDefaultBookings();
+    return [];
   });
 
   // Persistencia

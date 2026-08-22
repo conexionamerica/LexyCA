@@ -50,9 +50,7 @@ export const AuthProvider = ({ children }) => {
             study_language: dbProfile.study_language || userMeta.study_language || '',
             language_level: dbProfile.language_level || userMeta.language_level || '',
             study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
-            avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || (userMeta.role === 'teacher' 
-              ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-              : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+            avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
             hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
           };
           setProfile(userProfile);
@@ -90,9 +88,7 @@ export const AuthProvider = ({ children }) => {
           study_language: dbProfile.study_language || userMeta.study_language || '',
           language_level: dbProfile.language_level || userMeta.language_level || '',
           study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
-          avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || (userMeta.role === 'teacher' 
-            ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+          avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
           hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
         };
         setProfile(userProfile);
@@ -126,7 +122,7 @@ export const AuthProvider = ({ children }) => {
         full_name: 'Administrador Lexy Idiomas',
         email: 'emaildeconexionamerica@gmail.com',
         role: 'admin',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+        avatar_url: ''
       };
       setProfile(adminUser);
       return { success: true, user: adminUser };
@@ -156,6 +152,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const userMeta = data.user.user_metadata || {};
+      const localAvatar = localStorage.getItem('lexy_avatar_' + data.user.id) || localStorage.getItem('lexy_avatar_' + data.user.email);
       const userProfile = {
         id: data.user.id,
         full_name: userMeta.name || userMeta.full_name || cleanEmail.split('@')[0],
@@ -163,9 +160,7 @@ export const AuthProvider = ({ children }) => {
         role: userMeta.role || 'student',
         documentNumber: userMeta.documentNumber || '',
         residenceCountry: userMeta.residenceCountry || 'Brasil 🇧🇷',
-        avatar_url: userMeta.avatar_url || (userMeta.role === 'teacher' 
-          ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'),
+        avatar_url: localAvatar || userMeta.avatar_url || '',
         hourly_rate: userMeta.hourlyRate || 20
       };
       setProfile(userProfile);

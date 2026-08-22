@@ -122,23 +122,27 @@ export default function Navbar() {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 p-1.5 pr-3 rounded-xl transition-all"
                 >
-                  <img
-                    src={
-                      profile.avatar_url || 
+                  {(() => {
+                    const avatar = profile.avatar_url || 
                       (profile.id ? localStorage.getItem('lexy_avatar_' + profile.id) : null) || 
-                      (profile.email ? localStorage.getItem('lexy_avatar_' + profile.email) : null) || 
-                      (profile.role === 'teacher' 
-                        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' 
-                        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80')
+                      (profile.email ? localStorage.getItem('lexy_avatar_' + profile.email) : null);
+                    
+                    if (avatar && !avatar.includes('images.unsplash.com')) {
+                      return (
+                        <img
+                          src={avatar}
+                          alt={profile.full_name}
+                          className="w-8 h-8 rounded-lg object-cover border border-cyan-400"
+                        />
+                      );
                     }
-                    alt={profile.full_name}
-                    className="w-8 h-8 rounded-lg object-cover border border-cyan-400"
-                    onError={(e) => {
-                      e.target.src = profile.role === 'teacher' 
-                        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' 
-                        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
-                    }}
-                  />
+                    const initial = (profile.full_name || profile.email || 'U').charAt(0).toUpperCase();
+                    return (
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs shrink-0">
+                        {initial}
+                      </div>
+                    );
+                  })()}
                   <div className="text-left">
                     <span className="text-xs font-black text-white block leading-tight">{profile.full_name}</span>
                     <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">
