@@ -55,12 +55,12 @@ export default function LandingPage() {
   }, [messagesToDisplay.length]);
 
   const testimonials = [
-    { name: "Carlos S.", country: "🇧🇷", rating: 5, text: "O Lexy Idiomas transformou minha forma de falar inglês. Consegui a fluência que precisava para o meu trabalho!", avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" },
-    { name: "Sarah J.", country: "🇺🇸", rating: 5, text: "The tutors are amazing! I learned Spanish so fast and now I feel confident traveling to Latin America.", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" },
-    { name: "María P.", country: "🇪🇸", rating: 4, text: "Las clases son muy dinámicas y los profesores están siempre dispuestos a ayudar. Muito bom!", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" },
-    { name: "João V.", country: "🇵🇹", rating: 5, text: "Plataforma excelente. A possibilidade de escolher professores de diferentes nacionalidades faz toda a diferença.", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" },
-    { name: "Emily R.", country: "🇬🇧", rating: 5, text: "I love the interactive classroom. It makes learning a new language incredibly fun and efficient.", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" },
-    { name: "Lucas F.", country: "🇧🇷", rating: 5, text: "Recomendo muito! Em apenas alguns meses já consigo me comunicar sem medo. Professores muito qualificados.", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=150&q=80" }
+    { name: "Carlos S.", country: "🇧🇷", rating: 5, text: "O Lexy Idiomas transformou minha forma de falar inglês. Consegui a fluência e a confiança que precisava para o meu trabalho!" },
+    { name: "Sarah J.", country: "🇺🇸", rating: 5, text: "Os professores nativos da plataforma são incríveis! Consegui aprender espanhol rapidamente para viajar e trabalhar com tranquilidade." },
+    { name: "María P.", country: "🇪🇸", rating: 5, text: "As aulas são super dinâmicas e focadas em conversação real. A sala de aula virtual com lousa interativa facilita muito o aprendizado." },
+    { name: "João V.", country: "🇵🇹", rating: 5, text: "Plataforma excelente! A possibilidade de agendar aulas com professores nativos de diferentes países faz toda a diferença na minha evolução." },
+    { name: "Emily R.", country: "🇬🇧", rating: 5, text: "Adoro a flexibilidade de horários e a qualidade dos professores. Aprender um novo idioma na Lexy tornou-se um processo muito eficiente." },
+    { name: "Lucas F.", country: "🇧🇷", rating: 5, text: "Recomendo muito! Em apenas alguns meses já consigo me comunicar sem medo em reuniões corporativas. Professores extremamente qualificados." }
   ];
 
   const faqs = [
@@ -346,15 +346,14 @@ export default function LandingPage() {
                 className="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 flex flex-col gap-4 animate-fade-in-up"
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
-                <div className="flex items-center gap-4">
-                  <img src={testim.avatar} alt={testim.name} className="w-12 h-12 rounded-full object-cover border border-cyan-500/30" />
+                <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold text-white flex items-center gap-2">
-                      {testim.name} <span>{testim.country}</span>
+                    <h4 className="font-extrabold text-white text-base flex items-center gap-2">
+                      {testim.name} <span className="text-xs">{testim.country}</span>
                     </h4>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 mt-1">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`w-3 h-3 ${i < testim.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
+                        <Star key={i} className={`w-3.5 h-3.5 ${i < testim.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
                       ))}
                     </div>
                   </div>
