@@ -6,7 +6,7 @@ import {
   Calendar, Clock, DollarSign, Users, Star, 
   CheckCircle2, Video, Sparkles, Settings, Save, AlertCircle, 
   MessageSquare, ChevronRight, UserCheck, ShieldCheck, ArrowRight, X, ExternalLink, Wallet, ArrowUpRight, Check, Award, FileText, Megaphone, Send, TrendingUp, HelpCircle, User, Home,
-  ChevronLeft, Grid3x3, List, RefreshCw, Search
+  ChevronLeft, Grid3x3, List, RefreshCw, Search, Camera, Upload
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -15,7 +15,7 @@ export default function TeacherDashboard() {
     announcements, directChatMessages, sendDirectMessage, acceptBookingRequest, rejectBookingRequest, incrementTutorLessons, tierRates 
   } = useMarketplace();
   
-  const { profile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'inicio';
   const setActiveTab = (tab) => setSearchParams({ tab });
@@ -123,6 +123,23 @@ export default function TeacherDashboard() {
   const [meetUrl, setMeetUrl] = useState(tutor.meetUrl || 'https://meet.google.com/abc-defg-hij');
   const [isRateSaved, setIsRateSaved] = useState(false);
   const [rateErrorMsg, setRateErrorMsg] = useState('');
+
+  const [teacherAvatar, setTeacherAvatar] = useState(() => {
+    return (
+      profile?.avatar_url ||
+      (profile?.id ? localStorage.getItem('lexy_avatar_' + profile.id) : null) ||
+      (profile?.email ? localStorage.getItem('lexy_avatar_' + profile.email) : null) ||
+      tutor?.avatar ||
+      tutor?.avatar_url ||
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+    );
+  });
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setTeacherAvatar(profile.avatar_url);
+    }
+  }, [profile?.avatar_url]);
 
   const [schedule, setSchedule] = useState(tutor.weeklySchedule || {});
   const [isScheduleSaved, setIsScheduleSaved] = useState(false);
@@ -322,6 +339,55 @@ export default function TeacherDashboard() {
     setTimeout(() => setIsScheduleSaved(false), 3000);
   };
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 300;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          setTeacherAvatar(dataUrl);
+          if (tutor) {
+            tutor.avatar = dataUrl;
+            tutor.avatar_url = dataUrl;
+          }
+          if (updateProfile) {
+            updateProfile({ avatar_url: dataUrl });
+          }
+          if (profile?.id) {
+            localStorage.setItem('lexy_avatar_' + profile.id, dataUrl);
+          }
+          if (profile?.email) {
+            localStorage.setItem('lexy_avatar_' + profile.email, dataUrl);
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveSettings = (e) => {
     e.preventDefault();
     setRateErrorMsg('');
@@ -334,6 +400,19 @@ export default function TeacherDashboard() {
 
     tutor.hourlyRate = rateNum;
     tutor.meetUrl = meetUrl;
+    if (teacherAvatar) {
+      tutor.avatar = teacherAvatar;
+      tutor.avatar_url = teacherAvatar;
+      if (updateProfile) {
+        updateProfile({ avatar_url: teacherAvatar, hourly_rate: rateNum });
+      }
+      if (profile?.id) {
+        localStorage.setItem('lexy_avatar_' + profile.id, teacherAvatar);
+      }
+      if (profile?.email) {
+        localStorage.setItem('lexy_avatar_' + profile.email, teacherAvatar);
+      }
+    }
     setIsRateSaved(true);
     setTimeout(() => setIsRateSaved(false), 3000);
   };
@@ -665,7 +744,7 @@ export default function TeacherDashboard() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 sm:p-5">
           <div className="flex items-center gap-3.5">
             <img
-              src={(tutor.avatar && tutor.avatar.length > 10) ? tutor.avatar : (profile?.avatar_url && profile.avatar_url.length > 10) ? profile.avatar_url : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
+              src={teacherAvatar || profile?.avatar_url || tutor.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'}
               alt={tutor.name || profile?.full_name || 'Professor'}
               onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'; }}
               className="w-12 h-12 rounded-full border border-amber-400/50 object-cover ring-2 ring-amber-500/40 shrink-0"
@@ -1823,6 +1902,39 @@ export default function TeacherDashboard() {
 
               <form onSubmit={handleSaveSettings} className="space-y-4">
                 
+                {/* SEÇÃO FOTO DE PERFIL DO TUTOR */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    <span>Foto de Perfil do Tutor</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative group shrink-0">
+                      <img 
+                        src={teacherAvatar || profile?.avatar_url || tutor?.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'} 
+                        alt="Foto Tutor" 
+                        className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/20"
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'; }} 
+                      />
+                      <label className="absolute inset-0 bg-slate-950/75 rounded-2xl flex flex-col items-center justify-center text-amber-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold">
+                        <Camera className="w-5 h-5 mb-0.5" />
+                        <span>Trocar</span>
+                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                      </label>
+                    </div>
+
+                    <div className="flex-1 text-center sm:text-left space-y-2">
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        Esta foto é a mesma enviada no cadastro e é exibida no seu perfil público para os alunos e no menu superior.
+                      </p>
+                      <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition-all cursor-pointer">
+                        <Upload className="w-4 h-4" />
+                        <span>Carregar / Trocar Foto de Perfil</span>
+                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
