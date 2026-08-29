@@ -335,8 +335,8 @@ const isFakeMockTutor = (t) => {
   const isFakeBooking = (b) => {
     if (!b || !b.id) return true;
     const fakeIds = ['booking-demo-01', 'booking-pending-01', 'booking-sub-w'];
-    const fakeEmails = ['gabriel@test.com', 'luciana@test.com', 'roberto@test.com', 'lucianatest.com', 'robertotest.com', 'gabrielatest.com', 'aluno@lexy.com'];
-    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva'];
+    const fakeEmails = ['gabriel@test.com', 'luciana@test.com', 'roberto@test.com', 'lucianatest.com', 'robertotest.com', 'gabrielatest.com', 'aluno@lexy.com', 'luky@test.com'];
+    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva', 'Luky Snaider'];
     if (fakeIds.some(fid => String(b.id).includes(fid))) return true;
     if (fakeEmails.includes(String(b.studentEmail || b.email || b.studentId || '').toLowerCase())) return true;
     if (fakeNames.includes(String(b.studentName || b.name || ''))) return true;
@@ -404,6 +404,54 @@ const isFakeMockTutor = (t) => {
     }
     return [];
   });
+
+  // Sincronizar reservas e agendamentos reais via Supabase (Stale-While-Revalidate)
+  useEffect(() => {
+    let active = true;
+    async function syncBookingsFromSupabase() {
+      try {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*');
+
+        if (!error && data && active) {
+          const fetchedBookings = data.map(dbApt => ({
+            id: dbApt.id,
+            lesson_code: dbApt.lesson_code || generateLessonCode(dbApt.id),
+            tutorId: dbApt.teacher_id || dbApt.tutor_id || dbApt.assigned_professor_id,
+            tutorName: dbApt.teacher_name || dbApt.tutor_name || 'Professor',
+            tutorAvatar: dbApt.teacher_avatar || dbApt.avatar_url || '',
+            tutorSubject: dbApt.subject || 'Espanhol',
+            studentId: dbApt.student_id || dbApt.user_id,
+            studentEmail: dbApt.student_email || dbApt.email || '',
+            studentName: dbApt.student_name || dbApt.full_name || 'Aluno Cadastrado',
+            studentAvatar: dbApt.student_avatar || '',
+            day: dbApt.day_name || dbApt.day || 'Segunda',
+            isoDateStr: dbApt.date || dbApt.iso_date || '',
+            time: dbApt.time_slot || dbApt.time || '10:00',
+            bookingType: dbApt.booking_type || 'regular',
+            amount: Number(dbApt.amount || dbApt.price || 0),
+            status: dbApt.status || 'confirmed',
+            createdAt: dbApt.created_at || new Date().toISOString()
+          })).filter(b => !isFakeBooking(b));
+
+          setBookings(fetchedBookings);
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
+        } else if (!error && data && data.length === 0 && active) {
+          setBookings([]);
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify([]));
+        }
+      } catch (err) {
+        console.warn('Error syncing appointments from Supabase:', err);
+      }
+    }
+
+    syncBookingsFromSupabase();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Persistencia
   useEffect(() => {
