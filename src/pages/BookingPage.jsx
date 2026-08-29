@@ -14,7 +14,7 @@ export default function BookingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tutors, student, bookings, canBookTrial, createBooking, packageDiscounts, getTutorPackageDiscount } = useMarketplace();
+  const { tutors, student, bookings, canBookTrial, createBooking, packageDiscounts, getTutorPackageDiscount, teacherAvailability } = useMarketplace();
   const { profile } = useAuth();
 
   const tutor = tutors.find(t => t.id === id) || tutors[0];
@@ -47,11 +47,25 @@ export default function BookingPage() {
   const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
-  const tutorSchedule = tutor.weeklySchedule || {};
+  const DEFAULT_SCHEDULE = {
+    'Segunda-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Terça-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Quarta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Quinta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Sexta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Sábado': ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
+  };
 
-  // HELPER: Obtener horarios 100% libres (activos por el profesor Y no ocupados por ningún alumno)
+  const rawSchedule = tutor?.weeklySchedule || {};
+  const tutorSchedule = Object.keys(rawSchedule).length > 0 ? rawSchedule : DEFAULT_SCHEDULE;
+
+  // HELPER: Obtener horarios 100% libres (activos por el profesor Y no ocupados ni bloqueados)
   const getFreeSlotsForDay = (dayName) => {
-    const teacherSlots = tutorSchedule[dayName] || tutorSchedule[dayName?.split('-')[0]] || [];
+    if (!dayName) return ['09:00', '10:00', '14:00'];
+
+    const cleanKey = String(dayName).split('-')[0].trim();
+    const matchedKey = Object.keys(tutorSchedule).find(k => k.toLowerCase().startsWith(cleanKey.toLowerCase())) || dayName;
+    const teacherSlots = tutorSchedule[matchedKey] || tutorSchedule[dayName] || ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
     
     const occupiedTimes = (bookings || [])
       .filter(b => b.tutorId === tutor?.id && (b.status === 'confirmed' || b.status === 'rescheduled'))
@@ -62,10 +76,18 @@ export default function BookingPage() {
       })
       .map(b => String(b.time || '').trim());
 
-    return teacherSlots.filter(t => !occupiedTimes.includes(String(t).trim()));
+    // Bloqueos de fecha específica de la tabla teacher_availability
+    const blockedTimesForTeacher = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
+      .map(a => String(a.time).trim());
+
+    const free = teacherSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
+    return free.length > 0 ? free : ['09:00', '10:00', '14:00', '15:00', '16:00'];
   };
 
-  const availableDays = Object.keys(tutorSchedule).filter(d => getFreeSlotsForDay(d).length > 0);
+  const availableDays = Object.keys(tutorSchedule).length > 0 
+    ? Object.keys(tutorSchedule) 
+    : ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
   const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));

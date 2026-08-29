@@ -71,7 +71,17 @@ export default function StudentSubscriptionTab() {
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
 
-  const tutorSchedule = targetTutor?.weeklySchedule || {};
+  const DEFAULT_SCHEDULE = {
+    'Segunda-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Terça-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Quarta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Quinta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Sexta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
+    'Sábado': ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
+  };
+
+  const rawSchedule = targetTutor?.weeklySchedule || {};
+  const tutorSchedule = Object.keys(rawSchedule).length > 0 ? rawSchedule : DEFAULT_SCHEDULE;
 
   const availableDays = Object.keys(tutorSchedule);
 
