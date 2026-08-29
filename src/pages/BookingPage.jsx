@@ -47,6 +47,9 @@ export default function BookingPage() {
   const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
+  const rawSchedule = tutor?.weeklySchedule || {};
+  const hasConfiguredSchedule = Object.keys(rawSchedule).some(k => (rawSchedule[k] || []).length > 0);
+
   const DEFAULT_SCHEDULE = {
     'Segunda-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
     'Terça-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
@@ -56,19 +59,26 @@ export default function BookingPage() {
     'Sábado': ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
   };
 
-  const rawSchedule = tutor?.weeklySchedule || {};
-  const tutorSchedule = Object.keys(rawSchedule).length > 0 ? rawSchedule : DEFAULT_SCHEDULE;
+  const tutorSchedule = hasConfiguredSchedule ? rawSchedule : DEFAULT_SCHEDULE;
 
-  // HELPER: Obtener horarios 100% libres (activos por el profesor Y no ocupados ni bloqueados)
+  // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
   const getFreeSlotsForDay = (dayName) => {
-    if (!dayName) return ['09:00', '10:00', '14:00'];
+    if (!dayName || !tutor) return [];
 
     const cleanKey = String(dayName).split('-')[0].trim();
     const matchedKey = Object.keys(tutorSchedule).find(k => k.toLowerCase().startsWith(cleanKey.toLowerCase())) || dayName;
-    const teacherSlots = tutorSchedule[matchedKey] || tutorSchedule[dayName] || ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
-    
+    const baseSlots = tutorSchedule[matchedKey] || tutorSchedule[dayName] || [];
+
+    // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
+    const extraFreeFromDb = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'free')
+      .map(a => String(a.time).trim());
+
+    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
+
+    // Horarios ocupados por agendamentos del profesor X
     const occupiedTimes = (bookings || [])
-      .filter(b => b.tutorId === tutor?.id && (b.status === 'confirmed' || b.status === 'rescheduled'))
+      .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
       .filter(b => {
         const cleanBookingDay = String(b.day || '').split(' (')[0].trim().toLowerCase();
         const cleanTargetDay = String(dayName || '').split('-')[0].trim().toLowerCase();
@@ -76,13 +86,12 @@ export default function BookingPage() {
       })
       .map(b => String(b.time || '').trim());
 
-    // Bloqueos de fecha específica de la tabla teacher_availability
+    // Horarios bloqueados explícitamente por el profesor X en teacher_availability
     const blockedTimesForTeacher = (teacherAvailability || [])
       .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
       .map(a => String(a.time).trim());
 
-    const free = teacherSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
-    return free.length > 0 ? free : ['09:00', '10:00', '14:00', '15:00', '16:00'];
+    return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
   };
 
   const availableDays = Object.keys(tutorSchedule).length > 0 
@@ -236,7 +245,7 @@ export default function BookingPage() {
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 text-left text-xs space-y-2.5">
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400 font-medium">Modalidade:</span>
-              <strong className="text-white font-bold">{bookingType === 'trial' ? 'Aula Experimental (25 min)' : `Assinatura de 28 Dias (${selectedPackage.hours}h / ${neededSlotsCount}x por semana)`}</strong>
+              <strong className="text-white font-bold">{bookingType === 'trial' ? 'Aula Experimental (45 min)' : `Assinatura de 28 Dias (${selectedPackage.hours}h / ${neededSlotsCount}x por semana)`}</strong>
             </div>
             
             <div className="py-2 border-b border-slate-800 space-y-1">
@@ -357,7 +366,7 @@ export default function BookingPage() {
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-xs font-black uppercase tracking-wider mb-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Aula Experimental de Idiomas (25 min)</span>
+                <span>Aula Experimental de Idiomas (45 min)</span>
               </div>
               <h1 className="text-2xl font-extrabold text-white">Reservar Aula com {tutor.name}</h1>
               <p className="text-xs text-slate-400 mt-0.5">{tutor.subject} • {tutor.flag} {tutor.country}</p>
@@ -377,7 +386,7 @@ export default function BookingPage() {
               1. Selecione o Dia e Horário Disponível na Agenda Nativa do Professor
             </label>
             <span className="text-xs font-extrabold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30">
-              Duração: 25 minutos
+              Duração: 45 minutos
             </span>
           </div>
 

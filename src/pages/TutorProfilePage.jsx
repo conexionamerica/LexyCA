@@ -278,7 +278,7 @@ export default function TutorProfilePage() {
             
             {/* Precio Destacado */}
             <div className="space-y-1">
-              <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula de Teste (25 min)</span>
+              <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula de Teste (45 min)</span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-sm font-bold text-slate-400">R$</span>
                 <span className="text-4xl font-black text-white">{tutor.trialRate}</span>

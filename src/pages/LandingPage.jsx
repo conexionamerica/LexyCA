@@ -415,7 +415,7 @@ export default function LandingPage() {
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 font-black text-lg flex items-center justify-center">2</div>
-              <h3 className="font-extrabold text-white text-sm">Aula Experimental de 25 min</h3>
+              <h3 className="font-extrabold text-white text-sm">Aula Experimental de 45 min</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Conheça o professor, defina suas metas de aprendizado e faça o teste de nível com 100% de garantia.
               </p>
