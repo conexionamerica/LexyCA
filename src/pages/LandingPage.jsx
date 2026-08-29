@@ -34,8 +34,8 @@ export default function LandingPage() {
 
   // Filtrar solo tutores aprobados e ordená-los pelos valores mais acessíveis (menor tarifa por hora)
   const approvedTutors = tutors
-    .filter(t => t.status === 'approved')
-    .sort((a, b) => a.hourlyRate - b.hourlyRate);
+    .filter(t => t.status === 'approved' || t.isVerified || t.status === 'active' || !t.status)
+    .sort((a, b) => (a.hourlyRate || 0) - (b.hourlyRate || 0));
 
   const promoMessages = announcements.filter(a => a.target === 'all' || a.target === 'landing').map(a => a.message);
   const defaultMessages = [

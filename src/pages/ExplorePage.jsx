@@ -36,7 +36,7 @@ export default function ExplorePage() {
   // Estados de Filtro
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState(initialSubject);
-  const [maxPrice, setMaxPrice] = useState(50);
+  const [maxPrice, setMaxPrice] = useState(150);
   const [onlyNative, setOnlyNative] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState('Todos');
   const [sortBy, setSortBy] = useState('rating'); // 'rating', 'price_asc', 'price_desc', 'popular'
@@ -61,38 +61,45 @@ export default function ExplorePage() {
   const filteredTutors = useMemo(() => {
     return tutors.filter(tutor => {
       // Regla de control de aprobación
-      if (tutor.status !== 'approved') return false;
+      const isApproved = tutor.status === 'approved' || tutor.isVerified || tutor.status === 'active' || !tutor.status;
+      if (!isApproved) return false;
+
       // Búsqueda por texto
-      const matchesSearch = tutor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            tutor.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            tutor.bio.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = !q || 
+                            (tutor.name || '').toLowerCase().includes(q) ||
+                            (tutor.title || '').toLowerCase().includes(q) ||
+                            (tutor.headline || '').toLowerCase().includes(q) ||
+                            (tutor.bio || '').toLowerCase().includes(q);
       if (!matchesSearch) return false;
 
       // Idioma / Materia
       if (selectedSubject !== 'Todos') {
         const targetSub = selectedSubject.toLowerCase();
-        const tutorSub = tutor.subject ? tutor.subject.toLowerCase() : '';
-        if (!tutorSub.includes(targetSub) && !targetSub.includes(tutorSub)) return false;
+        const tutorSub = (tutor.subject || '').toLowerCase();
+        if (tutorSub && !tutorSub.includes(targetSub) && !targetSub.includes(tutorSub)) return false;
       }
 
       // Precio Máximo
-      if (tutor.hourlyRate > maxPrice) return false;
+      if (tutor.hourlyRate && Number(tutor.hourlyRate) > maxPrice) return false;
 
       // Nativo
       if (onlyNative && !tutor.nativeSpeaker) return false;
 
       // Especialidad
-      if (selectedSpecialty !== 'Todos' && !tutor.specialties.includes(selectedSpecialty)) return false;
+      if (selectedSpecialty !== 'Todos' && tutor.specialties && Array.isArray(tutor.specialties) && tutor.specialties.length > 0) {
+        if (!tutor.specialties.includes(selectedSpecialty)) return false;
+      }
 
       return true;
     }).sort((a, b) => {
-      if (sortBy === 'rating') return b.rating - a.rating;
-      if (sortBy === 'price_asc') return a.hourlyRate - b.hourlyRate;
-      if (sortBy === 'price_desc') return b.hourlyRate - a.hourlyRate;
-      if (sortBy === 'popular') return b.totalLessons - a.totalLessons;
+      if (sortBy === 'rating') return (b.rating || 5) - (a.rating || 5);
+      if (sortBy === 'price_asc') return (a.hourlyRate || 0) - (b.hourlyRate || 0);
+      if (sortBy === 'price_desc') return (b.hourlyRate || 0) - (a.hourlyRate || 0);
+      if (sortBy === 'popular') return (b.totalLessons || 0) - (a.totalLessons || 0);
       return 0;
     });
-  }, [searchQuery, selectedSubject, maxPrice, onlyNative, selectedSpecialty, sortBy]);
+  }, [tutors, searchQuery, selectedSubject, maxPrice, onlyNative, selectedSpecialty, sortBy]);
 
   const subjects = ['Todos', 'Inglês', 'Espanhol'];
   const specialties = ['Todos', 'Conversação', 'Espanhol para Negócios', 'Business English', 'Preparação DELE/SIELE', 'TOEFL / IELTS', 'Iniciantes'];
