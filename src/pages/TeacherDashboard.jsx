@@ -1540,58 +1540,76 @@ export default function TeacherDashboard() {
                 </div>
                 <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-center">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Presença Média</span>
-                  <span className="text-xl font-black text-cyan-400">98.5%</span>
+                  <span className="text-xl font-black text-cyan-400">
+                    {totalLessons > 0 ? '100%' : '-'}
+                  </span>
                 </div>
                 <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-center">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Avaliação Média</span>
-                  <span className="text-xl font-black text-amber-400">4.9 ★</span>
+                  <span className="text-xl font-black text-amber-400">
+                    {tutor?.rating && tutor?.reviewCount > 0 ? `${Number(tutor.rating).toFixed(1)} ★` : (totalLessons > 0 ? '5.0 ★' : 'Novo')}
+                  </span>
                 </div>
               </div>
 
               {/* TARJETAS DE LISTA DE ALUMNOS (EM FILA ÚNICA) */}
               <div className="flex flex-col space-y-3">
-                {myStudentsList.map(st => (
-                  <div key={st.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all shadow-md">
-                    <div className="flex items-center gap-3.5">
-                      <img src={st.avatar} alt={st.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-cyan-400/40 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-extrabold text-white">{st.name}</h3>
-                          <span className="bg-cyan-500/10 text-cyan-300 font-bold text-[10px] px-2 py-0.5 rounded-full border border-cyan-500/30">
-                            {st.level}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2.5 text-xs text-slate-400 mt-1 flex-wrap">
-                          <span>12 aulas completadas</span>
-                          <span className="text-slate-700">•</span>
-                          <span>Status: <strong className="text-emerald-400 font-semibold">Ativo (Plano Mensal)</strong></span>
-                          <span className="text-slate-700">•</span>
-                          <span className="font-mono text-slate-400">Última aula: Ontem</span>
+                {myStudentsList.length === 0 ? (
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
+                    <Users className="w-8 h-8 text-slate-600 mx-auto opacity-60" />
+                    <h4 className="text-sm font-bold text-white">Nenhum aluno vinculado ainda</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Assim que alunos agendarem aulas com você, eles aparecerão nesta lista.
+                    </p>
+                  </div>
+                ) : (
+                  myStudentsList.map(st => (
+                    <div key={st.id} className="bg-slate-950/80 border border-slate-800/80 hover:border-cyan-500/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all shadow-md">
+                      <div className="flex items-center gap-3.5">
+                        <img src={st.avatar} alt={st.name} className="w-12 h-12 rounded-2xl object-cover border-2 border-cyan-400/40 shrink-0" />
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm font-extrabold text-white">{st.name}</h3>
+                            <span className="bg-cyan-500/10 text-cyan-300 font-bold text-[10px] px-2 py-0.5 rounded-full border border-cyan-500/30">
+                              {st.level}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-xs text-slate-400 mt-1 flex-wrap">
+                            <span>{st.lessonsCount || 0} aula(s) contratada(s)</span>
+                            <span className="text-slate-700">•</span>
+                            <span>Status: <strong className="text-emerald-400 font-semibold">Ativo</strong></span>
+                            {st.phone && (
+                              <>
+                                <span className="text-slate-700">•</span>
+                                <span className="font-mono text-slate-400">📞 {st.phone}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-                      <button
-                        onClick={() => {
-                          setSelectedStudentId(st.id);
-                          setActiveTab('chat');
-                        }}
-                        className="flex-1 md:flex-initial bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Conversar no Chat</span>
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('agenda')}
-                        className="flex-1 md:flex-initial bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>Ver Agenda</span>
-                      </button>
+                      <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                        <button
+                          onClick={() => {
+                            setSelectedStudentId(st.id);
+                            setActiveTab('chat');
+                          }}
+                          className="flex-1 md:flex-initial bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Conversar no Chat</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('agenda')}
+                          className="flex-1 md:flex-initial bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Ver Agenda</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
