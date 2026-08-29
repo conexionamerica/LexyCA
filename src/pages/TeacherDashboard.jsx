@@ -98,13 +98,7 @@ export default function TeacherDashboard() {
     hourlyRate: Number(profile?.hourly_rate || 20),
     totalLessons: 0,
     earnedBalance: 0.00,
-    weeklySchedule: {
-      'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-      'Terça': ['09:00', '10:00', '14:00', '15:00'],
-      'Quarta': ['09:00', '10:00', '14:00', '15:00'],
-      'Quinta': ['09:00', '10:00', '14:00', '15:00'],
-      'Sexta': ['09:00', '10:00', '14:00', '15:00']
-    }
+    weeklySchedule: profile?.weekly_schedule || {}
   };
 
   const totalLessons = tutor.totalLessons || 0;

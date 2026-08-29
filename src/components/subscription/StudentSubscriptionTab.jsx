@@ -71,13 +71,7 @@ export default function StudentSubscriptionTab() {
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
 
-  const tutorSchedule = targetTutor?.weeklySchedule || {
-    'Segunda': ['09:00', '10:00', '14:00', '16:00'],
-    'Terça': ['09:00', '10:00', '14:00', '16:00'],
-    'Quarta': ['09:00', '10:00', '14:00', '16:00'],
-    'Quinta': ['09:00', '10:00', '14:00', '16:00'],
-    'Sexta': ['09:00', '10:00', '14:00', '16:00']
-  };
+  const tutorSchedule = targetTutor?.weeklySchedule || {};
 
   const availableDays = Object.keys(tutorSchedule);
 

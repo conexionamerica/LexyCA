@@ -47,14 +47,7 @@ export default function BookingPage() {
   const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
-  // Días y Horarios disponibles configurados por el tutor de forma autónoma
-  const tutorSchedule = tutor.weeklySchedule || {
-    'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-    'Terça': ['09:00', '10:00', '14:00', '15:00'],
-    'Quarta': ['09:00', '10:00', '14:00', '15:00'],
-    'Quinta': ['09:00', '10:00', '14:00', '15:00'],
-    'Sexta': ['09:00', '10:00', '14:00', '15:00']
-  };
+  const tutorSchedule = tutor.weeklySchedule || {};
 
   // HELPER: Obtener horarios 100% libres (activos por el profesor Y no ocupados por ningún alumno)
   const getFreeSlotsForDay = (dayName) => {

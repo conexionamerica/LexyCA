@@ -264,13 +264,7 @@ const isFakeMockTutor = (t) => {
             videoUrl: dbT.video_url || '',
             headline: dbT.headline || '',
             bio: dbT.bio || '',
-            weeklySchedule: dbT.weekly_schedule || {
-              'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-              'Terça': ['09:00', '10:00', '14:00', '15:00'],
-              'Quarta': ['09:00', '10:00', '14:00', '15:00'],
-              'Quinta': ['09:00', '10:00', '14:00', '15:00'],
-              'Sexta': ['09:00', '10:00', '14:00', '15:00']
-            },
+            weeklySchedule: dbT.weekly_schedule || {},
             earnedBalance: 0,
             reviews: []
           })).filter(t => !isFakeMockTutor(t));
@@ -521,13 +515,7 @@ const isFakeMockTutor = (t) => {
       experienceYears: tutorData.experience_years,
       languagesSpoken: [{ language: tutorData.native_language, level: 'Nativo' }],
       specialties: tutorData.specialties || ['Conversação'],
-      weeklySchedule: tutorData.weeklySchedule || {
-        'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-        'Terça': ['09:00', '10:00', '14:00', '15:00'],
-        'Quarta': ['09:00', '10:00', '14:00', '15:00'],
-        'Quinta': ['09:00', '10:00', '14:00', '15:00'],
-        'Sexta': ['09:00', '10:00', '14:00', '15:00']
-      },
+      weeklySchedule: tutorData.weeklySchedule || {},
       earnedBalance: 0,
       reviews: []
     };
