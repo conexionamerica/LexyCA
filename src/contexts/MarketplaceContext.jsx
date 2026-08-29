@@ -228,67 +228,58 @@ const isFakeMockTutor = (t) => {
     return [];
   });
 
-  // Sincronizar tutores cadastrados via Supabase Auth / Profiles
+  // Sincronizar tutores cadastrados via Supabase Auth / Profiles (Stale-While-Revalidate)
   useEffect(() => {
     let active = true;
     async function syncTeachersFromSupabase() {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('role', 'teacher');
+          .or('role.eq.teacher,role.eq.professor');
 
-        if (data && data.length > 0 && active) {
-          setTutors(prev => {
-            const existingIds = new Set(prev.map(t => String(t.id).toLowerCase()));
-            const existingEmails = new Set(prev.map(t => String(t.email).toLowerCase()));
+        if (!error && data && active) {
+          const fetchedTutors = data.map(dbT => ({
+            id: dbT.id,
+            name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
+            email: dbT.email,
+            phone: dbT.phone || dbT.document_number || '',
+            title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
+            country: dbT.residence_country || 'Brasil',
+            countryCode: 'BR',
+            flag: '🌐',
+            avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+            nativeSpeaker: true,
+            isSuperTutor: false,
+            isVerified: dbT.status === 'approved',
+            status: dbT.status || 'pending',
+            subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
+            hourlyRate: Number(dbT.hourly_rate || 20),
+            trialRate: Number(dbT.hourly_rate || 20) * 0.5,
+            rating: 5.0,
+            reviewCount: 0,
+            totalLessons: 0,
+            activeStudents: 0,
+            responseTime: 'Responde em <1 hora',
+            videoUrl: dbT.video_url || '',
+            headline: dbT.headline || '',
+            bio: dbT.bio || '',
+            weeklySchedule: dbT.weekly_schedule || {
+              'Segunda': ['09:00', '10:00', '14:00', '15:00'],
+              'Terça': ['09:00', '10:00', '14:00', '15:00'],
+              'Quarta': ['09:00', '10:00', '14:00', '15:00'],
+              'Quinta': ['09:00', '10:00', '14:00', '15:00'],
+              'Sexta': ['09:00', '10:00', '14:00', '15:00']
+            },
+            earnedBalance: 0,
+            reviews: []
+          })).filter(t => !isFakeMockTutor(t));
 
-            const fetchedTutors = data.map(dbT => ({
-              id: dbT.id,
-              name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
-              email: dbT.email,
-              phone: dbT.phone || dbT.document_number || '',
-              title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
-              country: dbT.residence_country || 'Brasil',
-              countryCode: 'BR',
-              flag: '🌐',
-              avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-              nativeSpeaker: true,
-              isSuperTutor: false,
-              isVerified: dbT.status === 'approved',
-              status: dbT.status || 'pending',
-              subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
-              hourlyRate: Number(dbT.hourly_rate || 20),
-              trialRate: Number(dbT.hourly_rate || 20) * 0.5,
-              rating: 5.0,
-              reviewCount: 0,
-              totalLessons: 0,
-              activeStudents: 0,
-              responseTime: 'Responde em <1 hora',
-              videoUrl: dbT.video_url || '',
-              headline: dbT.headline || '',
-              bio: dbT.bio || '',
-              weeklySchedule: dbT.weekly_schedule || {
-                'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-                'Terça': ['09:00', '10:00', '14:00', '15:00'],
-                'Quarta': ['09:00', '10:00', '14:00', '15:00'],
-                'Quinta': ['09:00', '10:00', '14:00', '15:00'],
-                'Sexta': ['09:00', '10:00', '14:00', '15:00']
-              },
-              earnedBalance: 0,
-              reviews: []
-            }));
-
-            const merged = [...prev];
-            fetchedTutors.forEach(f => {
-              const fId = String(f.id).toLowerCase();
-              const fEmail = String(f.email).toLowerCase();
-              if (!existingIds.has(fId) && !existingEmails.has(fEmail)) {
-                merged.push(f);
-              }
-            });
-            return merged;
-          });
+          setTutors(fetchedTutors);
+          localStorage.setItem(LOCAL_STORAGE_KEY_TUTORS, JSON.stringify(fetchedTutors));
+        } else if (!error && data && data.length === 0 && active) {
+          setTutors([]);
+          localStorage.setItem(LOCAL_STORAGE_KEY_TUTORS, JSON.stringify([]));
         }
       } catch (err) {
         console.warn('Error synchronizing teachers from Supabase:', err);

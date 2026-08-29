@@ -70,15 +70,22 @@ export default function AdminDashboard() {
   const [annLevel, setAnnLevel] = useState('info');
   const [annSuccessMsg, setAnnSuccessMsg] = useState('');
 
-  // Students & Payouts Real Data (Extração de dados 100% reais do Supabase)
+  // Students & Payouts Real Data (Estratégia 3: Stale-While-Revalidate com Supabase)
   const [searchStudent, setSearchStudent] = useState('');
-  const [realStudents, setRealStudents] = useState([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(true);
+  const [realStudents, setRealStudents] = useState(() => {
+    try {
+      const cached = localStorage.getItem('lexy_market_students_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isLoadingStudents, setIsLoadingStudents] = useState(() => realStudents.length === 0);
 
   useEffect(() => {
     let active = true;
     async function loadRealStudentsFromSupabase() {
-      setIsLoadingStudents(true);
+      if (realStudents.length === 0) setIsLoadingStudents(true);
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -100,6 +107,10 @@ export default function AdminDashboard() {
             studentCode: s.student_code || ''
           }));
           setRealStudents(mapped);
+          localStorage.setItem('lexy_market_students_cache', JSON.stringify(mapped));
+        } else if (!error && data && data.length === 0 && active) {
+          setRealStudents([]);
+          localStorage.removeItem('lexy_market_students_cache');
         }
       } catch (err) {
         console.warn('Erro ao buscar alunos reais do Supabase:', err);
