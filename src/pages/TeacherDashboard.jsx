@@ -24,19 +24,21 @@ export default function TeacherDashboard() {
   const MAX_RATE = 40;
   const RECOMMENDED_RATE = 23;
 
-  const myStudentsList = React.useMemo(() => {
+  const myTeacherBookings = React.useMemo(() => {
     if (!profile) return [];
     const pId = String(profile?.id || '').toLowerCase();
     const pEmail = String(profile?.email || '').toLowerCase();
 
-    const teacherBookings = (bookings || []).filter(b => {
+    return (bookings || []).filter(b => {
       const bTutorId = String(b.tutorId || '').toLowerCase();
       const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
       return (pId && bTutorId === pId) || (pEmail && bTutorEmail === pEmail);
     });
+  }, [bookings, profile]);
 
+  const myStudentsList = React.useMemo(() => {
     const studentMap = {};
-    teacherBookings.forEach(b => {
+    myTeacherBookings.forEach(b => {
       const sId = b.studentId || b.studentEmail || b.studentName;
       if (sId && !studentMap[sId]) {
         studentMap[sId] = {
@@ -45,14 +47,14 @@ export default function TeacherDashboard() {
           email: b.studentEmail || '',
           avatar: b.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
           level: b.studentLevel || 'Nível em Avaliação',
-          lessonsCount: teacherBookings.filter(x => (x.studentId && x.studentId === sId) || (x.studentEmail && x.studentEmail === sId)).length,
+          lessonsCount: myTeacherBookings.filter(x => (x.studentId && x.studentId === sId) || (x.studentEmail && x.studentEmail === sId)).length,
           phone: b.studentPhone || 'Telefone não informado'
         };
       }
     });
 
     return Object.values(studentMap);
-  }, [bookings, profile]);
+  }, [myTeacherBookings]);
 
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0] || null;
@@ -1431,7 +1433,7 @@ export default function TeacherDashboard() {
 
                                 {/* 7 Colunas de Ddias */}
                                 {daysList.map((col) => {
-                                  const cellBookings = bookings.filter(b => {
+                                  const cellBookings = myTeacherBookings.filter(b => {
                                     const dateMatch = b.isoDateStr 
                                       ? (b.isoDateStr === col.isoDateStr) 
                                       : (b.day === col.dayName && selectedWeekOffset === 0);
