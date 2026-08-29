@@ -5,13 +5,31 @@ const AuthContext = createContext(undefined);
 
 const LOCAL_STORAGE_KEY_AUTH = 'lexy_auth_user_v3';
 
+export function generateMatriculaCode(id, email) {
+  if (!id && !email) return 'LXY-2026-880192';
+  const str = String(id || '') + String(email || '');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const positiveHash = (Math.abs(hash) % 899999) + 100000;
+  return `LXY-2026-${positiveHash}`;
+}
+
 export const AuthProvider = ({ children }) => {
   // Estado do Usuário Autenticado (Aluno, Tutor ou Admin)
   const [profile, setProfile] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_AUTH);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...parsed,
+            matricula_code: parsed.matricula_code || generateMatriculaCode(parsed.id, parsed.email)
+          };
+        }
       } catch (e) {
         console.error('Error cargando usuario de localStorage', e);
       }
@@ -51,7 +69,8 @@ export const AuthProvider = ({ children }) => {
             language_level: dbProfile.language_level || userMeta.language_level || '',
             study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
             avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
-            hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
+            hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
+            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
           };
           setProfile(userProfile);
         }
@@ -89,7 +108,8 @@ export const AuthProvider = ({ children }) => {
           language_level: dbProfile.language_level || userMeta.language_level || '',
           study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
           avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
-          hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20
+          hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
+          matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
         };
         setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
@@ -332,6 +352,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateWalletBalance = async (amountToAdd) => {
+    const numAmount = parseFloat(amountToAdd) || 0;
+    setProfile(prev => {
+      if (!prev) return prev;
+      const rawBal = parseFloat(prev.wallet_balance);
+      const current = isNaN(rawBal) ? 0 : rawBal;
+      const newBalance = current + numAmount;
+      const updated = { ...prev, wallet_balance: newBalance };
+      localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, JSON.stringify(updated));
+      if (prev.id) {
+        localStorage.setItem('lexy_wallet_balance_' + prev.id, newBalance.toString());
+      }
+      return updated;
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const currentMeta = session.user.user_metadata || {};
+        const rawBal = parseFloat(profile?.wallet_balance);
+        const currentBal = isNaN(rawBal) ? 0 : rawBal;
+        const newBal = currentBal + numAmount;
+        await supabase.auth.updateUser({
+          data: { ...currentMeta, wallet_balance: newBal }
+        });
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          wallet_balance: newBal,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.warn('Error syncing wallet balance update to Supabase:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user: profile,
@@ -342,7 +398,8 @@ export const AuthProvider = ({ children }) => {
       signUpWithSupabase,
       signOut,
       logout: signOut,
-      updateProfile
+      updateProfile,
+      updateWalletBalance
     }}>
       {children}
     </AuthContext.Provider>

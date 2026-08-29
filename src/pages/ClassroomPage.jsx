@@ -4,17 +4,26 @@ import {
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
   BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle 
 } from 'lucide-react';
-import { mockTutors } from '../data/mockTutors';
+import { useMarketplace } from '../contexts/MarketplaceContext';
 
 export default function ClassroomPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const { tutors = [], bookings = [] } = useMarketplace();
 
-  const tutor = mockTutors[0]; // María Fernández por defecto
-  const rawMeetUrl = tutor.meetUrl || 'https://meet.google.com/abc-defg-hij';
+  const currentBooking = bookings.find(b => b.id === bookingId) || bookings[0];
+  const tutor = tutors.find(t => t.id === currentBooking?.tutorId) || tutors[0] || {
+    id: 'tutor-1',
+    name: currentBooking?.tutorName || 'María Fernández',
+    subject: currentBooking?.tutorSubject || 'Espanhol',
+    avatar: currentBooking?.tutorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+    meetUrl: 'https://meet.google.com/abc-defg-hij'
+  };
 
-  // Estado para controlar si el video está activo INCORPORADO DENTRO DEL CUADRO
-  const [isLiveVideoActive, setIsLiveVideoActive] = useState(false);
+  const rawMeetUrl = tutor?.meetUrl || 'https://meet.google.com/abc-defg-hij';
+
+  // Estado para controlar se o vídeo Jitsi está ativo (Incorporado nativamente no Lexy Space)
+  const [isLiveVideoActive, setIsLiveVideoActive] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [activeTab, setActiveTab] = useState('whiteboard'); // 'whiteboard' | 'notes' | 'chat'
@@ -27,7 +36,7 @@ export default function ClassroomPage() {
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
 
   // URL del iframe de video aula incorporado dentro de la plataforma
-  const embedRoomUrl = `https://meet.jit.si/LexyAula_${bookingId || 'live'}_${tutor.id}#userInfo.displayName="Aluno"`;
+  const embedRoomUrl = `https://meet.jit.si/LexyAula_${bookingId || 'live'}_${tutor?.id || 'tutor1'}#userInfo.displayName="Aluno"`;
 
   // Notas compartidas
   const [notes, setNotes] = useState(`Bem-vindo à Sala Virtual Lexy! 🏫
@@ -40,10 +49,7 @@ Dicas:
 • Pratique a escrita no idioma`);
 
   // Mensajes de chat
-  const [chatMessages, setChatMessages] = useState([
-    { sender: tutor.name, text: '¡Hola Gabriel! Bienvenido a nossa aula ao vivo. ¿Me escuchas bien?', time: '10:01' },
-    { sender: 'Você', text: '¡Hola María! Sí, te escucho perfecto. ¡Listo para empezar!', time: '10:02' }
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
   
   // Vocabulário do Dia

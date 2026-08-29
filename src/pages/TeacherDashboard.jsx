@@ -24,41 +24,41 @@ export default function TeacherDashboard() {
   const MAX_RATE = 40;
   const RECOMMENDED_RATE = 23;
 
-  const myStudentsList = [
-    {
-      id: 'stud-1',
-      name: 'Gabriel Alumno Silva',
-      email: 'aluno@lexy.com',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-      level: 'B2 Intermediário',
-      lessonsCount: 6,
-      phone: '+55 (11) 98541-8357'
-    },
-    {
-      id: 'stud-2',
-      name: 'Luciana Martins',
-      email: 'luciana.martins@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-      level: 'A2 Básico',
-      lessonsCount: 4,
-      phone: '+55 (21) 97412-5589'
-    },
-    {
-      id: 'stud-3',
-      name: 'Roberto Santos',
-      email: 'roberto.santos@bol.com.br',
-      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
-      level: 'C1 Avançado',
-      lessonsCount: 12,
-      phone: '+55 (31) 99823-1122'
-    }
-  ];
+  const myStudentsList = React.useMemo(() => {
+    if (!profile) return [];
+    const pId = String(profile?.id || '').toLowerCase();
+    const pEmail = String(profile?.email || '').toLowerCase();
 
-  const [selectedStudentId, setSelectedStudentId] = useState('stud-1');
-  const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0];
+    const teacherBookings = (bookings || []).filter(b => {
+      const bTutorId = String(b.tutorId || '').toLowerCase();
+      const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
+      return (pId && bTutorId === pId) || (pEmail && bTutorEmail === pEmail);
+    });
+
+    const studentMap = {};
+    teacherBookings.forEach(b => {
+      const sId = b.studentId || b.studentEmail || b.studentName;
+      if (sId && !studentMap[sId]) {
+        studentMap[sId] = {
+          id: sId,
+          name: b.studentName || 'Aluno Lexy',
+          email: b.studentEmail || '',
+          avatar: b.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+          level: b.studentLevel || 'Nível em Avaliação',
+          lessonsCount: teacherBookings.filter(x => (x.studentId && x.studentId === sId) || (x.studentEmail && x.studentEmail === sId)).length,
+          phone: b.studentPhone || 'Telefone não informado'
+        };
+      }
+    });
+
+    return Object.values(studentMap);
+  }, [bookings, profile]);
+
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0] || null;
 
   const activeStudentMessages = directChatMessages.filter(msg => 
-    msg.studentId === selectedStudentId || (!msg.studentId && selectedStudentId === 'stud-1')
+    selectedStudent && (msg.studentId === selectedStudent.id || msg.studentEmail === selectedStudent.email)
   );
 
   const teacherMessagesContainerRef = useRef(null);
@@ -90,21 +90,24 @@ export default function TeacherDashboard() {
     .filter(a => a.target === 'teachers')
     .filter(a => !dismissedAnnouncements.includes(a.id));
 
-  const tutor = tutors.find(t => t.email === profile?.email || t.id === profile?.id) || tutors[0] || {
-    id: 'tutor-1',
-    name: 'María Fernández',
-    status: 'approved',
-    hourlyRate: 23,
-    totalLessons: 12,
-    meetUrl: 'https://meet.google.com/abc-defg-hij',
-    earnedBalance: 240.00,
+  const tutor = tutors.find(t => t.email === profile?.email || t.id === profile?.id) || {
+    id: profile?.id || 'tutor-current',
+    name: profile?.full_name || 'Professor Nativo',
+    email: profile?.email || '',
+    status: profile?.status || 'approved',
+    hourlyRate: Number(profile?.hourly_rate || 20),
+    totalLessons: 0,
+    earnedBalance: 0.00,
     weeklySchedule: {
       'Segunda': ['09:00', '10:00', '14:00', '15:00'],
-      'Terça': ['09:00', '10:00', '14:00', '15:00']
+      'Terça': ['09:00', '10:00', '14:00', '15:00'],
+      'Quarta': ['09:00', '10:00', '14:00', '15:00'],
+      'Quinta': ['09:00', '10:00', '14:00', '15:00'],
+      'Sexta': ['09:00', '10:00', '14:00', '15:00']
     }
   };
 
-  const totalLessons = tutor.totalLessons || 12;
+  const totalLessons = tutor.totalLessons || 0;
   const currentEarnPercent = getTeacherEarnPercent(totalLessons, false, tierRates);
 
   const getNextTierInfo = (lessons) => {
@@ -117,7 +120,7 @@ export default function TeacherDashboard() {
   };
 
   const nextTier = getNextTierInfo(totalLessons);
-  const [earnedBalance, setEarnedBalance] = useState(tutor.earnedBalance || 240.00);
+  const [earnedBalance, setEarnedBalance] = useState(tutor.earnedBalance || 0.00);
 
   const [hourlyRate, setHourlyRate] = useState(tutor.hourlyRate || 23);
   const [meetUrl, setMeetUrl] = useState(tutor.meetUrl || 'https://meet.google.com/abc-defg-hij');
@@ -167,8 +170,8 @@ export default function TeacherDashboard() {
   const [payoutSuccessMsg, setPayoutSuccessMsg] = useState('');
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [feedbackText, setFeedbackText] = useState('Excelente aula! Gabriel praticou conversação fluida e tempo verbal passado. Demonstrou ótimo domínio do vocabulário corporativo.');
-  const [studyTips, setStudyTips] = useState('Revisar a pronúncia das palavras terminadas em -ción e rever o vocabulário de reuniões.');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [studyTips, setStudyTips] = useState('');
   const [isClassCompletedState, setIsClassCompletedState] = useState(false);
 
   // New Dashboard States
@@ -496,22 +499,7 @@ export default function TeacherDashboard() {
     }));
   };
 
-  const [earningsHistory, setEarningsHistory] = useState([
-    {
-      id: 'earn-101',
-      studentName: 'Gabriel Alumno Silva',
-      studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-      date: '11/08/2026 às 15:00',
-      classType: 'Assinatura 28 dias',
-      durationMinutes: 50,
-      durationFormatted: '50 min',
-      grossAmount: 23.00,
-      fee: 0,
-      netAmount: Number((23.00 * (currentEarnPercent / 100)).toFixed(2)),
-      status: 'Liberado (Feedback Enviado ✓)',
-      feedback: 'Excelente aula! Praticamos conversação fluida.'
-    }
-  ]);
+  const [earningsHistory, setEarningsHistory] = useState([]);
 
   const [nowTimer, setNowTimer] = useState(Date.now());
   useEffect(() => {
@@ -685,8 +673,27 @@ export default function TeacherDashboard() {
 
   const gridTimeSlots = getGridTimeSlots();
 
-  const pendingRequests = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'pending' || b.status === 'solicitada'));
-  const tutorBookings = bookings.filter(b => (b.tutorId === tutor.id || true) && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled'));
+  const pendingRequests = (bookings || []).filter(b => {
+    if (!profile) return false;
+    const tId = String(tutor?.id || profile?.id || '').toLowerCase();
+    const tEmail = String(tutor?.email || profile?.email || '').toLowerCase();
+    const bTutorId = String(b.tutorId || '').toLowerCase();
+    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
+
+    const isMyTutor = (tId && bTutorId === tId) || (tEmail && bTutorEmail === tEmail);
+    return isMyTutor && (b.status === 'pending' || b.status === 'solicitada');
+  });
+
+  const tutorBookings = (bookings || []).filter(b => {
+    if (!profile) return false;
+    const tId = String(tutor?.id || profile?.id || '').toLowerCase();
+    const tEmail = String(tutor?.email || profile?.email || '').toLowerCase();
+    const bTutorId = String(b.tutorId || '').toLowerCase();
+    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
+
+    const isMyTutor = (tId && bTutorId === tId) || (tEmail && bTutorEmail === tEmail);
+    return isMyTutor && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled');
+  });
   
   // Filter active bookings that are NOT expired by more than 10 mins and NOT completed
   const activeTutorBookings = tutorBookings.filter(b => {
@@ -695,16 +702,7 @@ export default function TeacherDashboard() {
     return !timing.isExpired;
   });
 
-  const nextBooking = activeTutorBookings[0] || tutorBookings[0] || {
-    id: 'booking-demo-1',
-    studentName: 'Gabriel Alumno',
-    studentAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-    day: 'Hoje',
-    time: '15:00',
-    amount: tutor.hourlyRate || hourlyRate || 23,
-    bookingType: 'subscription',
-    status: 'confirmed'
-  };
+  const nextBooking = activeTutorBookings[0] || tutorBookings[0] || null;
 
   const nextBookingTiming = getBookingCountdownAndStatus(nextBooking);
   const upcomingBookings = tutorBookings.filter(b => b.id !== nextBooking?.id && b.status !== 'completed' && b.status !== 'concluida');
@@ -721,11 +719,11 @@ export default function TeacherDashboard() {
     setTimeout(() => setPayoutSuccessMsg(''), 6000);
   };
 
-  const isNextTrial = nextBooking.bookingType === 'trial';
+  const isNextTrial = nextBooking ? nextBooking.bookingType === 'trial' : false;
   const classEarnPercent = getTeacherEarnPercent(totalLessons, isNextTrial, tierRates);
-  const rawNextAmount = Number(nextBooking.amount || tutor.hourlyRate || hourlyRate || 23);
+  const rawNextAmount = Number(nextBooking?.amount || tutor?.hourlyRate || hourlyRate || 20);
   const netEarningsNextClass = isNaN(rawNextAmount * (classEarnPercent / 100))
-    ? (23 * (classEarnPercent / 100)).toFixed(2)
+    ? (20 * (classEarnPercent / 100)).toFixed(2)
     : (rawNextAmount * (classEarnPercent / 100)).toFixed(2);
 
   const handleOpenFeedbackModal = () => {
@@ -810,6 +808,18 @@ export default function TeacherDashboard() {
             {/* COLUNA PRINCIPAL (span-2) */}
             <div className="lg:col-span-2 space-y-4">
               
+              {/* Banner Saludo Tutor con Matrícula */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-semibold text-white">Olá, {tutor.name || profile?.full_name || 'Professor'}! 👋</h1>
+                  <p className="text-xs text-slate-400 mt-0.5">Gerencie suas aulas, horários e ganhos na plataforma Lexy.</p>
+                </div>
+                <span className="bg-slate-900 border border-slate-800 text-amber-300 font-mono font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Matrícula Tutor: {profile?.matricula_code || 'LXY-2026-492108'}</span>
+                </span>
+              </div>
+
               {tutor.status === 'pending' && (
                 <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 p-4 rounded-xl flex items-center gap-3">
                   <Clock className="w-5 h-5 text-amber-400 shrink-0" />

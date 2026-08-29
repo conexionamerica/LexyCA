@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
+import TechVeinsBackground from '../components/ui/TechVeinsBackground';
 
 const RESIDENCE_COUNTRIES = [
   'Brasil 🇧🇷',
@@ -195,7 +196,7 @@ export default function LoginPage({ forceRole }) {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 animate-fade-in-up">
+    <TechVeinsBackground className="min-h-[85vh] flex items-center justify-center px-4 py-8 animate-fade-in-up">
       
       {/* CARD PRINCIPAL RÉPLICA DE ALUNO.CONEXIONAMERICA.COM.BR */}
       <div className="w-full max-w-5xl bg-slate-950/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 grid grid-cols-1 md:grid-cols-12 relative z-10">
@@ -226,7 +227,7 @@ export default function LoginPage({ forceRole }) {
               <h3 className="font-black text-white text-sm sm:text-base leading-snug">
                 {activeRole === 'teacher' 
                   ? 'Ensine Idiomas Online e Monetize seu Conhecimento!' 
-                  : 'Aprenda Inglês e Espanhol com Tutores Nativos!'}
+                  : 'Aprenda Idiomas com Tutores Qualificados!'}
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed hidden sm:block">
                 {activeRole === 'teacher'
@@ -457,6 +458,8 @@ export default function LoginPage({ forceRole }) {
                           <option value="">Selecione o idioma...</option>
                           <option value="Inglês 🇬🇧🇺🇸">Inglês 🇬🇧🇺🇸</option>
                           <option value="Espanhol 🇪🇸">Espanhol 🇪🇸</option>
+                          <option value="Francês 🇫🇷">Francês 🇫🇷</option>
+                          <option value="Italiano 🇮🇹">Italiano 🇮🇹</option>
                         </select>
                       </div>
 
@@ -589,6 +592,6 @@ export default function LoginPage({ forceRole }) {
 
       </div>
 
-    </div>
+    </TechVeinsBackground>
   );
 }

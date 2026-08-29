@@ -13,7 +13,7 @@ import BookingAuthModal from '../components/modals/BookingAuthModal';
 export default function ExplorePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tutors } = useMarketplace();
+  const { tutors, packageDiscounts, getTutorPackageDiscount } = useMarketplace();
   const { t } = useLanguage();
   const { profile } = useAuth();
 
@@ -272,126 +272,151 @@ export default function ExplorePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {filteredTutors.map((tutor) => (
-              <div
-                key={tutor.id}
-                className="glass-panel rounded-3xl p-6 transition-all hover:border-cyan-500/40 hover:shadow-xl hover:shadow-cyan-500/5 grid grid-cols-1 lg:grid-cols-12 gap-6 relative group"
-              >
-                {/* Botón Favorito */}
-                <button
-                  onClick={() => toggleFavorite(tutor.id)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-rose-500 transition-colors"
-                  title="Salvar nos favoritos"
+            {filteredTutors.map((tutor) => {
+              const maxDisc = Math.max(
+                getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-4h') : 0,
+                getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-8h') : 0,
+                getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-12h') : 0,
+                getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-16h') : 0
+              );
+
+              return (
+                <div
+                  key={tutor.id}
+                  className="glass-panel rounded-3xl p-6 transition-all hover:border-cyan-500/40 hover:shadow-xl hover:shadow-cyan-500/5 grid grid-cols-1 lg:grid-cols-12 gap-6 relative group"
                 >
-                  <Heart className={`w-5 h-5 ${favorites.includes(tutor.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
-                </button>
+                  {/* Botón Favorito */}
+                  <button
+                    onClick={() => toggleFavorite(tutor.id)}
+                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-rose-500 transition-colors"
+                    title="Salvar nos favoritos"
+                  >
+                    <Heart className={`w-5 h-5 ${favorites.includes(tutor.id) ? 'fill-rose-500 text-rose-500' : ''}`} />
+                  </button>
 
-                {/* Columna 1: Video Thumbnail ou Foto (3 columnas) */}
-                <div className="lg:col-span-4 flex flex-col gap-3">
-                  {tutor.hasVideo !== false && tutor.videoUrl && tutor.videoUrl !== '' && tutor.videoUrl !== 'none' ? (
-                    <div 
-                      className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 group-hover:border-cyan-500/50 transition-colors cursor-pointer"
-                      onClick={() => setActiveVideoUrl(tutor.videoUrl)}
-                    >
-                      <img
-                        src={tutor.videoThumbnail || tutor.avatar}
-                        alt={tutor.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="video-preview-overlay">
-                        <div className="play-button-pulse">
-                          <Play className="w-6 h-6 fill-white ml-0.5" />
+                  {/* Columna 1: Video Thumbnail ou Foto (3 columnas) */}
+                  <div className="lg:col-span-4 flex flex-col gap-3">
+                    {tutor.hasVideo !== false && tutor.videoUrl && tutor.videoUrl !== '' && tutor.videoUrl !== 'none' ? (
+                      <div 
+                        className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 group-hover:border-cyan-500/50 transition-colors cursor-pointer"
+                        onClick={() => setActiveVideoUrl(tutor.videoUrl)}
+                      >
+                        <img
+                          src={tutor.videoThumbnail || tutor.avatar}
+                          alt={tutor.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="video-preview-overlay">
+                          <div className="play-button-pulse">
+                            <Play className="w-6 h-6 fill-white ml-0.5" />
+                          </div>
+                          <span className="absolute bottom-2 left-2 text-[10px] font-black bg-slate-950/80 text-white px-2 py-0.5 rounded-md border border-white/10">
+                            Assistir Apresentação (1:30)
+                          </span>
                         </div>
-                        <span className="absolute bottom-2 left-2 text-[10px] font-black bg-slate-950/80 text-white px-2 py-0.5 rounded-md border border-white/10">
-                          Assistir Apresentação (1:30)
-                        </span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 flex items-center justify-center">
-                      <img
-                        src={tutor.presentation_photo || tutor.avatar}
-                        alt={tutor.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-
-                  {/* Detalle rápido de idioma y nativo */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-slate-800/80 text-slate-200 border border-slate-700 text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5">
-                      <span>{tutor.flag}</span>
-                      <span>{tutor.country}</span>
-                    </span>
-                    {tutor.nativeSpeaker && (
-                      <span className="bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Falante Nativo</span>
-                      </span>
+                    ) : (
+                      <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-900 border border-slate-800 flex items-center justify-center">
+                        <img
+                          src={tutor.presentation_photo || tutor.avatar}
+                          alt={tutor.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     )}
-                  </div>
-                </div>
 
-                {/* Columna 2: Detalles del Profesor (5 columnas) */}
-                <div className="lg:col-span-5 space-y-3">
-                  
-                  {/* Nombre y Título */}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
-                        {tutor.name}
-                      </h3>
-                      {tutor.isVerified && (
-                        <ShieldCheck className="w-5 h-5 text-cyan-400 fill-cyan-400/20" title="Perfil Verificado" />
+                    {/* Detalle rápido de idioma y nativo */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-slate-800/80 text-slate-200 border border-slate-700 text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5">
+                        <span>{tutor.flag}</span>
+                        <span>{tutor.country}</span>
+                      </span>
+                      {tutor.nativeSpeaker && (
+                        <span className="bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
+                          <Award className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Falante Nativo</span>
+                        </span>
+                      )}
+                      {maxDisc > 0 && (
+                        <span className="bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg shadow-md border border-emerald-300 flex items-center gap-1">
+                          <span>🔥 Até {maxDisc}% OFF</span>
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs font-semibold text-cyan-400 mt-0.5">{tutor.title}</p>
                   </div>
 
-                  {/* Calificación y Clases */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1 bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 rounded-lg font-bold text-amber-300">
-                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span>{tutor.rating}</span>
-                      <span className="text-slate-400 font-normal">({tutor.reviewCount})</span>
+                  {/* Columna 2: Detalles del Profesor (5 columnas) */}
+                  <div className="lg:col-span-5 space-y-3">
+                    
+                    {/* Nombre y Título */}
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-xl font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                          {tutor.name}
+                        </h3>
+                        {tutor.isVerified && (
+                          <ShieldCheck className="w-5 h-5 text-cyan-400 fill-cyan-400/20" title="Perfil Verificado" />
+                        )}
+                        {maxDisc > 0 && (
+                          <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                            Desconto de até {maxDisc}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-cyan-400 mt-0.5">{tutor.title}</p>
                     </div>
 
-                    <div className="text-slate-300 font-medium">
-                      <strong>{tutor.totalLessons}</strong> aulas ministradas
-                    </div>
-                  </div>
+                    {/* Calificación y Clases */}
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-1 bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 rounded-lg font-bold text-amber-300">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        <span>{tutor.rating}</span>
+                        <span className="text-slate-400 font-normal">({tutor.reviewCount})</span>
+                      </div>
 
-                  {/* Biografía Corta */}
-                  <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
-                    {tutor.bio}
-                  </p>
-
-                  {/* Especialidades */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    {tutor.specialties.map(sp => (
-                      <span key={sp} className="bg-slate-900/90 border border-slate-800 text-slate-400 text-[11px] font-semibold px-2 py-0.5 rounded-md">
-                        {sp}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Columna 3: Precio y Acciones de Reserva (3 columnas) */}
-                <div className="lg:col-span-3 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-800 pt-4 lg:pt-0 lg:pl-6 space-y-4">
-                  
-                  <div>
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 block font-medium">Preço regular / hora</span>
-                      <div className="text-3xl font-black text-white tracking-tight">
-                        R$ {tutor.hourlyRate} <span className="text-xs font-normal text-slate-400">/ h</span>
+                      <div className="text-slate-300 font-medium">
+                        <strong>{tutor.totalLessons}</strong> aulas ministradas
                       </div>
                     </div>
 
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 mt-3 text-center">
-                      <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aula Experimental</span>
-                      <span className="text-sm font-extrabold text-emerald-300">Apenas R$ {tutor.trialRate} por 25 min</span>
+                    {/* Biografía Corta */}
+                    <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
+                      {tutor.bio}
+                    </p>
+
+                    {/* Especialidades */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      {tutor.specialties.map(sp => (
+                        <span key={sp} className="bg-slate-900/90 border border-slate-800 text-slate-400 text-[11px] font-semibold px-2 py-0.5 rounded-md">
+                          {sp}
+                        </span>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Columna 3: Precio y Acciones de Reserva (3 columnas) */}
+                  <div className="lg:col-span-3 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-slate-800 pt-4 lg:pt-0 lg:pl-6 space-y-4">
+                    
+                    <div>
+                      <div className="text-right">
+                        <span className="text-xs text-slate-400 block font-medium">Preço regular / hora</span>
+                        <div className="text-3xl font-black text-white tracking-tight">
+                          R$ {tutor.hourlyRate || tutor.hourly_rate} <span className="text-xs font-normal text-slate-400">/ h</span>
+                        </div>
+                      </div>
+
+                      {maxDisc > 0 && (
+                        <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/50 rounded-xl p-2 mt-2 text-center shadow-md">
+                          <span className="text-[10px] uppercase font-black text-emerald-300 block">🔥 Desconto nos Pacotes</span>
+                          <span className="text-xs font-extrabold text-emerald-400">Economize até {maxDisc}% OFF</span>
+                        </div>
+                      )}
+
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 mt-2 text-center">
+                        <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aula Experimental</span>
+                        <span className="text-sm font-extrabold text-emerald-300">Apenas R$ {tutor.trialRate} por 25 min</span>
+                      </div>
+                    </div>
 
                   <div className="space-y-2">
                     <button
@@ -418,8 +443,9 @@ export default function ExplorePage() {
                 </div>
 
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         )}
 
       </div>

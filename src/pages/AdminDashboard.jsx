@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 import { 
   ShieldCheck, Users, DollarSign, CheckCircle2, Clock, 
   Award, Sparkles, Lock, Mail, Eye, EyeOff, AlertCircle, Wallet, ArrowRight, Check, 
   Megaphone, Trash2, Settings, Save, AlertTriangle, Calendar, Percent, Search, User, Video
 } from 'lucide-react';
+import { getStoneConfig, saveStoneConfig } from '../lib/stonePaymentService';
 
 export default function AdminDashboard() {
   const { 
     tutors, approveTutor, rejectTutor, 
     tierRates, updateTierRates,
+    packageDiscounts, updatePackageDiscounts,
     announcements, addAnnouncement, deleteAnnouncement,
     bookings, autoPurge30DaysHistory
   } = useMarketplace();
@@ -29,9 +32,36 @@ export default function AdminDashboard() {
   // Config States
   const [editableTierRates, setEditableTierRates] = useState(tierRates);
   const [isFeeSaved, setIsFeeSaved] = useState(false);
+
+  const [selectedDiscountTarget, setSelectedDiscountTarget] = useState('all');
+  const [editablePackageDiscounts, setEditablePackageDiscounts] = useState(() => {
+    return packageDiscounts?.global || (packageDiscounts?.['pkg-4h'] !== undefined ? packageDiscounts : { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 });
+  });
+  const [isDiscountSaved, setIsDiscountSaved] = useState(false);
   
   const [recommendedRate, setRecommendedRate] = useState(localStorage.getItem('lexy_recommended_rate') || 12);
   const [isRateSaved, setIsRateSaved] = useState(false);
+
+  const [stoneForm, setStoneForm] = useState(() => getStoneConfig());
+  const [isStoneSaved, setIsStoneSaved] = useState(false);
+
+  const handleSaveStoneConfig = (e) => {
+    e.preventDefault();
+    saveStoneConfig(stoneForm);
+    setIsStoneSaved(true);
+    setTimeout(() => setIsStoneSaved(false), 3000);
+  };
+
+  const handleTargetChange = (targetId) => {
+    setSelectedDiscountTarget(targetId);
+    if (targetId === 'all') {
+      const g = packageDiscounts?.global || (packageDiscounts?.['pkg-4h'] !== undefined ? packageDiscounts : { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 });
+      setEditablePackageDiscounts(g);
+    } else {
+      const tDisc = packageDiscounts?.byTutor?.[targetId] || { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 };
+      setEditablePackageDiscounts(tDisc);
+    }
+  };
 
   // Announcement States
   const [annTitle, setAnnTitle] = useState('');
@@ -40,19 +70,57 @@ export default function AdminDashboard() {
   const [annLevel, setAnnLevel] = useState('info');
   const [annSuccessMsg, setAnnSuccessMsg] = useState('');
 
-  // Students & Payouts Mock Data
+  // Students & Payouts Real Data (Extração de dados 100% reais do Supabase)
   const [searchStudent, setSearchStudent] = useState('');
-  const [studentsData] = useState([
-    { id: 1, name: "Gabriel Alumno", email: "gabriel@test.com", avatar: "https://i.pravatar.cc/150?img=11", walletBalance: 45.0, studyLanguage: "Espanhol", languageLevel: "Intermediário B1", completedClasses: 12 },
-    { id: 2, name: "Luciana Martins", email: "luciana@test.com", avatar: "https://i.pravatar.cc/150?img=5", walletBalance: 120.0, studyLanguage: "Inglês", languageLevel: "Avançado C1", completedClasses: 45 },
-    { id: 3, name: "Roberto Silva", email: "roberto@test.com", avatar: "https://i.pravatar.cc/150?img=8", walletBalance: 0.0, studyLanguage: "Italiano", languageLevel: "Iniciante A1", completedClasses: 2 },
-  ]);
+  const [realStudents, setRealStudents] = useState([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(true);
 
-  const [pendingPayouts, setPendingPayouts] = useState([
-    { id: 101, tutorName: "María Fernández", tutorEmail: "maria@test.com", tutorAvatar: "https://i.pravatar.cc/150?img=47", date: "2024-05-10", requestedAmount: 150.00, teacherEarnPercent: 80, method: "PIX", pixKey: "maria@pix.com", status: "pending" },
-    { id: 102, tutorName: "Carlos Rivera", tutorEmail: "carlos@test.com", tutorAvatar: "https://i.pravatar.cc/150?img=12", date: "2024-05-11", requestedAmount: 45.00, teacherEarnPercent: 75, method: "PayPal", pixKey: "carlos@paypal.com", status: "pending" },
-    { id: 103, tutorName: "Sophie Martin", tutorEmail: "sophie@test.com", tutorAvatar: "https://i.pravatar.cc/150?img=23", date: "2024-05-01", requestedAmount: 200.00, teacherEarnPercent: 85, method: "PIX", pixKey: "+5511999999999", status: "approved" },
-  ]);
+  useEffect(() => {
+    let active = true;
+    async function loadRealStudentsFromSupabase() {
+      setIsLoadingStudents(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'student');
+
+        if (!error && data && active) {
+          const mapped = data.map(s => ({
+            id: s.id,
+            name: s.full_name || s.username || (s.email ? s.email.split('@')[0] : 'Aluno Cadastrado'),
+            email: s.real_email || s.email || 'Não informado',
+            avatar: s.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+            walletBalance: Number(s.clases_saldo_disponible || s.mensualidad_valor || 0),
+            studyLanguage: s.subject ? (s.subject.charAt(0).toUpperCase() + s.subject.slice(1)) : 'Espanhol',
+            languageLevel: s.spanish_level || 'Iniciante',
+            completedClasses: Number(s.hours_learned || 0),
+            registrationStatus: s.registration_status || 'complete',
+            phone: s.phone || '',
+            studentCode: s.student_code || ''
+          }));
+          setRealStudents(mapped);
+        }
+      } catch (err) {
+        console.warn('Erro ao buscar alunos reais do Supabase:', err);
+      } finally {
+        if (active) setIsLoadingStudents(false);
+      }
+    }
+
+    loadRealStudentsFromSupabase();
+    return () => { active = false; };
+  }, []);
+
+  const filteredStudents = React.useMemo(() => {
+    return realStudents.filter(s => 
+      (s.name || '').toLowerCase().includes(searchStudent.toLowerCase()) || 
+      (s.email || '').toLowerCase().includes(searchStudent.toLowerCase()) ||
+      (s.studentCode || '').toLowerCase().includes(searchStudent.toLowerCase())
+    );
+  }, [realStudents, searchStudent]);
+
+  const [pendingPayouts, setPendingPayouts] = useState([]);
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
@@ -68,6 +136,36 @@ export default function AdminDashboard() {
     updateTierRates(editableTierRates);
     setIsFeeSaved(true);
     setTimeout(() => setIsFeeSaved(false), 3000);
+  };
+
+  const handleSavePackageDiscounts = (e) => {
+    e.preventDefault();
+    const updatedStructure = {
+      global: { ...(packageDiscounts?.global || (packageDiscounts?.['pkg-4h'] !== undefined ? packageDiscounts : { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 })) },
+      byTutor: { ...(packageDiscounts?.byTutor || {}) }
+    };
+
+    if (selectedDiscountTarget === 'all') {
+      updatedStructure.global = { ...editablePackageDiscounts };
+    } else {
+      updatedStructure.byTutor[selectedDiscountTarget] = { ...editablePackageDiscounts };
+    }
+
+    updatePackageDiscounts(updatedStructure);
+    setIsDiscountSaved(true);
+    setTimeout(() => setIsDiscountSaved(false), 3000);
+  };
+
+  const handleRemoveTutorDiscount = (tutorId) => {
+    const updatedStructure = {
+      global: { ...(packageDiscounts?.global || { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 }) },
+      byTutor: { ...(packageDiscounts?.byTutor || {}) }
+    };
+    delete updatedStructure.byTutor[tutorId];
+    updatePackageDiscounts(updatedStructure);
+    if (selectedDiscountTarget === tutorId) {
+      handleTargetChange('all');
+    }
   };
 
   const handleSaveRecommendedRate = (e) => {
@@ -173,11 +271,6 @@ export default function AdminDashboard() {
   const approvedCount = tutors.filter(t => t.status === 'approved').length;
   const pendingCount = tutors.filter(t => t.status === 'pending').length;
 
-  const filteredStudents = studentsData.filter(s => 
-    s.name.toLowerCase().includes(searchStudent.toLowerCase()) || 
-    s.email.toLowerCase().includes(searchStudent.toLowerCase())
-  );
-
   return (
     <div className="space-y-8 animate-fade-in-up">
       {/* Header Admin */}
@@ -197,7 +290,9 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-right">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Volume Total de Vendas</span>
-            <span className="text-2xl font-black text-emerald-400">$48,920 USD</span>
+            <span className="text-2xl font-black text-emerald-400">
+              R$ {(bookings || []).filter(b => b && b.amount && !b.id?.includes('demo')).reduce((sum, b) => sum + Number(b.totalAmount || b.amount || 0), 0).toFixed(2)}
+            </span>
           </div>
         </div>
       </div>
@@ -222,6 +317,7 @@ export default function AdminDashboard() {
           className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'students' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
           <Users className="w-4 h-4 shrink-0" /> 👥 Alunos
+          {realStudents.length > 0 && <span className="bg-emerald-500 text-slate-950 font-black text-[10px] rounded-full px-2 py-0.5 ml-1">{realStudents.length}</span>}
         </button>
         <button 
           onClick={() => setActiveTab('payouts')}
@@ -244,40 +340,28 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      {/* CONTEÚDO DAS ABAS */}
       {activeTab === 'panel' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="glass-panel rounded-3xl p-5 border border-slate-800 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase">Tutores Aprovados (Públicos)</span>
-              <div className="text-3xl font-black text-emerald-400">{approvedCount} professores</div>
-            </div>
-
-            <div className="glass-panel rounded-3xl p-5 border border-slate-800 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase">Aguardando Aprovação</span>
-              <div className="text-3xl font-black text-amber-400">{pendingCount} cadastros</div>
-            </div>
-
-            <div className="glass-panel rounded-3xl p-5 border border-slate-800 space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase">Margem de Ganho Atual do Professor</span>
-              <div className="text-3xl font-black text-cyan-400">{editableTierRates.tier1}% a {editableTierRates.tier5}%</div>
-            </div>
-          </div>
-          
-          <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-slate-800">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-amber-400" />
-                  Histórico Global de Aulas & Política de Auto-eliminação em 30 Dias
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  Expurgo Automático de Histórico de Aulas (30 Dias)
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Aulas concluídas ou marcadas como No-Show são mantidas por 30 dias e depois eliminadas automaticamente.
+                  Conforme a política nativa da plataforma Lexy, o histórico de aulas concluídas é mantido no sistema por exatamente 30 dias para auditoria antes de ser permanentemente removido.
                 </p>
               </div>
 
               <button
-                onClick={autoPurge30DaysHistory}
-                className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-300 font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5"
+                type="button"
+                onClick={() => {
+                  autoPurge30DaysHistory();
+                  alert('Purga de histórico de 30 dias executada com sucesso.');
+                }}
+                className="bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4 text-amber-400" />
                 <span>Executar Purga de 30 Dias</span>
@@ -285,13 +369,8 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
-              <div className="flex justify-between items-center py-2 border-b border-slate-800">
-                <span className="font-bold text-white">Gabriel Alumno ➔ Profª María Fernández</span>
-                <span className="text-emerald-400 font-bold">✓ Concluída (Mantida por mais 28 dias)</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-slate-800">
-                <span className="font-bold text-white">Luciana Martins ➔ Prof. Carlos Rivera</span>
-                <span className="text-amber-300 font-bold">⚠️ No-Show (Mantida por mais 14 dias)</span>
+              <div className="text-slate-400 text-center py-2">
+                Acompanhamento em tempo real das reservas e purga de histórico de 30 dias.
               </div>
             </div>
           </div>
@@ -400,15 +479,20 @@ export default function AdminDashboard() {
       {activeTab === 'students' && (
         <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-amber-500/30">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-amber-400" />
-              Alunos Cadastrados
-            </h2>
+            <div>
+              <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-400" />
+                Alunos Cadastrados
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Exibindo exclusivamente dados 100% reais de alunos cadastrados extraídos diretamente do Supabase.
+              </p>
+            </div>
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar aluno..."
+                placeholder="Buscar aluno por nome ou e-mail..."
                 value={searchStudent}
                 onChange={(e) => setSearchStudent(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-9 pr-3.5 py-2 text-xs outline-none focus:border-amber-400"
@@ -416,35 +500,61 @@ export default function AdminDashboard() {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredStudents.map(s => (
-              <div key={s.id} className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-2xl p-5 flex gap-4">
-                <img src={s.avatar} alt={s.name} className="w-16 h-16 rounded-xl object-cover border border-slate-700" />
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-sm font-black text-white">{s.name}</h3>
-                      <p className="text-[10px] text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3" /> {s.email}</p>
+          {isLoadingStudents ? (
+            <div className="p-8 text-center text-slate-400 text-xs font-bold animate-pulse">
+              Carregando alunos cadastrados no Supabase...
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-10 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20">
+                <Users className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-white">Nenhum aluno cadastrado</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                {searchStudent 
+                  ? 'Nenhum aluno corresponde ao termo buscado.' 
+                  : 'Nenhum aluno cadastrado foi encontrado no Supabase. A plataforma exibirá automaticamente novos alunos conforme realizem seus cadastros.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredStudents.map(s => (
+                <div key={s.id} className="bg-slate-900/50 backdrop-blur border border-slate-800 rounded-2xl p-5 flex gap-4">
+                  <img 
+                    src={s.avatar} 
+                    alt={s.name} 
+                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'; }}
+                    className="w-16 h-16 rounded-xl object-cover border border-slate-700 shrink-0" 
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="truncate">
+                        <h3 className="text-sm font-black text-white truncate">{s.name}</h3>
+                        <p className="text-[10px] text-slate-400 flex items-center gap-1 truncate">
+                          <Mail className="w-3 h-3 shrink-0" /> {s.email}
+                        </p>
+                        {s.phone && <p className="text-[10px] text-slate-500 font-mono">📞 {s.phone}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="block text-[10px] text-slate-400 uppercase font-bold">Saldo Aulas</span>
+                        <span className="text-xs font-bold text-emerald-400">{s.walletBalance} aula(s)</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Saldo</span>
-                      <span className="text-xs font-bold text-emerald-400">${s.walletBalance.toFixed(2)} USD</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Estuda</span>
-                      <span className="text-xs text-white">{s.studyLanguage} ({s.languageLevel})</span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Aulas Feitas</span>
-                      <span className="text-xs text-white">{s.completedClasses} aulas</span>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="block text-[10px] text-slate-400 uppercase font-bold">Estuda</span>
+                        <span className="text-xs text-white font-semibold">{s.studyLanguage} ({s.languageLevel})</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-slate-400 uppercase font-bold">Aulas Feitas</span>
+                        <span className="text-xs text-white font-semibold">{s.completedClasses} aulas</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -475,59 +585,68 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {pendingPayouts.map(p => {
-                  const earnRate = p.teacherEarnPercent || 80;
-                  const netToPay = Number((p.requestedAmount * (earnRate / 100)).toFixed(2));
+                {pendingPayouts.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-400 text-xs font-semibold">
+                      <Wallet className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
+                      Nenhuma solicitação de saque pendente no momento.
+                    </td>
+                  </tr>
+                ) : (
+                  pendingPayouts.map(p => {
+                    const earnRate = p.teacherEarnPercent || 80;
+                    const netToPay = Number((p.requestedAmount * (earnRate / 100)).toFixed(2));
 
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-900/50">
-                      <td className="py-3.5 px-4 font-bold text-white flex items-center gap-3">
-                        <img src={p.tutorAvatar} alt={p.tutorName} className="w-9 h-9 rounded-xl object-cover border border-slate-700" />
-                        <div>
-                          <span className="block font-bold text-white">{p.tutorName}</span>
-                          <span className="text-[10px] text-slate-400">{p.tutorEmail}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-slate-300">{p.date}</td>
-                      <td className="py-3.5 px-4 font-bold text-slate-300">${p.requestedAmount.toFixed(2)} USD</td>
-                      <td className="py-3.5 px-4 font-bold text-cyan-300">{earnRate}% Repasse</td>
-                      <td className="py-3.5 px-4 font-black text-emerald-400 text-sm">${netToPay.toFixed(2)} USD</td>
-                      <td className="py-3.5 px-4">
-                        <span className="block font-semibold text-white">{p.method}</span>
-                        <span className="text-[10px] text-cyan-300 font-mono font-bold">{p.pixKey}</span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {p.status === 'approved' ? (
-                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-lg font-bold inline-flex items-center gap-1">
-                            <Check className="w-3.5 h-3.5" /> Aprovado
-                          </span>
-                        ) : (
-                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg font-bold inline-flex items-center gap-1 animate-pulse">
-                            <Clock className="w-3.5 h-3.5" /> Pendente
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        {p.status !== 'approved' && (
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => handleApprovePayout(p.id)}
-                              className="px-4 py-1.5 rounded-xl font-black bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all text-xs"
-                            >
-                              Aprovar
-                            </button>
-                            <button
-                              onClick={() => {}}
-                              className="px-3 py-1.5 rounded-xl font-extrabold bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg transition-all text-xs"
-                            >
-                              Rejeitar
-                            </button>
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-900/50">
+                        <td className="py-3.5 px-4 font-bold text-white flex items-center gap-3">
+                          <img src={p.tutorAvatar} alt={p.tutorName} className="w-9 h-9 rounded-xl object-cover border border-slate-700" />
+                          <div>
+                            <span className="block font-bold text-white">{p.tutorName}</span>
+                            <span className="text-[10px] text-slate-400">{p.tutorEmail}</span>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="py-3.5 px-4 font-medium text-slate-300">{p.date}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-300">${p.requestedAmount.toFixed(2)} USD</td>
+                        <td className="py-3.5 px-4 font-bold text-cyan-300">{earnRate}% Repasse</td>
+                        <td className="py-3.5 px-4 font-black text-emerald-400 text-sm">${netToPay.toFixed(2)} USD</td>
+                        <td className="py-3.5 px-4">
+                          <span className="block font-semibold text-white">{p.method}</span>
+                          <span className="text-[10px] text-cyan-300 font-mono font-bold">{p.pixKey}</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {p.status === 'approved' ? (
+                            <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-lg font-bold inline-flex items-center gap-1">
+                              <Check className="w-3.5 h-3.5" /> Aprovado
+                            </span>
+                          ) : (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg font-bold inline-flex items-center gap-1 animate-pulse">
+                              <Clock className="w-3.5 h-3.5" /> Pendente
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {p.status !== 'approved' && (
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => handleApprovePayout(p.id)}
+                                className="px-4 py-1.5 rounded-xl font-black bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all text-xs"
+                              >
+                                Aprovar
+                              </button>
+                              <button
+                                onClick={() => {}}
+                                className="px-3 py-1.5 rounded-xl font-extrabold bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg transition-all text-xs"
+                              >
+                                Rejeitar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -793,6 +912,266 @@ export default function AdminDashboard() {
               >
                 <Save className="w-4 h-4" />
                 <span>Salvar Configurações</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Card de Descontos Promocionais em Pacotes */}
+          <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-5 border border-emerald-500/30 md:col-span-2">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                  <Percent className="w-5 h-5 text-emerald-400" />
+                  Descontos Promocionais em Pacotes (Cobrança do Aluno)
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Defina porcentagens de desconto promocionais para **todos os professores (global)** ou **para um professor específico**.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-xs text-emerald-300 space-y-1">
+              <strong className="text-emerald-400 font-bold block">📌 Regra de Repasse ao Professor:</strong>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                Qualquer desconto configurado aqui é absorvido pela plataforma e reduz apenas o valor final pago pelo aluno. O repasse calculated para o PROFESSOR continuará sendo baseado no valor integral da sua tarifa cadastrada (Tarifa × Horas), garantindo que ele receba 100% do seu valor por hora.
+              </p>
+            </div>
+
+            {isDiscountSaved && (
+              <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Descontos de pacotes atualizados com sucesso!</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSavePackageDiscounts} className="space-y-5">
+              
+              {/* Casilla / Dropdown de Seleção de Alvo (Todos vs Tutor Específico) */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-2">
+                <label className="text-xs font-extrabold text-white block">
+                  1. Selecione a quem aplicar este Desconto Promocional *
+                </label>
+                <select
+                  value={selectedDiscountTarget}
+                  onChange={(e) => handleTargetChange(e.target.value)}
+                  className="w-full bg-slate-950 border border-emerald-500/40 text-emerald-300 font-bold text-xs sm:text-sm rounded-xl px-4 py-3 outline-none cursor-pointer focus:border-emerald-400 shadow-inner"
+                >
+                  <option value="all">🌐 TODOS OS PROFESSORES (Desconto Global para toda a plataforma)</option>
+                  <optgroup label="👤 Professores Individuais (Desconto Específico por Perfil)">
+                    {tutors.map(t => (
+                      <option key={t.id} value={t.id}>
+                        👤 {t.name} ({t.subject || 'Idiomas'} - R$ {Number(t.hourlyRate || t.hourly_rate || 20).toFixed(2)}/h)
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Campos de Desconto de Pacotes */}
+              <div className="space-y-2">
+                <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+                  2. Defina os Porcentagens de Desconto (% OFF para {selectedDiscountTarget === 'all' ? 'Todos os Tutores' : (tutors.find(t => t.id === selectedDiscountTarget)?.name || 'Tutor Selecionado')})
+                </label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-300 text-xs block mb-1">Pacote 4 Horas (% OFF)</label>
+                    <input
+                      type="number" min={0} max={50} value={editablePackageDiscounts['pkg-4h'] || 0}
+                      onChange={(e) => setEditablePackageDiscounts(prev => ({ ...prev, 'pkg-4h': Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-emerald-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-300 text-xs block mb-1">Pacote 8 Horas (% OFF)</label>
+                    <input
+                      type="number" min={0} max={50} value={editablePackageDiscounts['pkg-8h'] || 0}
+                      onChange={(e) => setEditablePackageDiscounts(prev => ({ ...prev, 'pkg-8h': Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-emerald-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-300 text-xs block mb-1">Pacote 12 Horas (% OFF)</label>
+                    <input
+                      type="number" min={0} max={50} value={editablePackageDiscounts['pkg-12h'] || 0}
+                      onChange={(e) => setEditablePackageDiscounts(prev => ({ ...prev, 'pkg-12h': Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-emerald-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-300 text-xs block mb-1">Pacote 16 Horas (% OFF)</label>
+                    <input
+                      type="number" min={0} max={50} value={editablePackageDiscounts['pkg-16h'] || 0}
+                      onChange={(e) => setEditablePackageDiscounts(prev => ({ ...prev, 'pkg-16h': Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Salvar Configuração de Descontos 🚀</span>
+              </button>
+            </form>
+
+            {/* Lista de Promociones Específicas por Tutor Activas */}
+            {packageDiscounts?.byTutor && Object.keys(packageDiscounts.byTutor).length > 0 && (
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <h3 className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                  🔥 Promociones Específicas Ativas por Tutor ({Object.keys(packageDiscounts.byTutor).length}):
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {Object.entries(packageDiscounts.byTutor).map(([tId, disc]) => {
+                    const tutorObj = tutors.find(t => t.id === tId);
+                    const tName = tutorObj ? tutorObj.name : tId;
+                    return (
+                      <div key={tId} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs">
+                        <div>
+                          <strong className="text-white block font-bold">{tName}</strong>
+                          <span className="text-emerald-400 text-[10px] font-bold">
+                            4h: {disc['pkg-4h'] || 0}% | 8h: {disc['pkg-8h'] || 0}% | 12h: {disc['pkg-12h'] || 0}% | 16h: {disc['pkg-16h'] || 0}%
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTutorDiscount(tId)}
+                          className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+                          title="Remover desconto específico"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card de Configuração Oficial da Stone Pagamentos S.A. */}
+          <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-5 border border-emerald-500/40 md:col-span-2 shadow-2xl bg-gradient-to-b from-slate-900/90 to-emerald-950/20">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <span>Gateway Oficial Stone Pagamentos S.A.</span>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-400/40 uppercase">
+                      Pagar.me v5 API
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure suas chaves reais da Stone S.A. para processar PIX Instantâneo, Cartão de Crédito e Boleto em Reais (R$).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {isStoneSaved && (
+              <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold p-3.5 rounded-xl flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Chaves e parâmetros da Stone Pagamentos S.A. salvas com sucesso!</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveStoneConfig} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Modo de Operação *</label>
+                  <select
+                    value={stoneForm.mode}
+                    onChange={(e) => setStoneForm(prev => ({ ...prev, mode: e.target.value }))}
+                    className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-xs rounded-xl px-3 py-2.5 outline-none cursor-pointer focus:border-emerald-400"
+                  >
+                    <option value="sandbox">🧪 Sandbox (Modo de Testes com Simulação Real)</option>
+                    <option value="production">🚀 Produção (Cobrança Real via Stone S.A.)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">ID do Estabelecimento / Merchant ID</label>
+                  <input
+                    type="text"
+                    value={stoneForm.accountId || ''}
+                    onChange={(e) => setStoneForm(prev => ({ ...prev, accountId: e.target.value }))}
+                    placeholder="merchant_stone_12345"
+                    className="w-full bg-slate-900 border border-slate-800 text-white font-mono text-xs rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Stone Public Key (Chave Pública `pk_...`)</label>
+                  <input
+                    type="text"
+                    value={stoneForm.publicKey || ''}
+                    onChange={(e) => setStoneForm(prev => ({ ...prev, publicKey: e.target.value }))}
+                    placeholder="pk_test_..."
+                    className="w-full bg-slate-900 border border-slate-800 text-cyan-300 font-mono text-xs rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Stone Secret Key (Chave Secreta `sk_...`)</label>
+                  <input
+                    type="password"
+                    value={stoneForm.secretKey || ''}
+                    onChange={(e) => setStoneForm(prev => ({ ...prev, secretKey: e.target.value }))}
+                    placeholder="sk_test_..."
+                    className="w-full bg-slate-900 border border-slate-800 text-cyan-300 font-mono text-xs rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <span className="font-bold text-slate-300">Métodos de Pagamento Ativos na Stone:</span>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 font-bold text-emerald-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={stoneForm.pixEnabled}
+                      onChange={(e) => setStoneForm(prev => ({ ...prev, pixEnabled: e.target.checked }))}
+                      className="accent-emerald-500 w-4 h-4 rounded"
+                    />
+                    <span>⚡ PIX Instantâneo</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 font-bold text-emerald-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={stoneForm.cardEnabled}
+                      onChange={(e) => setStoneForm(prev => ({ ...prev, cardEnabled: e.target.checked }))}
+                      className="accent-emerald-500 w-4 h-4 rounded"
+                    />
+                    <span>💳 Cartão de Crédito</span>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 font-bold text-emerald-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={stoneForm.boletoEnabled}
+                      onChange={(e) => setStoneForm(prev => ({ ...prev, boletoEnabled: e.target.checked }))}
+                      className="accent-emerald-500 w-4 h-4 rounded"
+                    />
+                    <span>📄 Boleto Bancário</span>
+                  </label>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Salvar Credenciais da Stone Pagamentos S.A. 🚀</span>
               </button>
             </form>
           </div>

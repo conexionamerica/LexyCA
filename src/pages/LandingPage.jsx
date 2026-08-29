@@ -4,6 +4,7 @@ import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import LexyAnimatedLogo from '../components/layout/LexyAnimatedLogo';
 import BookingAuthModal from '../components/modals/BookingAuthModal';
+import TechVeinsBackground from '../components/ui/TechVeinsBackground';
 import { 
   Sparkles, ArrowRight, Play, Star, CheckCircle2, 
   Globe, ShieldCheck, UserCheck, GraduationCap, Clock, LogIn, Heart,
@@ -12,7 +13,7 @@ import {
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { tutors, announcements = [] } = useMarketplace();
+  const { tutors, announcements = [], packageDiscounts, getTutorPackageDiscount } = useMarketplace();
   const { profile, setDemoRole } = useAuth();
   
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -56,9 +57,9 @@ export default function LandingPage() {
 
   const testimonials = [
     { name: "Carlos S.", country: "🇧🇷", rating: 5, text: "O Lexy Idiomas transformou minha forma de falar inglês. Consegui a fluência e a confiança que precisava para o meu trabalho!" },
-    { name: "Sarah J.", country: "🇺🇸", rating: 5, text: "Os professores nativos da plataforma são incríveis! Consegui aprender espanhol rapidamente para viajar e trabalhar com tranquilidade." },
+    { name: "Sarah J.", country: "🇺🇸", rating: 5, text: "Os professores qualificados da plataforma são incríveis! Consegui aprender espanhol rapidamente para viajar e trabalhar com tranquilidade." },
     { name: "María P.", country: "🇪🇸", rating: 5, text: "As aulas são super dinâmicas e focadas em conversação real. A sala de aula virtual com lousa interativa facilita muito o aprendizado." },
-    { name: "João V.", country: "🇵🇹", rating: 5, text: "Plataforma excelente! A possibilidade de agendar aulas com professores nativos de diferentes países faz toda a diferença na minha evolução." },
+    { name: "João V.", country: "🇵🇹", rating: 5, text: "Plataforma excelente! A possibilidade de agendar aulas com professores qualificados de diferentes países faz toda a diferença na minha evolução." },
     { name: "Emily R.", country: "🇬🇧", rating: 5, text: "Adoro a flexibilidade de horários e a qualidade dos professores. Aprender um novo idioma na Lexy tornou-se um processo muito eficiente." },
     { name: "Lucas F.", country: "🇧🇷", rating: 5, text: "Recomendo muito! Em apenas alguns meses já consigo me comunicar sem medo em reuniões corporativas. Professores extremamente qualificados." }
   ];
@@ -84,7 +85,7 @@ export default function LandingPage() {
     <div className="space-y-16 animate-fade-in-up pb-16">
       
       {/* ── HERO SECTION PRINCIPAL ESTILO PREPLY (EDGE-TO-EDGE 100% SEM SANGRIA OU MARGENS) ── */}
-      <div className="w-full bg-slate-950 border-b border-slate-800/80 px-4 sm:px-6 py-8 sm:py-12">
+      <TechVeinsBackground className="w-full border-b border-slate-800/80 px-4 sm:px-6 py-8 sm:py-12">
         <div className="w-full max-w-6xl mx-auto">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
@@ -98,7 +99,7 @@ export default function LandingPage() {
                 </h1>
                 
                 <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl font-medium">
-                  Aulas particulares online 1-on-1 com professores nativos de Inglês e Espanhol. Alcance a fluência rapidamente com suporte individual.
+                  Aulas particulares online 1-on-1 com professores qualificados de Inglês, Espanhol, Francês e Italiano. Alcance a fluência rapidamente com suporte individual.
                 </p>
               </div>
 
@@ -158,39 +159,55 @@ export default function LandingPage() {
 
           </div>
 
-          {/* SELETOR DE IDIOMAS LINHAS SIMPLES COM BANDEIRAS REAIS (EUA E ESPANHA) */}
-          <div className="mt-8 space-y-2 border-t border-slate-800/80 pt-6">
+          {/* SELETOR DE IDIOMAS LINHAS SIMPLES COM BANDEIRAS REAIS */}
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-800/80 pt-6">
             <button
               onClick={() => navigate('/explore?subject=Inglês')}
-              className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
+              className="py-4 px-4 rounded-2xl hover:bg-slate-900 border border-slate-800/80 flex items-center justify-between transition-all group"
             >
               <div className="flex items-center gap-4">
                 <img src="https://flagcdn.com/w40/us.png" alt="Bandeira Estados Unidos" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
-                <div className="text-left">
-                  <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua inglesa</span>
-                  <span className="text-xs text-slate-400">25.017 professores qualificados</span>
-                </div>
+                <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua inglesa</span>
               </div>
               <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
               onClick={() => navigate('/explore?subject=Espanhol')}
-              className="w-full py-4 px-4 rounded-2xl hover:bg-slate-900 border-b border-slate-800/80 flex items-center justify-between transition-all group"
+              className="py-4 px-4 rounded-2xl hover:bg-slate-900 border border-slate-800/80 flex items-center justify-between transition-all group"
             >
               <div className="flex items-center gap-4">
                 <img src="https://flagcdn.com/w40/es.png" alt="Bandeira Espanha" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
-                <div className="text-left">
-                  <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua espanhola</span>
-                  <span className="text-xs text-slate-400">18.420 professores qualificados</span>
-                </div>
+                <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua espanhola</span>
+              </div>
+              <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => navigate('/explore?subject=Francês')}
+              className="py-4 px-4 rounded-2xl hover:bg-slate-900 border border-slate-800/80 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <img src="https://flagcdn.com/w40/fr.png" alt="Bandeira França" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
+                <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua francesa</span>
+              </div>
+              <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => navigate('/explore?subject=Italiano')}
+              className="py-4 px-4 rounded-2xl hover:bg-slate-900 border border-slate-800/80 flex items-center justify-between transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <img src="https://flagcdn.com/w40/it.png" alt="Bandeira Itália" className="w-7 h-5 rounded object-cover shadow-sm border border-slate-700" />
+                <span className="font-extrabold text-white text-base block group-hover:text-cyan-300">Língua italiana</span>
               </div>
               <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
         </div>
-      </div>
+      </TechVeinsBackground>
 
 
 
@@ -226,6 +243,70 @@ export default function LandingPage() {
             </button>
           </div>
         </div>
+
+        {/* ── SEÇÃO PARA TUTORES: SEJA UM PROFESSOR NA LEXY ── */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-amber-500/30 rounded-3xl p-8 sm:p-12 space-y-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute -left-10 -top-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-black uppercase tracking-wider">
+              <GraduationCap className="w-4 h-4 text-amber-400" />
+              <span>Quero Dar Aulas na Lexy</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
+              Seja um professor na <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">Lexy Idiomas</span>
+            </h2>
+
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-medium">
+              Monetize seu conhecimento especializado e alcance novos alunos diariamente. Faça seu cadastro e comece a lecionar online com flexibilidade total.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Encontre novos alunos</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Conecte-se com estudantes motivados de diversos lugares buscando aulas de Inglês, Espanhol, Francês e Italiano.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Expanda suas atividades</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Defina seus próprios horários e tarifas por hora, trabalhando de onde estiver com total autonomia.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-white text-base">Receba com segurança</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Pagamentos garantidos após cada aula e saques diretos via PIX para sua conta bancária.
+              </p>
+            </div>
+          </div>
+
+          {/* BOTÃO FINAL DE CADASTRO DO TUTOR */}
+          <div className="text-center pt-2">
+            <button
+              onClick={() => navigate('/onboarding')}
+              className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-sm sm:text-base py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/20 inline-flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
+            >
+              <GraduationCap className="w-5 h-5 text-slate-950" />
+              <span>Cadastrar-se para dar aulas na Lexy</span>
+              <ArrowRight className="w-5 h-5 text-slate-950" />
+            </button>
+          </div>
+        </div>
         
         {/* ── SECCIÓN DE TUTORES DESTACADOS ── */}
         <div className="space-y-6">
@@ -233,7 +314,7 @@ export default function LandingPage() {
             <div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Tutores em Destaque</h2>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Conheça alguns dos professores nativos de Inglês e Espanhol mais recomendados da comunidade.
+                Conheça alguns dos professores qualificados de Inglês, Espanhol, Francês e Italiano mais recomendados da comunidade.
               </p>
             </div>
 
@@ -253,54 +334,68 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg font-extrabold text-white">Em breve...</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Em breve teremos professores em destaque! Novos tutores nativos estão finalizando seus cadastros na plataforma.
+                Em breve teremos professores em destaque! Novos tutores qualificados estão finalizando seus cadastros na plataforma.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {approvedTutors.slice(0, 3).map((tutor) => (
-                <div
-                  key={tutor.id}
-                  className="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-4 group"
-                >
-                  <div className="space-y-3">
-                    <div className="relative rounded-xl overflow-hidden aspect-video bg-slate-950">
-                      <img src={tutor.videoThumbnail || tutor.avatar} alt={tutor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg">
-                          <Play className="w-5 h-5 fill-slate-950 ml-0.5" />
+              {approvedTutors.slice(0, 3).map((tutor) => {
+                const maxDisc = Math.max(
+                  getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-4h') : 0,
+                  getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-8h') : 0,
+                  getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-12h') : 0,
+                  getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-16h') : 0
+                );
+
+                return (
+                  <div
+                    key={tutor.id}
+                    className="bg-slate-900/90 rounded-2xl p-5 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-4 group relative"
+                  >
+                    <div className="space-y-3">
+                      <div className="relative rounded-xl overflow-hidden aspect-video bg-slate-950">
+                        {maxDisc > 0 && (
+                          <span className="absolute top-2 left-2 z-10 bg-emerald-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-lg uppercase shadow">
+                            🔥 Até {maxDisc}% OFF
+                          </span>
+                        )}
+                        <img src={tutor.videoThumbnail || tutor.avatar} alt={tutor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow-lg">
+                            <Play className="w-5 h-5 fill-slate-950 ml-0.5" />
+                          </div>
                         </div>
                       </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-extrabold text-white text-base group-hover:text-cyan-300 transition-colors">
+                            {tutor.name}
+                          </h3>
+                          <span className="text-xs">{tutor.flag || '🌐'} {tutor.countryCode || ''}</span>
+                        </div>
+                        <p className="text-xs text-cyan-400 font-semibold">{tutor.subject} • {tutor.title || 'Professor(a)'}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <div className="flex items-center gap-1 font-bold text-amber-300">
+                          <Star className="w-4 h-4 fill-amber-400" />
+                          <span>{tutor.rating || 5.0}</span>
+                          <span className="text-slate-400 font-normal">({tutor.reviewCount || 0})</span>
+                        </div>
+                        <span className="font-black text-emerald-400 text-sm font-mono">R$ {tutor.hourlyRate || tutor.hourly_rate}/h</span>
+                      </div>
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-extrabold text-white text-base group-hover:text-cyan-300 transition-colors">
-                          {tutor.name}
-                        </h3>
-                        <span className="text-xs">{tutor.flag || '🌐'} {tutor.countryCode || ''}</span>
-                      </div>
-                      <p className="text-xs text-cyan-400 font-semibold">{tutor.subject} • {tutor.title || 'Professor(a)'}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <div className="flex items-center gap-1 font-bold text-amber-300">
-                        <Star className="w-4 h-4 fill-amber-400" />
-                        <span>{tutor.rating || 5.0}</span>
-                        <span className="text-slate-400 font-normal">({tutor.reviewCount || 0})</span>
-                      </div>
-                      <span className="font-black text-emerald-400 text-sm font-mono">R$ {tutor.hourlyRate}/h</span>
-                    </div>
+                    <button
+                      onClick={() => handleBookTrialClick(tutor)}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 cursor-pointer"
+                    >
+                      Agendar Aula Experimental
+                    </button>
                   </div>
-
-                  <button
-                    onClick={() => handleBookTrialClick(tutor)}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-sky-400 hover:from-cyan-400 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg shadow-cyan-500/20 cursor-pointer"
-                  >
-                    Agendar Aula Experimental
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -366,70 +461,6 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* ── SEÇÃO PARA TUTORES: SEJA UM PROFESSOR NA LEXY ── */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-amber-500/30 rounded-3xl p-8 sm:p-12 space-y-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute -left-10 -top-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-black uppercase tracking-wider">
-              <GraduationCap className="w-4 h-4 text-amber-400" />
-              <span>Quero Dar Aulas na Lexy</span>
-            </div>
-
-            <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
-              Seja um professor na <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">Lexy Idiomas</span>
-            </h2>
-
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-medium">
-              Monetize seu conhecimento especializado e alcance novos alunos diariamente. Faça seu cadastro e comece a lecionar online com flexibilidade total.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Globe className="w-5 h-5" />
-              </div>
-              <h3 className="font-extrabold text-white text-base">Encontre novos alunos</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Conecte-se com estudantes motivados de diversos lugares buscando aulas de Inglês e Espanhol.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="font-extrabold text-white text-base">Expanda suas atividades</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Defina seus próprios horários e tarifas por hora, trabalhando de onde estiver com total autonomia.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <h3 className="font-extrabold text-white text-base">Receba com segurança</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Pagamentos garantidos após cada aula e saques diretos via PIX para sua conta bancária.
-              </p>
-            </div>
-          </div>
-
-          {/* BOTÃO FINAL DE CADASTRO DO TUTOR */}
-          <div className="text-center pt-2">
-            <button
-              onClick={() => navigate('/onboarding')}
-              className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-black text-sm sm:text-base py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/20 inline-flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
-            >
-              <GraduationCap className="w-5 h-5 text-slate-950" />
-              <span>Cadastrar-se para dar aulas na Lexy</span>
-              <ArrowRight className="w-5 h-5 text-slate-950" />
-            </button>
           </div>
         </div>
 

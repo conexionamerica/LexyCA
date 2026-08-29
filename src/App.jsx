@@ -41,7 +41,7 @@ function Layout() {
           {/* Rutas Públicas de Exploración y Perfil de Tutores */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/explore" element={<ExplorePage />} />
-          <Route path="/login" element={<LoginPage forceRole="student" />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/login/student" element={<LoginPage forceRole="student" />} />
           <Route path="/login/teacher" element={<LoginPage forceRole="teacher" />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />

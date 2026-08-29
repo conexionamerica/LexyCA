@@ -36,9 +36,9 @@ export default function Navbar() {
 
   const studentTabs = [
     { id: 'inicio', label: '🏠 Início' },
+    { id: 'meu-plano', label: '⭐ Meu Plano' },
     { id: 'catalogo', label: '📚 Catálogo' },
     { id: 'chat', label: '💬 Chat' },
-    { id: 'carteira', label: '💰 Carteira' },
     { id: 'perfil', label: '👤 Perfil' }
   ];
 
@@ -158,12 +158,11 @@ export default function Navbar() {
                     <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
                       <span className="text-xs font-bold text-white block truncate">{profile.full_name}</span>
                       <span className="text-[10px] text-slate-400 block truncate">{profile.email}</span>
-                      {profile.role === 'student' && (
-                        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
-                          <span className="text-slate-400 font-medium">Saldo:</span>
-                          <strong className="text-emerald-400 font-black">R$ {(profile.wallet_balance ?? student.walletBalance ?? 0).toFixed(2)}</strong>
-                        </div>
-                      )}
+                      <div className="pt-1.5 flex items-center justify-between text-xs">
+                        <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 font-bold">
+                          Matrícula: {profile.matricula_code || 'LXY-2026-784219'}
+                        </span>
+                      </div>
                     </div>
 
                     {profile.role === 'student' && (

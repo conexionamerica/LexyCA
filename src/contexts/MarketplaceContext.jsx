@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { mockTutors as initialMockTutors } from '../data/mockTutors';
 
 const MarketplaceContext = createContext(undefined);
@@ -12,6 +13,25 @@ const LOCAL_STORAGE_KEY_FEE = 'lexy_market_platform_fee_v2';
 const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'lexy_market_announcements_v2';
 const LOCAL_STORAGE_KEY_DIRECT_CHAT = 'lexy_market_direct_chat_v2';
 const LOCAL_STORAGE_KEY_TIER_RATES = 'lexy_market_tier_rates_v2';
+const LOCAL_STORAGE_KEY_PACKAGE_DISCOUNTS = 'lexy_market_package_discounts_v2';
+
+export const DEFAULT_PACKAGE_DISCOUNTS = {
+  global: {
+    'pkg-4h': 0,
+    'pkg-8h': 0,
+    'pkg-12h': 0,
+    'pkg-16h': 0
+  },
+  byTutor: {}
+};
+
+export const getTutorPackageDiscount = (packageDiscounts, tutorId, pkgId) => {
+  if (!packageDiscounts) return 0;
+  if (packageDiscounts[pkgId] !== undefined) {
+    return Number(packageDiscounts[pkgId] || 0);
+  }
+  return 0;
+};
 
 export const DEFAULT_TIER_RATES = {
   trial: 75, // Aula Experimental: 75% Ganho
@@ -20,6 +40,19 @@ export const DEFAULT_TIER_RATES = {
   tier3: 85, // 16 a 20 Aulas: 85% Ganho
   tier4: 90, // 21 a 50 Aulas: 90% Ganho
   tier5: 92  // > 50 Aulas: 92% Ganho
+};
+
+// HELPER: GENERAR CÓDIGO ÚNICO DE AULA (FORMATO AULA-2026-XXXXXX)
+export const generateLessonCode = (id = '') => {
+  if (!id) return `AULA-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+  const str = String(id);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const positiveNum = Math.abs(hash) % 900000 + 100000;
+  return `AULA-2026-${positiveNum}`;
 };
 
 // HELPER: OBTENER EL PORCENTAJE QUE EL PROFESOR GANA (MOSTRAR SÓLO GANHO DO PROFESSOR)
@@ -51,6 +84,24 @@ export const MarketplaceProvider = ({ children }) => {
   const updateTierRates = (newRates) => {
     setTierRatesState(newRates);
     localStorage.setItem(LOCAL_STORAGE_KEY_TIER_RATES, JSON.stringify(newRates));
+  };
+
+  // Descontos Promocionais de Pacotes (Configuráveis pelo Administrador)
+  const [packageDiscounts, setPackageDiscountsState] = useState(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PACKAGE_DISCOUNTS);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error cargando descuentos de paquetes', e);
+      }
+    }
+    return DEFAULT_PACKAGE_DISCOUNTS;
+  });
+
+  const updatePackageDiscounts = (newDiscounts) => {
+    setPackageDiscountsState(newDiscounts);
+    localStorage.setItem(LOCAL_STORAGE_KEY_PACKAGE_DISCOUNTS, JSON.stringify(newDiscounts));
   };
 
   // Taxa de Comissão Padrão da Plataforma
@@ -161,7 +212,7 @@ const isFakeMockTutor = (t) => {
     return newMsg;
   };
 
-  // Tutores (Apenas cadastros reais de teste)
+  // Tutores (Cadastros reais de professores)
   const [tutors, setTutors] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TUTORS);
     if (saved) {
@@ -177,6 +228,80 @@ const isFakeMockTutor = (t) => {
     return [];
   });
 
+  // Sincronizar tutores cadastrados via Supabase Auth / Profiles
+  useEffect(() => {
+    let active = true;
+    async function syncTeachersFromSupabase() {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'teacher');
+
+        if (data && data.length > 0 && active) {
+          setTutors(prev => {
+            const existingIds = new Set(prev.map(t => String(t.id).toLowerCase()));
+            const existingEmails = new Set(prev.map(t => String(t.email).toLowerCase()));
+
+            const fetchedTutors = data.map(dbT => ({
+              id: dbT.id,
+              name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
+              email: dbT.email,
+              phone: dbT.phone || dbT.document_number || '',
+              title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
+              country: dbT.residence_country || 'Brasil',
+              countryCode: 'BR',
+              flag: '🌐',
+              avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+              nativeSpeaker: true,
+              isSuperTutor: false,
+              isVerified: dbT.status === 'approved',
+              status: dbT.status || 'pending',
+              subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
+              hourlyRate: Number(dbT.hourly_rate || 20),
+              trialRate: Number(dbT.hourly_rate || 20) * 0.5,
+              rating: 5.0,
+              reviewCount: 0,
+              totalLessons: 0,
+              activeStudents: 0,
+              responseTime: 'Responde em <1 hora',
+              videoUrl: dbT.video_url || '',
+              headline: dbT.headline || '',
+              bio: dbT.bio || '',
+              weeklySchedule: dbT.weekly_schedule || {
+                'Segunda': ['09:00', '10:00', '14:00', '15:00'],
+                'Terça': ['09:00', '10:00', '14:00', '15:00'],
+                'Quarta': ['09:00', '10:00', '14:00', '15:00'],
+                'Quinta': ['09:00', '10:00', '14:00', '15:00'],
+                'Sexta': ['09:00', '10:00', '14:00', '15:00']
+              },
+              earnedBalance: 0,
+              reviews: []
+            }));
+
+            const merged = [...prev];
+            fetchedTutors.forEach(f => {
+              const fId = String(f.id).toLowerCase();
+              const fEmail = String(f.email).toLowerCase();
+              if (!existingIds.has(fId) && !existingEmails.has(fEmail)) {
+                merged.push(f);
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Error synchronizing teachers from Supabase:', err);
+      }
+    }
+
+    syncTeachersFromSupabase();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Alumno
   const [student, setStudent] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_STUDENT);
@@ -187,12 +312,7 @@ const isFakeMockTutor = (t) => {
         console.error('Error cargando alumno', e);
       }
     }
-    return {
-      id: 'student-demo-1',
-      name: 'Gabriel Alumno',
-      email: 'aluno@lexy.com',
-      walletBalance: 0.00
-    };
+    return null;
   });
 
   // Trials
@@ -223,18 +343,69 @@ const isFakeMockTutor = (t) => {
 
   const isFakeBooking = (b) => {
     if (!b || !b.id) return true;
-    const fakePrefixes = ['booking-10', 'booking-demo', 'booking-pending'];
-    return fakePrefixes.some(prefix => String(b.id).startsWith(prefix));
+    const fakeIds = ['booking-demo-01', 'booking-pending-01', 'booking-sub-w'];
+    const fakeEmails = ['gabriel@test.com', 'luciana@test.com', 'roberto@test.com', 'lucianatest.com', 'robertotest.com', 'gabrielatest.com', 'aluno@lexy.com'];
+    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva'];
+    if (fakeIds.some(fid => String(b.id).includes(fid))) return true;
+    if (fakeEmails.includes(String(b.studentEmail || b.email || b.studentId || '').toLowerCase())) return true;
+    if (fakeNames.includes(String(b.studentName || b.name || ''))) return true;
+    return false;
   };
 
-  // Bookings (Apenas reservas reais criadas por testes)
+  const getDefaultCycleBookings = (tutorObj, planHoursVal = 8) => {
+    const tutor = tutorObj || (tutors && tutors.length > 0 ? tutors[0] : null);
+    if (!tutor) return [];
+
+    const planHours = Number(planHoursVal) || 8;
+    const baseSlots = [
+      { day: 'Segunda-feira', time: '10:00' },
+      { day: 'Quarta-feira', time: '16:00' }
+    ];
+
+    const generated = [];
+    const numSlots = baseSlots.length;
+    const numWeeks = Math.ceil(planHours / numSlots);
+    let count = 0;
+
+    for (let week = 1; week <= numWeeks; week++) {
+      for (let sIdx = 0; sIdx < numSlots; sIdx++) {
+        if (count >= planHours) break;
+        count++;
+        const s = baseSlots[sIdx];
+        const bId = `booking-sub-w${week}-s${sIdx}-${count}`;
+        const lCode = generateLessonCode(bId);
+
+        generated.push({
+          id: bId,
+          lesson_code: lCode,
+          tutorId: tutor.id,
+          tutorName: tutor.name,
+          tutorAvatar: tutor.avatar,
+          tutorSubject: tutor.subject || 'Idioma',
+          studentId: student?.id || 'student-user',
+          day: `${s.day} (Semana ${week})`,
+          time: s.time,
+          bookingType: 'subscription',
+          amount: tutor.hourlyRate || 20,
+          status: 'confirmed',
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+    return generated;
+  };
+
+  // Bookings (Agenda de Aulas Nativa Real)
   const [bookings, setBookings] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter(b => !isFakeBooking(b));
+          return parsed.filter(b => !isFakeBooking(b)).map(b => ({
+            ...b,
+            lesson_code: b.lesson_code || generateLessonCode(b.id)
+          }));
         }
       } catch (e) {
         console.error('Error cargando reservas', e);
@@ -326,12 +497,22 @@ const isFakeMockTutor = (t) => {
     return newTutor;
   };
 
-  const approveTutor = (tutorId) => {
+  const approveTutor = async (tutorId) => {
     setTutors(prev => prev.map(t => t.id === tutorId ? { ...t, status: 'approved', isVerified: true } : t));
+    try {
+      await supabase.from('profiles').update({ status: 'approved' }).eq('id', tutorId);
+    } catch (e) {
+      console.warn('Error updating tutor status in Supabase:', e);
+    }
   };
 
-  const rejectTutor = (tutorId) => {
+  const rejectTutor = async (tutorId) => {
     setTutors(prev => prev.map(t => t.id === tutorId ? { ...t, status: 'rejected' } : t));
+    try {
+      await supabase.from('profiles').update({ status: 'rejected' }).eq('id', tutorId);
+    } catch (e) {
+      console.warn('Error updating tutor status in Supabase:', e);
+    }
   };
 
   const updateTutorSchedule = (tutorId, newSchedule) => {
@@ -369,9 +550,89 @@ const isFakeMockTutor = (t) => {
     }));
   };
 
-  const createBooking = ({ tutorId, day, time, bookingType, planHours, totalAmount }) => {
+  const activateSubscriptionAndCredits = ({ tutorId, planHours = 8, planName = 'Plano Pro', amount, studentId, studentEmail, studentMatricula }) => {
+    const tutor = tutors.find(t => t.id === tutorId) || tutors[0];
+    const now = new Date();
+    const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+    const hoursToCredit = Number(planHours) || 8;
+
+    const newSub = {
+      id: `sub-${Date.now()}`,
+      studentId: studentId || student?.id,
+      studentEmail: studentEmail || student?.email,
+      studentMatricula: studentMatricula || student?.matricula_code,
+      tutorId: tutor?.id || 'tutor-1',
+      tutorName: tutor?.name || 'Professor Nativo',
+      tutorAvatar: tutor?.avatar,
+      tutorSubject: tutor?.subject || 'Idioma',
+      planName: planName || 'Plano de Aulas Lexy',
+      planHours: hoursToCredit,
+      hoursRemaining: hoursToCredit,
+      monthlyPrice: amount || 360,
+      cycleStartDate: now.toISOString(),
+      nextBillingDate: cycleEndDate.toISOString(),
+      cycleEndDate: cycleEndDate.toISOString(),
+      status: 'active'
+    };
+
+    setSubscriptions(prev => [newSub, ...prev]);
+
+    // Creditar Horas de Aula na Carteira
+    setStudent(prev => ({
+      ...prev,
+      walletBalance: Number(((prev?.walletBalance || 0) + hoursToCredit).toFixed(2))
+    }));
+
+    // Gerar a agenda completa de aulas para o ciclo de 28 dias (ex: 8 aulas)
+    const baseSlots = [
+      { day: 'Segunda-feira', time: '10:00' },
+      { day: 'Quarta-feira', time: '16:00' }
+    ];
+
+    const generatedBookings = [];
+    const numSlots = baseSlots.length;
+    const numWeeks = Math.ceil(hoursToCredit / numSlots);
+    let count = 0;
+
+    for (let week = 1; week <= numWeeks; week++) {
+      for (let sIdx = 0; sIdx < numSlots; sIdx++) {
+        if (count >= hoursToCredit) break;
+        count++;
+        const s = baseSlots[sIdx];
+        const bId = `booking-${Date.now()}-w${week}-s${sIdx}-${count}`;
+        const lCode = generateLessonCode(bId);
+
+        generatedBookings.push({
+          id: bId,
+          lesson_code: lCode,
+          tutorId: tutor.id,
+          tutorName: tutor.name,
+          tutorAvatar: tutor.avatar,
+          tutorSubject: tutor.subject,
+          studentId: student.id,
+          day: `${s.day} (Semana ${week})`,
+          time: s.time,
+          bookingType: 'subscription',
+          amount: tutor.hourlyRate || 20,
+          status: 'confirmed',
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+
+    setBookings(prev => [...generatedBookings, ...prev]);
+
+    return newSub;
+  };
+
+  const createBooking = ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
+
+    const effectiveStudentId = studentId || student?.id;
+    const effectiveStudentEmail = studentEmail || student?.email;
+    const effectiveStudentName = studentName || student?.name;
+    const effectiveStudentMatricula = studentMatricula || student?.matricula_code;
 
     if (bookingType === 'trial') {
       if (usedTrials.includes(tutorId)) {
@@ -383,19 +644,36 @@ const isFakeMockTutor = (t) => {
       }
     }
 
-    if (student.walletBalance < totalAmount) {
-      return { 
-        success: false, 
-        error: 'insufficient_funds', 
-        required: totalAmount, 
-        current: student.walletBalance 
-      };
-    }
+    const baseSlots = (Array.isArray(allSlots) && allSlots.length > 0) 
+      ? allSlots 
+      : [{ day: day || 'Segunda-feira', time: time || '10:00' }];
 
-    setStudent(prev => ({
-      ...prev,
-      walletBalance: Number((prev.walletBalance - totalAmount).toFixed(2))
-    }));
+    const totalContractedHours = Number(planHours) || (bookingType === 'trial' ? 1 : 8);
+
+    if (!bypassWallet) {
+      if ((student.walletBalance || 0) < totalContractedHours && bookingType !== 'trial') {
+        return { 
+          success: false, 
+          error: 'insufficient_funds', 
+          required: totalContractedHours, 
+          current: student.walletBalance || 0 
+        };
+      }
+
+      // Descontar saldo de horas de aula
+      if (bookingType !== 'trial') {
+        setStudent(prev => ({
+          ...prev,
+          walletBalance: Math.max(0, Number(((prev.walletBalance || 0) - totalContractedHours).toFixed(2)))
+        }));
+      }
+    } else {
+      // Se pagamento foi aprovado via Stone (bypassWallet = true): Liberar Horas Contratadas
+      setStudent(prev => ({
+        ...prev,
+        walletBalance: Number((prev.walletBalance || 0).toFixed(2))
+      }));
+    }
 
     if (bookingType === 'trial') {
       setUsedTrials(prev => [...prev, tutorId]);
@@ -407,45 +685,79 @@ const isFakeMockTutor = (t) => {
 
       const newSub = {
         id: `sub-${Date.now()}`,
+        studentId: effectiveStudentId,
+        studentEmail: effectiveStudentEmail,
+        studentName: effectiveStudentName,
+        studentMatricula: effectiveStudentMatricula,
         tutorId,
         tutorName: tutor.name,
         tutorAvatar: tutor.avatar,
         tutorSubject: tutor.subject,
-        planHours: planHours || 8,
-        hoursRemaining: planHours || 8,
+        planName: planName || `Plano de Aulas (${totalContractedHours} Horas / 28 Dias)`,
+        planHours: totalContractedHours,
+        hoursRemaining: totalContractedHours,
+        monthlyPrice: totalAmount,
         cycleStartDate: now.toISOString(),
+        nextBillingDate: cycleEndDate.toISOString(),
         cycleEndDate: cycleEndDate.toISOString(),
         status: 'active'
       };
       setSubscriptions(prev => [newSub, ...prev]);
     }
 
-    const newBooking = {
-      id: `booking-${Date.now()}`,
-      tutorId,
-      tutorName: tutor.name,
-      tutorAvatar: tutor.avatar,
-      tutorSubject: tutor.subject,
-      studentId: student.id,
-      day,
-      time,
-      bookingType,
-      amount: totalAmount,
-      status: 'confirmed',
-      createdAt: new Date().toISOString()
-    };
+    // Gerar todas as aulas do ciclo de 28 dias conforme a frequência contratada
+    const createdBookings = [];
+    const numSlots = baseSlots.length;
+    const numWeeks = bookingType === 'trial' ? 1 : Math.ceil(totalContractedHours / numSlots);
+    let count = 0;
 
-    setBookings(prev => [newBooking, ...prev]);
+    for (let week = 1; week <= numWeeks; week++) {
+      for (let sIdx = 0; sIdx < numSlots; sIdx++) {
+        if (count >= totalContractedHours) break;
+        count++;
+        const s = baseSlots[sIdx];
+        const bId = `booking-${Date.now()}-w${week}-s${sIdx}-${count}`;
+        const lCode = generateLessonCode(bId);
 
-    if (tutor.weeklySchedule && tutor.weeklySchedule[day]) {
-      const updatedSchedule = {
-        ...tutor.weeklySchedule,
-        [day]: tutor.weeklySchedule[day].filter(slot => slot !== time)
-      };
-      updateTutorSchedule(tutorId, updatedSchedule);
+        const dayFormatted = numWeeks > 1 
+          ? `${s.day || day} (Semana ${week})` 
+          : (s.day || day);
+
+        const bookingItem = {
+          id: bId,
+          lesson_code: lCode,
+          tutorId,
+          tutorName: tutor.name,
+          tutorAvatar: tutor.avatar,
+          tutorSubject: tutor.subject,
+          studentId: student?.id || 'student-user',
+          studentEmail: student?.email || '',
+          studentName: student?.name || '',
+          studentMatricula: student?.matricula_code || '',
+          day: dayFormatted,
+          time: s.time || time,
+          bookingType,
+          amount: totalAmount,
+          status: 'confirmed',
+          createdAt: new Date().toISOString()
+        };
+        createdBookings.push(bookingItem);
+
+        if (tutor.weeklySchedule && tutor.weeklySchedule[s.day || day]) {
+          const targetDay = s.day || day;
+          const targetTime = s.time || time;
+          const updatedSchedule = {
+            ...tutor.weeklySchedule,
+            [targetDay]: tutor.weeklySchedule[targetDay].filter(slot => slot !== targetTime)
+          };
+          updateTutorSchedule(tutorId, updatedSchedule);
+        }
+      }
     }
 
-    return { success: true, booking: newBooking };
+    setBookings(prev => [...createdBookings, ...prev]);
+
+    return { success: true, booking: createdBookings[0] };
   };
 
   const updateBookingStatus = (bookingId, newStatus) => {
@@ -458,7 +770,30 @@ const isFakeMockTutor = (t) => {
   };
 
   const completeBooking = (bookingId) => {
-    updateBookingStatus(bookingId, 'completed');
+    setBookings(prev => {
+      const target = prev.find(b => b.id === bookingId);
+      if (target) {
+        const tutor = tutors.find(t => t.id === target.tutorId);
+        const earned = Number(target.amount || tutor?.hourlyRate || 20);
+        
+        // Creditar na carteira do professor
+        if (target.tutorId) {
+          setTutors(tList => tList.map(t => {
+            if (t.id === target.tutorId) {
+              const currentBal = Number(t.walletBalance || t.wallet_balance || 0);
+              const updatedBal = currentBal + earned;
+              return {
+                ...t,
+                walletBalance: updatedBal,
+                wallet_balance: updatedBal
+              };
+            }
+            return t;
+          }));
+        }
+      }
+      return prev.map(b => b.id === bookingId ? { ...b, status: 'completed', completedAt: new Date().toISOString() } : b);
+    });
   };
 
   const autoPurge30DaysHistory = () => {
@@ -544,6 +879,9 @@ const isFakeMockTutor = (t) => {
       setPlatformFeePercent,
       tierRates,
       updateTierRates,
+      packageDiscounts,
+      updatePackageDiscounts,
+      getTutorPackageDiscount,
       announcements,
       addAnnouncement,
       deleteAnnouncement,
@@ -559,7 +897,9 @@ const isFakeMockTutor = (t) => {
       incrementTutorLessons,
       registerStudentAccount,
       topUpWallet,
+      activateSubscriptionAndCredits,
       createBooking,
+      generateLessonCode,
       completeBooking,
       updateBookingStatus,
       autoPurge30DaysHistory

@@ -10,7 +10,7 @@ import {
   RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown,
   Camera, Save, Upload
 } from 'lucide-react';
-import StudentWallet from './StudentWallet';
+import StudentSubscriptionTab from '../components/subscription/StudentSubscriptionTab';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function StudentDashboard() {
     }
   }, [profile, navigate]);
 
-  const currentName = profile?.full_name || student.name || 'Gabriel Aluno';
+  const currentName = profile?.full_name || student.name || 'Aluno Lexy';
   const currentEmail = profile?.email || student.email || 'aluno@lexy.com';
   const currentDocument = profile?.documentNumber || student.documentNumber || '123.456.789-00';
   const currentCountry = profile?.residenceCountry || student.residenceCountry || 'Brasil 🇧🇷';
@@ -171,11 +171,32 @@ export default function StudentDashboard() {
     setTimeout(() => setProfileSaveSuccess(false), 4000);
   };
 
-  const [myBookingsList, setMyBookingsList] = useState(bookings || []);
+  const userBookings = useMemo(() => {
+    if (!profile) return [];
+    const pId = String(profile.id || '').toLowerCase();
+    const pEmail = String(profile.email || '').toLowerCase();
+    const pMat = String(profile.matricula_code || '').toLowerCase();
+
+    return (bookings || []).filter(b => {
+      const bStudentId = String(b.studentId || '').toLowerCase();
+      const bStudentEmail = String(b.studentEmail || '').toLowerCase();
+      const bStudentMat = String(b.studentMatricula || '').toLowerCase();
+
+      if (bStudentId || bStudentEmail || bStudentMat) {
+        return (pId && bStudentId === pId) || 
+               (pEmail && bStudentEmail === pEmail) || 
+               (pMat && bStudentMat === pMat);
+      }
+
+      return false;
+    });
+  }, [bookings, profile]);
+
+  const [myBookingsList, setMyBookingsList] = useState(userBookings);
 
   useEffect(() => {
-    setMyBookingsList(bookings || []);
-  }, [bookings]);
+    setMyBookingsList(userBookings);
+  }, [userBookings]);
 
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState(null);
   const [rescheduleDay, setRescheduleDay] = useState('Quarta-feira');
@@ -185,8 +206,20 @@ export default function StudentDashboard() {
   const handleConfirmReschedule = (e) => {
     e.preventDefault();
     if (!selectedBookingForReschedule) return;
+
+    // Regra dos 28 Dias: Bloqueio de cancelamento/reagendamento com menos de 12 horas de antecedência
+    const createdTime = new Date(selectedBookingForReschedule.createdAt || Date.now()).getTime();
+    const hoursDiff = Math.abs(Date.now() - createdTime) / (1000 * 60 * 60);
+
+    if (hoursDiff < 12) {
+      setActionSuccessMessage(`⚠️ Regra Nativa Lexy: Cancelamentos e reagendamentos devem ser realizados com no mínimo 12 horas de antecedência. Entre em contato com o suporte com sua Matrícula para auxílio.`);
+      setSelectedBookingForReschedule(null);
+      setTimeout(() => setActionSuccessMessage(''), 7000);
+      return;
+    }
+
     setMyBookingsList(prev => prev.map(b => b.id === selectedBookingForReschedule.id ? { ...b, day: rescheduleDay, time: rescheduleTime, status: 'rescheduled' } : b));
-    setActionSuccessMessage(`🔄 Reagendamento solicitado para ${rescheduleDay} às ${rescheduleTime}! Notificação enviada ao professor.`);
+    setActionSuccessMessage(`🔄 Reagendamento confirmado para ${rescheduleDay} às ${rescheduleTime}! Notificação enviada ao professor.`);
     setSelectedBookingForReschedule(null);
     setTimeout(() => setActionSuccessMessage(''), 5000);
   };
@@ -203,9 +236,25 @@ export default function StudentDashboard() {
     navigate('/');
   };
 
+  const [lessonSearchQuery, setLessonSearchQuery] = useState('');
+
+  const filteredBookingsList = useMemo(() => {
+    if (!lessonSearchQuery.trim()) return myBookingsList;
+    const q = lessonSearchQuery.toLowerCase().trim();
+    return myBookingsList.filter(b => {
+      const code = String(b.lesson_code || b.id || '').toLowerCase();
+      const name = String(b.tutorName || '').toLowerCase();
+      const subject = String(b.tutorSubject || '').toLowerCase();
+      const day = String(b.day || '').toLowerCase();
+      return code.includes(q) || name.includes(q) || subject.includes(q) || day.includes(q);
+    });
+  }, [myBookingsList, lessonSearchQuery]);
+
   // Determinar a próxima aula principal e as aulas subsecventes (sem repetição)
-  const nextBooking = myBookingsList.find(b => b.status === 'confirmed' || b.status === 'rescheduled') || myBookingsList[0];
-  const subsequentBookings = myBookingsList.filter(b => b.id !== nextBooking?.id);
+  const nextBooking = filteredBookingsList.find(b => b.status === 'confirmed' || b.status === 'rescheduled') || filteredBookingsList[0];
+  const subsequentBookings = filteredBookingsList.filter(b => b.id !== nextBooking?.id);
+
+  const userMatricula = profile?.matricula_code || 'LXY-2026-784219';
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 animate-fade-in-up">
@@ -226,7 +275,13 @@ export default function StudentDashboard() {
             
             {/* Banner Saludo Personalizado */}
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-white">Olá, {currentName}! 👋</h1>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h1 className="text-xl sm:text-2xl font-semibold text-white">Olá, {currentName}! 👋</h1>
+                <span className="bg-slate-900 border border-slate-800 text-cyan-300 font-mono font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Matrícula: {userMatricula}</span>
+                </span>
+              </div>
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
             </div>
 
@@ -257,9 +312,14 @@ export default function StudentDashboard() {
             {nextBooking ? (
               <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/30 border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    {t.confirmedBadge || "● Confirmada"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      {t.confirmedBadge || "● Confirmada"}
+                    </span>
+                    <span className="bg-cyan-500/10 text-cyan-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-cyan-500/20">
+                      Código: {nextBooking.lesson_code || 'AULA-2026-894210'}
+                    </span>
+                  </div>
                   <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                     {t.nextClassLabel || "Próxima Aula"}
                   </span>
@@ -307,14 +367,28 @@ export default function StudentDashboard() {
 
             {/* Lista de Aulas subsecventes */}
             <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 sm:p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-cyan-400" />
-                <span>Minhas Aulas Agendadas</span>
-              </h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 border-b border-slate-800/60">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <span>Minhas Aulas Agendadas</span>
+                </h3>
+
+                {/* BUSCADOR DE AULA POR CÓDIGO */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por Código (ex: AULA-2026)..."
+                    value={lessonSearchQuery}
+                    onChange={(e) => setLessonSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg pl-8 pr-3 py-1 text-xs outline-none focus:border-cyan-400 font-medium"
+                  />
+                </div>
+              </div>
 
               {subsequentBookings.length === 0 ? (
                 <div className="bg-slate-950/40 border border-slate-800/60 rounded-lg p-4 text-center text-xs text-slate-400">
-                  Você não possui outras aulas agendadas além da próxima aula acima.
+                  {lessonSearchQuery ? 'Nenhuma aula encontrada com este código.' : 'Você não possui outras aulas agendadas além da próxima aula acima.'}
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -323,7 +397,12 @@ export default function StudentDashboard() {
                       <div className="flex items-center gap-3">
                         {renderAvatar(booking.tutorAvatar, booking.tutorName, "w-10 h-10 rounded-full")}
                         <div>
-                          <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-white text-xs">{booking.tutorName}</h4>
+                            <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 font-bold">
+                              {booking.lesson_code || 'AULA-2026-894210'}
+                            </span>
+                          </div>
                           <p className="text-[11px] text-cyan-400 font-medium">{booking.tutorSubject}</p>
                           <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1 font-medium">
                             <Calendar className="w-3 h-3 text-cyan-400" />
@@ -375,8 +454,8 @@ export default function StudentDashboard() {
               </div>
 
               <div className="flex justify-between items-baseline pt-0.5">
-                <span className="text-slate-400 text-xs">Saldo em Conta</span>
-                <span className="text-xl font-bold text-white tracking-tight">R$ {student.walletBalance?.toFixed(2) || '0.00'}</span>
+                <span className="text-slate-400 text-xs">Saldo de Horas</span>
+                <span className="text-xl font-bold text-white tracking-tight">{(student.walletBalance ?? 0).toFixed(1)} <span className="text-xs font-medium text-cyan-400">Horas</span></span>
               </div>
 
               <button
@@ -778,6 +857,26 @@ export default function StudentDashboard() {
                   <span className="text-slate-500 block mb-0.5 font-medium">País de Residência</span>
                   <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentCountry}</span>
                 </div>
+
+                <div className="sm:col-span-2 bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-1">
+                  <div>
+                    <span className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider block">Código Único de Matrícula / Registro de Suporte</span>
+                    <span className="text-base font-mono font-extrabold text-white">{userMatricula}</span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Forneça este código à equipe de suporte ao solicitar ajuda técnica.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(userMatricula);
+                      setActionSuccessMessage('📋 Código de Matrícula copiado para a área de transferência!');
+                      setTimeout(() => setActionSuccessMessage(''), 4000);
+                    }}
+                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-lg shadow cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Copiar Matrícula</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -789,8 +888,8 @@ export default function StudentDashboard() {
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="text-slate-400 block mb-1 font-bold">Idioma de Interesse *</label>
+                <div className="space-y-1.5">
+                  <label className="text-slate-400 block mb-1 font-bold">Idioma(s) de Interesse *</label>
                   <select
                     value={editLanguage}
                     onChange={(e) => setEditLanguage(e.target.value)}
@@ -798,8 +897,66 @@ export default function StudentDashboard() {
                   >
                     <option value="Inglês 🇬🇧🇺🇸">Inglês 🇬🇧🇺🇸</option>
                     <option value="Espanhol 🇪🇸">Espanhol 🇪🇸</option>
-                    <option value="Ambos (Inglês e Espanhol) 🌐">Ambos (Inglês e Espanhol) 🌐</option>
+                    <option value="Francês 🇫🇷">Francês 🇫🇷</option>
+                    <option value="Italiano 🇮🇹">Italiano 🇮🇹</option>
+                    <option value="Inglês & Espanhol 🇬🇧🇪🇸">Inglês & Espanhol 🇬🇧🇪🇸</option>
+                    <option value="Inglês & Francês 🇬🇧🇫🇷">Inglês & Francês 🇬🇧🇫🇷</option>
+                    <option value="Inglês & Italiano 🇬🇧🇮🇹">Inglês & Italiano 🇬🇧🇮🇹</option>
+                    <option value="Espanhol & Francês 🇪🇸🇫🇷">Espanhol & Francês 🇪🇸🇫🇷</option>
+                    <option value="Espanhol & Italiano 🇪🇸🇮🇹">Espanhol & Italiano 🇪🇸🇮🇹</option>
+                    <option value="Todos os Idiomas (Inglês, Espanhol, Francês, Italiano) 🌐">Todos os Idiomas (Inglês, Espanhol, Francês, Italiano) 🌐</option>
                   </select>
+
+                  {/* Seleção rápida em botões multi-idioma */}
+                  <div className="flex items-center gap-1 flex-wrap pt-1">
+                    {[
+                      { name: 'Inglês', flag: '🇬🇧🇺🇸', full: 'Inglês 🇬🇧🇺🇸' },
+                      { name: 'Espanhol', flag: '🇪🇸', full: 'Espanhol 🇪🇸' },
+                      { name: 'Francês', flag: '🇫🇷', full: 'Francês 🇫🇷' },
+                      { name: 'Italiano', flag: '🇮🇹', full: 'Italiano 🇮🇹' },
+                      { name: 'Todos', flag: '🌐', full: 'Todos os Idiomas (Inglês, Espanhol, Francês, Italiano) 🌐' }
+                    ].map(lang => {
+                      const isSelected = editLanguage.includes(lang.name) || (lang.name === 'Todos' && editLanguage.includes('Todos'));
+                      return (
+                        <button
+                          key={lang.name}
+                          type="button"
+                          onClick={() => {
+                            if (lang.name === 'Todos') {
+                              setEditLanguage(lang.full);
+                            } else {
+                              let currentLangs = editLanguage.includes('Todos') 
+                                ? [] 
+                                : editLanguage.split(',').map(s => s.trim()).filter(Boolean);
+                              
+                              if (currentLangs.some(l => l.includes(lang.name))) {
+                                currentLangs = currentLangs.filter(l => !l.includes(lang.name));
+                              } else {
+                                currentLangs.push(lang.full);
+                              }
+
+                              if (currentLangs.length === 0) {
+                                setEditLanguage(lang.full);
+                              } else if (currentLangs.length === 4) {
+                                setEditLanguage('Todos os Idiomas (Inglês, Espanhol, Francês, Italiano) 🌐');
+                              } else {
+                                setEditLanguage(currentLangs.join(', '));
+                              }
+                            }
+                          }}
+                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-sm'
+                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          }`}
+                        >
+                          <span>{lang.flag}</span>
+                          <span>{lang.name}</span>
+                          {isSelected && <Check className="w-2.5 h-2.5 text-cyan-400 ml-0.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div>
@@ -868,6 +1025,11 @@ export default function StudentDashboard() {
           </div>
 
         </div>
+      )}
+
+      {/* TAB: MEU PLANO & ASSINATURA DE 28 DIAS */}
+      {activeTab === 'meu-plano' && (
+        <StudentSubscriptionTab />
       )}
 
       {/* MODAL DE REAGENDAMENTO */}

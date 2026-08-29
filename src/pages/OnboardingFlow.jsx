@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
+import TechVeinsBackground from '../components/ui/TechVeinsBackground';
 
 const COUNTRIES = [
   'Espanha', 'Estados Unidos', 'México', 'Colômbia', 'Reino Unido', 
@@ -26,16 +27,48 @@ const TIMEZONES = [
   'Europe/London (GMT+0)'
 ];
 
-const SPECIALTIES_OPTIONS = [
-  'Conversação',
-  'Espanhol para Negócios',
-  'Business English',
-  'Preparação DELE/SIELE',
-  'TOEFL / IELTS',
-  'Iniciantes',
-  'Crianças',
-  'Inglês Geral'
-];
+const SPECIALTIES_BY_LANGUAGE = {
+  'Espanhol': [
+    'Conversação',
+    'Espanhol para Negócios',
+    'Preparação DELE / SIELE',
+    'Gramática & Escrita',
+    'Espanhol para Viagens',
+    'Iniciantes',
+    'Crianças & Adolescentes',
+    'Espanhol Geral'
+  ],
+  'Inglês': [
+    'Conversação',
+    'Business English',
+    'TOEFL / IELTS / Cambridge',
+    'Grammar & Pronunciation',
+    'Inglês para Viagens',
+    'Iniciantes',
+    'Crianças',
+    'Inglês Geral'
+  ],
+  'Francês': [
+    'Conversação',
+    'Francês para Negócios',
+    'Preparação DELF / DALF',
+    'Gramática & Pronúncia',
+    'Francês para Viagens',
+    'Iniciantes',
+    'Crianças & Adolescentes',
+    'Francês Geral'
+  ],
+  'Italiano': [
+    'Conversação',
+    'Italiano para Negócios',
+    'Preparação CILS / CELI',
+    'Gramática & Pronúncia',
+    'Italiano para Viagens',
+    'Iniciantes',
+    'Crianças & Adolescentes',
+    'Italiano Geral'
+  ]
+};
 
 export default function OnboardingFlow() {
   const navigate = useNavigate();
@@ -309,23 +342,24 @@ export default function OnboardingFlow() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 py-6 animate-fade-in-up">
-      
-      {/* Selector de Pestañas: Iniciar Sessão vs Criar Conta de Tutor */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-amber-500/30 text-center relative overflow-hidden">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black uppercase tracking-wider">
-          <GraduationCap className="w-4 h-4 text-amber-400" />
-          <span>Área Exclusiva para Professores e Tutores</span>
-        </div>
+    <TechVeinsBackground className="w-full min-h-[85vh] py-8 px-4 flex flex-col justify-center items-center animate-fade-in-up">
+      <div className="max-w-3xl w-full mx-auto space-y-8">
+        
+        {/* Selector de Pestañas: Iniciar Sessão vs Criar Conta de Tutor */}
+        <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 border border-amber-500/30 text-center relative overflow-hidden">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black uppercase tracking-wider">
+            <GraduationCap className="w-4 h-4 text-amber-400" />
+            <span>Área Exclusiva para Professores e Tutores</span>
+          </div>
 
-        <h1 className="text-3xl font-extrabold text-white">
-          {activeTab === 'login' ? 'Iniciar Sessão como Tutor' : 'Torne-se um Tutor na Plataforma'}
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
-          {activeTab === 'login' 
-            ? 'Acesse seu painel profissional para gerenciar sua agenda, atender alunos e consultar seus ganhos.'
-            : 'Preencha todos os dados obrigatórios para criar seu perfil profissional e ministrar aulas de Inglês ou Espanhol.'}
-        </p>
+          <h1 className="text-3xl font-extrabold text-white">
+            {activeTab === 'login' ? 'Iniciar Sessão como Tutor' : 'Torne-se um Tutor na Plataforma'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto">
+            {activeTab === 'login' 
+              ? 'Acesse seu painel profissional para gerenciar sua agenda, atender alunos e consultar seus ganhos.'
+              : 'Preencha todos os dados obrigatórios para criar seu perfil profissional e ministrar aulas de idiomas.'}
+          </p>
 
         {/* Tabs switcher */}
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-900 border border-slate-800 rounded-2xl max-w-md mx-auto">
@@ -635,11 +669,21 @@ export default function OnboardingFlow() {
                     <label className="text-xs font-bold text-slate-400 block mb-1">Idioma Principal que Vai Ensinar *</label>
                     <select
                       value={formData.subject_taught}
-                      onChange={(e) => updateField('subject_taught', e.target.value)}
+                      onChange={(e) => {
+                        const newSubject = e.target.value;
+                        const available = SPECIALTIES_BY_LANGUAGE[newSubject] || SPECIALTIES_BY_LANGUAGE['Espanhol'];
+                        setFormData(prev => ({
+                          ...prev,
+                          subject_taught: newSubject,
+                          specialties: [available[0]]
+                        }));
+                      }}
                       className="w-full bg-slate-900 border border-slate-800 text-white font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none cursor-pointer focus:border-amber-400"
                     >
                       <option value="Espanhol">Espanhol 🇪🇸</option>
-                      <option value="Inglês">Inglês 🇬🇧 🇺🇸</option>
+                      <option value="Inglês">Inglês 🇬🇧🇺🇸</option>
+                      <option value="Francês">Francês 🇫🇷</option>
+                      <option value="Italiano">Italiano 🇮🇹</option>
                     </select>
                   </div>
 
@@ -650,9 +694,12 @@ export default function OnboardingFlow() {
                       onChange={(e) => updateField('native_language', e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 text-white font-bold text-xs rounded-xl px-3.5 py-2.5 outline-none cursor-pointer focus:border-amber-400"
                     >
-                      <option value="Espanhol">Espanhol</option>
-                      <option value="Inglês">Inglês</option>
-                      <option value="Português">Português</option>
+                      <option value="Espanhol">Espanhol 🇪🇸</option>
+                      <option value="Inglês">Inglês 🇬🇧🇺🇸</option>
+                      <option value="Francês">Francês 🇫🇷</option>
+                      <option value="Italiano">Italiano 🇮🇹</option>
+                      <option value="Português">Português 🇧🇷🇵🇹</option>
+                      <option value="Outro">Outro 🌐</option>
                     </select>
                   </div>
                 </div>
@@ -660,14 +707,14 @@ export default function OnboardingFlow() {
                 <div>
                   <label className="text-xs font-bold text-slate-400 block mb-1.5">Sua Especialidade de Ensino (Selecione pelo menos 1) *</label>
                   <div className="flex flex-wrap gap-2">
-                    {SPECIALTIES_OPTIONS.map(sp => {
+                    {(SPECIALTIES_BY_LANGUAGE[formData.subject_taught] || SPECIALTIES_BY_LANGUAGE['Espanhol']).map(sp => {
                       const isSelected = formData.specialties.includes(sp);
                       return (
                         <button
                           type="button"
                           key={sp}
                           onClick={() => toggleSpecialty(sp)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-amber-500/20 border-amber-400 text-amber-300'
                               : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
@@ -897,8 +944,8 @@ export default function OnboardingFlow() {
         </div>
       )}
 
-      <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
-
-    </div>
+        <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+      </div>
+    </TechVeinsBackground>
   );
 }
