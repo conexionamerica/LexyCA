@@ -264,9 +264,10 @@ const isFakeMockTutor = (t) => {
             videoUrl: dbT.video_url || '',
             headline: dbT.headline || '',
             bio: dbT.bio || '',
-            weeklySchedule: dbT.weekly_schedule || {},
+            specialties: dbT.specialties || ['Conversação'],
+            languagesSpoken: dbT.languages_spoken || [{ language: dbT.subject_taught || 'Espanhol', level: 'Nativo' }],
             earnedBalance: 0,
-            reviews: []
+            reviews: dbT.reviews || []
           })).filter(t => !isFakeMockTutor(t));
 
           setTutors(fetchedTutors);

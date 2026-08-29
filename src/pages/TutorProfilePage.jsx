@@ -136,7 +136,7 @@ export default function TutorProfilePage() {
               <span className="text-slate-400 font-bold flex items-center gap-1">
                 <Globe className="w-4 h-4 text-cyan-400" /> Idiomas:
               </span>
-              {tutor.languagesSpoken.map((lang, idx) => (
+              {(tutor.languagesSpoken || []).map((lang, idx) => (
                 <span key={idx} className="bg-slate-900 border border-slate-800 text-slate-200 px-2.5 py-1 rounded-lg font-semibold">
                   {lang.language}: <strong className="text-cyan-300">{lang.level}</strong>
                 </span>
@@ -173,7 +173,7 @@ export default function TutorProfilePage() {
             <div className="pt-4 border-t border-slate-800">
               <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-3">Especialidades de Ensino</h4>
               <div className="flex items-center gap-2 flex-wrap">
-                {tutor.specialties.map(sp => (
+                {(tutor.specialties || []).map(sp => (
                   <span key={sp} className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold px-3 py-1 rounded-lg">
                     ✓ {sp}
                   </span>
@@ -242,10 +242,10 @@ export default function TutorProfilePage() {
             </div>
 
             <div className="space-y-4">
-              {tutor.reviews.length === 0 ? (
+              {(tutor.reviews || []).length === 0 ? (
                 <p className="text-xs text-slate-500">Este professor ainda não possui avaliações visíveis.</p>
               ) : (
-                tutor.reviews.map(rev => (
+                (tutor.reviews || []).map(rev => (
                   <div key={rev.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

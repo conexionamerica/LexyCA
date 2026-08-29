@@ -393,7 +393,7 @@ export default function ExplorePage() {
 
                     {/* Especialidades */}
                     <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                      {tutor.specialties.map(sp => (
+                      {(tutor.specialties || ['Conversação']).map(sp => (
                         <span key={sp} className="bg-slate-900/90 border border-slate-800 text-slate-400 text-[11px] font-semibold px-2 py-0.5 rounded-md">
                           {sp}
                         </span>
