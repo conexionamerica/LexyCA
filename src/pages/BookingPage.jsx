@@ -85,9 +85,11 @@ export default function BookingPage() {
     return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
   };
 
-  const configuredDays = Object.keys(rawSchedule).filter(d => (rawSchedule[d] || []).length > 0);
   const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  const availableDays = configuredDays.length > 0 ? configuredDays : ALL_WEEK_DAYS;
+  
+  // Días que realmente contienen al menos 1 horario con status LIVRE para el profesor X
+  const daysWithFreeSlots = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
+  const availableDays = daysWithFreeSlots.length > 0 ? daysWithFreeSlots : ALL_WEEK_DAYS;
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
   const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));
@@ -103,11 +105,11 @@ export default function BookingPage() {
   // Estado dinámico de selección de slots por semana
   const [selectedSlots, setSelectedSlots] = useState(() => {
     return Array.from({ length: 4 }, (_, idx) => {
-      const targetDay = availableDays[idx % availableDays.length] || Object.keys(tutorSchedule)[0] || 'Segunda';
+      const targetDay = availableDays[idx % availableDays.length] || 'Segunda-feira';
       const freeForDay = getFreeSlotsForDay(targetDay);
       return {
         day: targetDay,
-        time: freeForDay[0] || (tutorSchedule[targetDay] || ['09:00'])[0] || '09:00'
+        time: freeForDay[0] || ''
       };
     });
   });
@@ -120,7 +122,7 @@ export default function BookingPage() {
         const freeTimes = getFreeSlotsForDay(value);
         copy[index] = {
           day: value,
-          time: freeTimes[0] || (tutorSchedule[value] || ['09:00'])[0] || '09:00'
+          time: freeTimes[0] || ''
         };
       } else {
         copy[index] = {
@@ -394,13 +396,17 @@ export default function BookingPage() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-cyan-400" />
                 <select
-                  value={selectedSlots[0]?.day || availableDays[0] || 'Segunda'}
+                  value={selectedSlots[0]?.day || (daysWithFreeSlots[0] || ALL_WEEK_DAYS[0])}
                   onChange={(e) => handleSlotChange(0, 'day', e.target.value)}
                   className="bg-slate-950 border border-slate-800 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
                 >
-                  {availableDays.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {daysWithFreeSlots.length === 0 ? (
+                    <option value="">Nenhum dia com vagas livres</option>
+                  ) : (
+                    daysWithFreeSlots.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
