@@ -48,7 +48,6 @@ export default function BookingPage() {
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
   const rawSchedule = tutor?.weeklySchedule || {};
-  const hasConfiguredSchedule = Object.keys(rawSchedule).some(k => (rawSchedule[k] || []).length > 0);
 
   // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
   const getFreeSlotsForDay = (dayName) => {
@@ -59,11 +58,8 @@ export default function BookingPage() {
       k.toLowerCase().replace('-feira', '').trim() === targetClean
     );
 
-    // Si el profesor X configuró su agenda semanal, tomamos solo sus horas activas
-    // Si no ha configurado agenda aún, usamos rango de atención estándar (08:00 a 20:00)
-    const baseSlots = matchedKey 
-      ? (rawSchedule[matchedKey] || [])
-      : (!hasConfiguredSchedule ? ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'] : []);
+    // Tomamos ÚNICAMENTE las horas activas configuradas por el profesor X en su agenda
+    const baseSlots = matchedKey ? (rawSchedule[matchedKey] || []) : [];
 
     // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
     const extraFreeFromDb = (teacherAvailability || [])
@@ -90,9 +86,8 @@ export default function BookingPage() {
   };
 
   const configuredDays = Object.keys(rawSchedule).filter(d => (rawSchedule[d] || []).length > 0);
-  const availableDays = configuredDays.length > 0 
-    ? configuredDays 
-    : ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+  const availableDays = configuredDays.length > 0 ? configuredDays : ALL_WEEK_DAYS;
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
   const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));
@@ -412,18 +407,44 @@ export default function BookingPage() {
               {/* Selector de Horario Libre */}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-400" />
-                <select
-                  value={selectedSlots[0]?.time || (getFreeSlotsForDay(selectedSlots[0]?.day || availableDays[0])[0]) || '09:00'}
-                  onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
-                >
-                  {getFreeSlotsForDay(selectedSlots[0]?.day || availableDays[0]).map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                {(() => {
+                  const activeDay = selectedSlots[0]?.day || availableDays[0];
+                  const currentFreeSlots = getFreeSlotsForDay(activeDay);
+                  return (
+                    <select
+                      value={selectedSlots[0]?.time || (currentFreeSlots[0] || '')}
+                      onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
+                      className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
+                    >
+                      {currentFreeSlots.length === 0 ? (
+                        <option value="">Sem horários livres neste dia</option>
+                      ) : (
+                        currentFreeSlots.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))
+                      )}
+                    </select>
+                  );
+                })()}
               </div>
             </div>
           </div>
+
+          {(() => {
+            const activeDay = selectedSlots[0]?.day || availableDays[0];
+            const currentFreeSlots = getFreeSlotsForDay(activeDay);
+            if (currentFreeSlots.length === 0) {
+              return (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 text-xs text-amber-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    O professor <strong>{tutor.name}</strong> ainda não configurou horários com status <strong className="text-emerald-400 font-black uppercase">LIVRE</strong> para {activeDay}. Por favor selecione outro dia da semana ou aguarde a atualização de agenda do tutor.
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX BRASIL) */}
