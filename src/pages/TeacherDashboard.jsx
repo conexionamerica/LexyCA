@@ -12,7 +12,8 @@ import {
 export default function TeacherDashboard() {
   const { 
     tutors, updateTutorSchedule, bookings, completeBooking, updateBookingStatus, 
-    announcements, directChatMessages, sendDirectMessage, acceptBookingRequest, rejectBookingRequest, incrementTutorLessons, tierRates 
+    announcements, directChatMessages, sendDirectMessage, acceptBookingRequest, rejectBookingRequest, incrementTutorLessons, tierRates,
+    teacherAvailability, saveAvailabilitySlot, removeAvailabilitySlot 
   } = useMarketplace();
   
   const { profile, updateProfile } = useAuth();
@@ -174,6 +175,11 @@ export default function TeacherDashboard() {
   const [agendaViewMode, setAgendaViewMode] = useState('grid'); // 'grid' (Horários de Aula) | 'config' (Editor de Disponibilidade)
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
   const [selectedBookingForModal, setSelectedBookingForModal] = useState(null);
+
+  // Dedicated Availability Slot Modal (teacher_availability table com 'obs' opcional)
+  const [selectedSlotForBlockModal, setSelectedSlotForBlockModal] = useState(null);
+  const [blockObsInput, setBlockObsInput] = useState('');
+  const [blockStatusInput, setBlockStatusInput] = useState('blocked');
 
   // Virtual Room & Booking Management States (aluno.conexionamerica.com.br system style)
   const [isVirtualRoomActive, setIsVirtualRoomActive] = useState(false);
@@ -1441,7 +1447,20 @@ export default function TeacherDashboard() {
                                     return dateMatch && timeMatch;
                                   });
 
-                                  const isHourSlotActiveInSchedule = (schedule[col.dayName] || []).includes(slotTime) || (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00');
+                                  const dateAvail = (teacherAvailability || []).find(a => 
+                                    String(a.teacher_id).toLowerCase() === String(profile?.id || '').toLowerCase() &&
+                                    a.date === col.isoDateStr &&
+                                    a.time === slotTime
+                                  );
+
+                                  const isDateBlocked = dateAvail?.status === 'blocked';
+                                  const isDateFree = dateAvail?.status === 'free';
+                                  const slotObs = dateAvail?.obs;
+
+                                  const isHourSlotActiveInSchedule = isDateFree || (!isDateBlocked && (
+                                    (schedule[col.dayName] || []).includes(slotTime) || 
+                                    (schedule[col.dayName] || []).includes(slotTime.substring(0, 2) + ':00')
+                                  ));
 
                                   return (
                                     <td
@@ -1474,12 +1493,63 @@ export default function TeacherDashboard() {
                                             );
                                           })}
                                         </div>
+                                      ) : isDateBlocked ? (
+                                        <div
+                                          onClick={() => {
+                                            setSelectedSlotForBlockModal({
+                                              date: col.isoDateStr,
+                                              dateStr: col.dateStr,
+                                              time: slotTime,
+                                              dayName: col.dayName,
+                                              currentStatus: 'blocked',
+                                              obs: slotObs || ''
+                                            });
+                                            setBlockStatusInput('blocked');
+                                            setBlockObsInput(slotObs || '');
+                                          }}
+                                          className="h-full min-h-[36px] rounded-lg border border-rose-500/40 bg-rose-500/15 p-1 flex flex-col justify-center text-[10px] text-rose-300 font-extrabold cursor-pointer hover:bg-rose-500/25 transition-all shadow-sm"
+                                          title={slotObs ? `Bloqueado: ${slotObs}` : 'Bloqueado pelo professor'}
+                                        >
+                                          <div className="flex items-center justify-center gap-1">
+                                            <Lock className="w-3 h-3 text-rose-400 shrink-0" />
+                                            <span className="truncate">Bloqueado</span>
+                                          </div>
+                                          {slotObs && <span className="text-[8px] text-rose-300/80 truncate text-center mt-0.5 font-normal">{slotObs}</span>}
+                                        </div>
                                       ) : isHourSlotActiveInSchedule ? (
-                                        <div className="h-full min-h-[36px] rounded-lg border border-dashed border-emerald-500/20 bg-emerald-500/[0.03] p-1 flex items-center justify-center text-[10px] text-emerald-400/60 font-semibold">
-                                          <span>Livre</span>
+                                        <div
+                                          onClick={() => {
+                                            setSelectedSlotForBlockModal({
+                                              date: col.isoDateStr,
+                                              dateStr: col.dateStr,
+                                              time: slotTime,
+                                              dayName: col.dayName,
+                                              currentStatus: 'free',
+                                              obs: slotObs || ''
+                                            });
+                                            setBlockStatusInput('free');
+                                            setBlockObsInput(slotObs || '');
+                                          }}
+                                          className="h-full min-h-[36px] rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/[0.04] hover:bg-emerald-500/10 p-1 flex flex-col justify-center text-[10px] text-emerald-400 font-semibold cursor-pointer transition-all"
+                                        >
+                                          <span className="text-center font-bold">Livre</span>
                                         </div>
                                       ) : (
-                                        <div className="h-full min-h-[36px]"></div>
+                                        <div
+                                          onClick={() => {
+                                            setSelectedSlotForBlockModal({
+                                              date: col.isoDateStr,
+                                              dateStr: col.dateStr,
+                                              time: slotTime,
+                                              dayName: col.dayName,
+                                              currentStatus: 'none',
+                                              obs: ''
+                                            });
+                                            setBlockStatusInput('blocked');
+                                            setBlockObsInput('');
+                                          }}
+                                          className="h-full min-h-[36px] hover:bg-slate-800/40 rounded-lg cursor-pointer transition-colors"
+                                        ></div>
                                       )}
                                     </td>
                                   );
@@ -2920,6 +2990,116 @@ export default function TeacherDashboard() {
                 Concluir Aula & Enviar Feedback Obrigatório
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PERSONALIZAR DISPONIBILIDADE E BLOQUEIO POR DATA (COM CAMPO 'OBS' OPCIONAL) */}
+      {selectedSlotForBlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl relative glow-cyan">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h3 className="font-extrabold text-white text-sm">Gerenciar Horário Específico</h3>
+                  <p className="text-[11px] text-slate-400">{selectedSlotForBlockModal.dayName}, {selectedSlotForBlockModal.dateStr} às {selectedSlotForBlockModal.time}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedSlotForBlockModal(null)}
+                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block mb-2">
+                  Status para este Horário
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBlockStatusInput('free')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                      blockStatusInput === 'free'
+                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-2 ring-emerald-500/40'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Livre / Ativo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBlockStatusInput('blocked')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                      blockStatusInput === 'blocked'
+                        ? 'bg-rose-500/20 border-rose-400 text-rose-300 ring-2 ring-rose-500/40'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <Lock className="w-4 h-4 text-rose-400" />
+                    <span>Bloqueado</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                  Observação / Motivo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={blockObsInput}
+                  onChange={(e) => setBlockObsInput(e.target.value)}
+                  placeholder="Ex: Feriado, Compromisso Pessoal, Médico..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">A observação é gravada no campo <code className="font-mono text-cyan-300">obs</code> da tabela <code className="font-mono text-cyan-300">teacher_availability</code>.</span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+              {selectedSlotForBlockModal.currentStatus !== 'none' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeAvailabilitySlot({
+                      teacherId: profile?.id || tutor?.id,
+                      date: selectedSlotForBlockModal.date,
+                      time: selectedSlotForBlockModal.time
+                    });
+                    setSelectedSlotForBlockModal(null);
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 text-rose-400 hover:bg-slate-700 transition-colors"
+                >
+                  Restaurar Padrão
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  saveAvailabilitySlot({
+                    teacherId: profile?.id || tutor?.id,
+                    date: selectedSlotForBlockModal.date,
+                    time: selectedSlotForBlockModal.time,
+                    status: blockStatusInput,
+                    obs: blockObsInput
+                  });
+                  setSelectedSlotForBlockModal(null);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 text-slate-950 shadow-md transition-all"
+              >
+                Salvar Disponibilidade
+              </button>
+            </div>
+
           </div>
         </div>
       )}

@@ -446,6 +446,86 @@ const isFakeMockTutor = (t) => {
       active = false;
     };
   }, []);
+  const [teacherAvailability, setTeacherAvailability] = useState(() => {
+    try {
+      const cached = localStorage.getItem('lexy_market_availability_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    let active = true;
+    async function syncAvailabilityFromSupabase() {
+      try {
+        const { data, error } = await supabase
+          .from('teacher_availability')
+          .select('*');
+
+        if (!error && data && active) {
+          setTeacherAvailability(data);
+          localStorage.setItem('lexy_market_availability_cache', JSON.stringify(data));
+        } else if (!error && data && data.length === 0 && active) {
+          setTeacherAvailability([]);
+          localStorage.removeItem('lexy_market_availability_cache');
+        }
+      } catch (err) {
+        console.warn('Tabela teacher_availability no Supabase:', err);
+      }
+    }
+
+    syncAvailabilityFromSupabase();
+    return () => { active = false; };
+  }, []);
+
+  const saveAvailabilitySlot = async ({ teacherId, date, time, status = 'blocked', obs = '' }) => {
+    const slotData = {
+      teacher_id: teacherId,
+      date,
+      time,
+      status,
+      obs: obs || null
+    };
+
+    setTeacherAvailability(prev => {
+      const filtered = prev.filter(a => !(a.teacher_id === teacherId && a.date === date && a.time === time));
+      return [...filtered, slotData];
+    });
+
+    try {
+      const { data, error } = await supabase
+        .from('teacher_availability')
+        .upsert(slotData, { onConflict: 'teacher_id,date,time' })
+        .select();
+
+      if (!error && data && data.length > 0) {
+        setTeacherAvailability(prev => {
+          const filtered = prev.filter(a => !(a.teacher_id === teacherId && a.date === date && a.time === time));
+          return [...filtered, data[0]];
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao salvar em teacher_availability:', err);
+    }
+  };
+
+  const removeAvailabilitySlot = async ({ teacherId, date, time }) => {
+    setTeacherAvailability(prev => 
+      prev.filter(a => !(a.teacher_id === teacherId && a.date === date && a.time === time))
+    );
+
+    try {
+      await supabase
+        .from('teacher_availability')
+        .delete()
+        .eq('teacher_id', teacherId)
+        .eq('date', date)
+        .eq('time', time);
+    } catch (err) {
+      console.warn('Erro ao deletar em teacher_availability:', err);
+    }
+  };
 
   // Persistencia
   useEffect(() => {
@@ -900,6 +980,9 @@ const isFakeMockTutor = (t) => {
       tutors,
       student,
       usedTrials,
+      teacherAvailability,
+      saveAvailabilitySlot,
+      removeAvailabilitySlot,
       subscriptions,
       bookings,
       platformFeePercent,
