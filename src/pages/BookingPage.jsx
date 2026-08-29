@@ -47,8 +47,48 @@ export default function BookingPage() {
   const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
+  const rawSchedule = tutor?.weeklySchedule || {};
+
+  // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
+  const getFreeSlotsForDay = (dayName) => {
+    if (!dayName || !tutor) return [];
+
+    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
+    const matchedKey = Object.keys(rawSchedule).find(k => 
+      k.toLowerCase().replace('-feira', '').trim() === targetClean
+    );
+
+    // Tomamos ÚNICAMENTE las horas activas configuradas por el profesor X en su agenda
+    const baseSlots = matchedKey ? (rawSchedule[matchedKey] || []) : [];
+
+    // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
+    const extraFreeFromDb = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'free')
+      .map(a => String(a.time).trim());
+
+    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
+
+    // Horarios ocupados por agendamentos do professor X
+    const occupiedTimes = (bookings || [])
+      .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
+      .filter(b => {
+        const cleanBookingDay = String(b.day || '').split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        return cleanBookingDay === targetClean;
+      })
+      .map(b => String(b.time || '').trim());
+
+    // Horarios bloqueados explícitamente por el profesor X en teacher_availability
+    const blockedTimesForTeacher = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
+      .map(a => String(a.time).trim());
+
+    return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
+  };
+
   const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  const ALL_TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+  
+  // Días que realmente contienen al menos 1 horario con status LIVRE para el profesor X
+  const daysWithFreeSlots = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
   const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));
@@ -73,10 +113,17 @@ export default function BookingPage() {
   const handleSlotChange = (index, field, value) => {
     setSelectedSlots(prev => {
       const copy = [...prev];
-      copy[index] = {
-        ...copy[index],
-        [field]: value
-      };
+      if (field === 'day') {
+        copy[index] = {
+          day: value,
+          time: '' // Resetear horario a <Selecione o Horário> al cambiar de día
+        };
+      } else {
+        copy[index] = {
+          ...copy[index],
+          time: value
+        };
+      }
       return copy;
     });
   };
@@ -354,13 +401,17 @@ export default function BookingPage() {
                   className="bg-slate-950 border border-slate-800 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
                 >
                   <option value="">Selecione o Dia</option>
-                  {ALL_WEEK_DAYS.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {daysWithFreeSlots.length === 0 ? (
+                    <option value="" disabled>⚠️ Nenhum dia com vagas livres</option>
+                  ) : (
+                    daysWithFreeSlots.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
-              {/* Selector de Horario */}
+              {/* Selector de Horario Livre */}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-400" />
                 <select
@@ -369,9 +420,19 @@ export default function BookingPage() {
                   className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
                 >
                   <option value="">Selecione o Horário</option>
-                  {ALL_TIME_SLOTS.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
+                  {(() => {
+                    const chosenDay = selectedSlots[0]?.day;
+                    if (!chosenDay) return null;
+
+                    const freeTimes = getFreeSlotsForDay(chosenDay);
+                    if (freeTimes.length === 0) {
+                      return <option value="" disabled>Sem horários livres neste dia</option>;
+                    }
+
+                    return freeTimes.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ));
+                  })()}
                 </select>
               </div>
             </div>
