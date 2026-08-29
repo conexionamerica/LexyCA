@@ -266,6 +266,7 @@ const isFakeMockTutor = (t) => {
             bio: dbT.bio || '',
             specialties: dbT.specialties || ['Conversação'],
             languagesSpoken: dbT.languages_spoken || [{ language: dbT.subject_taught || 'Espanhol', level: 'Nativo' }],
+            weeklySchedule: dbT.weekly_schedule || {},
             earnedBalance: 0,
             reviews: dbT.reviews || []
           })).filter(t => !isFakeMockTutor(t));

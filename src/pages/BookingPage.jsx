@@ -437,6 +437,15 @@ export default function BookingPage() {
               </div>
             </div>
           </div>
+
+          {daysWithFreeSlots.length === 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 flex items-center gap-3 animate-fade-in">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>
+                O professor <strong>{tutor?.name}</strong> não possui horários com status <strong className="text-emerald-400 uppercase font-black">LIVRE</strong> disponíveis na agenda no momento. Por favor aguarde a atualização de horários do tutor ou selecione outro professor.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX BRASIL) */}
