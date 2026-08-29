@@ -49,6 +49,21 @@ export default function BookingPage() {
   
   const rawSchedule = tutor?.weeklySchedule || {};
 
+  // HELPER: Convertir fecha YYYY-MM-DD a día de la semana (ej: '2026-08-31' -> 'Segunda-feira')
+  const getDayNameFromDateString = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = String(dateStr).trim();
+    if (!cleanStr.includes('-')) return cleanStr;
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return weekDays[d.getDay()] || cleanStr;
+  };
+
   // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
   const getFreeSlotsForDay = (dayName) => {
     if (!dayName || !tutor) return [];
@@ -64,6 +79,11 @@ export default function BookingPage() {
     // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
     const extraFreeFromDb = (teacherAvailability || [])
       .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'free')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
       .map(a => String(a.time).trim());
 
     const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
@@ -72,7 +92,8 @@ export default function BookingPage() {
     const occupiedTimes = (bookings || [])
       .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
       .filter(b => {
-        const cleanBookingDay = String(b.day || '').split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        const bookingDayName = getDayNameFromDateString(b.date || b.day || '');
+        const cleanBookingDay = String(bookingDayName).split(' (')[0].toLowerCase().replace('-feira', '').trim();
         return cleanBookingDay === targetClean;
       })
       .map(b => String(b.time || '').trim());
@@ -80,6 +101,11 @@ export default function BookingPage() {
     // Horarios bloqueados explícitamente por el profesor X en teacher_availability
     const blockedTimesForTeacher = (teacherAvailability || [])
       .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
       .map(a => String(a.time).trim());
 
     return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
