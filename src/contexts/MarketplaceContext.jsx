@@ -623,8 +623,16 @@ const isFakeMockTutor = (t) => {
     }
   };
 
-  const updateTutorSchedule = (tutorId, newSchedule) => {
+  const updateTutorSchedule = async (tutorId, newSchedule) => {
     setTutors(prev => prev.map(t => t.id === tutorId ? { ...t, weeklySchedule: newSchedule } : t));
+    try {
+      await supabase
+        .from('profiles')
+        .update({ weekly_schedule: newSchedule })
+        .eq('id', tutorId);
+    } catch (e) {
+      console.warn('Error updating tutor weekly_schedule in Supabase:', e);
+    }
   };
 
   const incrementTutorLessons = (tutorId) => {

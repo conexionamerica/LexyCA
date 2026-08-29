@@ -50,24 +50,20 @@ export default function BookingPage() {
   const rawSchedule = tutor?.weeklySchedule || {};
   const hasConfiguredSchedule = Object.keys(rawSchedule).some(k => (rawSchedule[k] || []).length > 0);
 
-  const DEFAULT_SCHEDULE = {
-    'Segunda-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
-    'Terça-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
-    'Quarta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
-    'Quinta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
-    'Sexta-feira': ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'],
-    'Sábado': ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00']
-  };
-
-  const tutorSchedule = hasConfiguredSchedule ? rawSchedule : DEFAULT_SCHEDULE;
-
   // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
   const getFreeSlotsForDay = (dayName) => {
     if (!dayName || !tutor) return [];
 
-    const cleanKey = String(dayName).split('-')[0].trim();
-    const matchedKey = Object.keys(tutorSchedule).find(k => k.toLowerCase().startsWith(cleanKey.toLowerCase())) || dayName;
-    const baseSlots = tutorSchedule[matchedKey] || tutorSchedule[dayName] || [];
+    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
+    const matchedKey = Object.keys(rawSchedule).find(k => 
+      k.toLowerCase().replace('-feira', '').trim() === targetClean
+    );
+
+    // Si el profesor X configuró su agenda semanal, tomamos solo sus horas activas
+    // Si no ha configurado agenda aún, usamos rango de atención estándar (08:00 a 20:00)
+    const baseSlots = matchedKey 
+      ? (rawSchedule[matchedKey] || [])
+      : (!hasConfiguredSchedule ? ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'] : []);
 
     // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
     const extraFreeFromDb = (teacherAvailability || [])
@@ -76,13 +72,12 @@ export default function BookingPage() {
 
     const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
 
-    // Horarios ocupados por agendamentos del profesor X
+    // Horarios ocupados por agendamentos do professor X
     const occupiedTimes = (bookings || [])
       .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
       .filter(b => {
-        const cleanBookingDay = String(b.day || '').split(' (')[0].trim().toLowerCase();
-        const cleanTargetDay = String(dayName || '').split('-')[0].trim().toLowerCase();
-        return cleanBookingDay === cleanTargetDay;
+        const cleanBookingDay = String(b.day || '').split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        return cleanBookingDay === targetClean;
       })
       .map(b => String(b.time || '').trim());
 
@@ -94,8 +89,9 @@ export default function BookingPage() {
     return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
   };
 
-  const availableDays = Object.keys(tutorSchedule).length > 0 
-    ? Object.keys(tutorSchedule) 
+  const configuredDays = Object.keys(rawSchedule).filter(d => (rawSchedule[d] || []).length > 0);
+  const availableDays = configuredDays.length > 0 
+    ? configuredDays 
     : ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
