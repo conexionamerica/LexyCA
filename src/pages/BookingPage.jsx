@@ -47,49 +47,8 @@ export default function BookingPage() {
   const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
-  const rawSchedule = tutor?.weeklySchedule || {};
-
-  // HELPER: Obtener horarios 100% libres (activos por el profesor X Y no ocupados ni bloqueados)
-  const getFreeSlotsForDay = (dayName) => {
-    if (!dayName || !tutor) return [];
-
-    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
-    const matchedKey = Object.keys(rawSchedule).find(k => 
-      k.toLowerCase().replace('-feira', '').trim() === targetClean
-    );
-
-    // Tomamos ÚNICAMENTE las horas activas configuradas por el profesor X en su agenda
-    const baseSlots = matchedKey ? (rawSchedule[matchedKey] || []) : [];
-
-    // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor X
-    const extraFreeFromDb = (teacherAvailability || [])
-      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'free')
-      .map(a => String(a.time).trim());
-
-    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
-
-    // Horarios ocupados por agendamentos do professor X
-    const occupiedTimes = (bookings || [])
-      .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
-      .filter(b => {
-        const cleanBookingDay = String(b.day || '').split(' (')[0].toLowerCase().replace('-feira', '').trim();
-        return cleanBookingDay === targetClean;
-      })
-      .map(b => String(b.time || '').trim());
-
-    // Horarios bloqueados explícitamente por el profesor X en teacher_availability
-    const blockedTimesForTeacher = (teacherAvailability || [])
-      .filter(a => String(a.teacher_id).toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
-      .map(a => String(a.time).trim());
-
-    return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
-  };
-
   const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  
-  // Días que realmente contienen al menos 1 horario con status LIVRE para el profesor X
-  const daysWithFreeSlots = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
-  const availableDays = daysWithFreeSlots.length > 0 ? daysWithFreeSlots : ALL_WEEK_DAYS;
+  const ALL_TIME_SLOTS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
   const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));
@@ -102,34 +61,22 @@ export default function BookingPage() {
     ? 1 
     : (selectedPackage?.lessonsPerWeek || (pkgHours === 4 ? 1 : pkgHours === 8 ? 2 : pkgHours === 12 ? 3 : 4));
 
-  // Estado dinámico de selección de slots por semana
+  // Estado dinámico de selección de slots por semana com padrão <Selecione>
   const [selectedSlots, setSelectedSlots] = useState(() => {
-    return Array.from({ length: 4 }, (_, idx) => {
-      const targetDay = availableDays[idx % availableDays.length] || 'Segunda-feira';
-      const freeForDay = getFreeSlotsForDay(targetDay);
-      return {
-        day: targetDay,
-        time: freeForDay[0] || ''
-      };
-    });
+    return Array.from({ length: 4 }, () => ({
+      day: '',
+      time: ''
+    }));
   });
 
-  // Ajustar slots al cambiar paquete o día
+  // Ajustar slots ao selecionar no dropdown
   const handleSlotChange = (index, field, value) => {
     setSelectedSlots(prev => {
       const copy = [...prev];
-      if (field === 'day') {
-        const freeTimes = getFreeSlotsForDay(value);
-        copy[index] = {
-          day: value,
-          time: freeTimes[0] || ''
-        };
-      } else {
-        copy[index] = {
-          ...copy[index],
-          time: value
-        };
-      }
+      copy[index] = {
+        ...copy[index],
+        [field]: value
+      };
       return copy;
     });
   };
@@ -153,6 +100,12 @@ export default function BookingPage() {
 
     const activeSlots = selectedSlots.slice(0, neededSlotsCount);
     const primarySlot = activeSlots[0];
+
+    if (!primarySlot?.day || !primarySlot?.time) {
+      setIsProcessing(false);
+      setErrorMessage('Por favor, selecione um dia e um horário para realizar o agendamento.');
+      return;
+    }
 
     setTimeout(() => {
       setIsProcessing(false);
@@ -396,61 +349,33 @@ export default function BookingPage() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-cyan-400" />
                 <select
-                  value={selectedSlots[0]?.day || (daysWithFreeSlots[0] || ALL_WEEK_DAYS[0])}
+                  value={selectedSlots[0]?.day || ''}
                   onChange={(e) => handleSlotChange(0, 'day', e.target.value)}
                   className="bg-slate-950 border border-slate-800 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
                 >
-                  {daysWithFreeSlots.length === 0 ? (
-                    <option value="">Nenhum dia com vagas livres</option>
-                  ) : (
-                    daysWithFreeSlots.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))
-                  )}
+                  <option value="">Selecione o Dia</option>
+                  {ALL_WEEK_DAYS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
 
-              {/* Selector de Horario Libre */}
+              {/* Selector de Horario */}
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-cyan-400" />
-                {(() => {
-                  const activeDay = selectedSlots[0]?.day || availableDays[0];
-                  const currentFreeSlots = getFreeSlotsForDay(activeDay);
-                  return (
-                    <select
-                      value={selectedSlots[0]?.time || (currentFreeSlots[0] || '')}
-                      onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
-                      className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
-                    >
-                      {currentFreeSlots.length === 0 ? (
-                        <option value="">Sem horários livres neste dia</option>
-                      ) : (
-                        currentFreeSlots.map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))
-                      )}
-                    </select>
-                  );
-                })()}
+                <select
+                  value={selectedSlots[0]?.time || ''}
+                  onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
+                >
+                  <option value="">Selecione o Horário</option>
+                  {ALL_TIME_SLOTS.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
-
-          {(() => {
-            const activeDay = selectedSlots[0]?.day || availableDays[0];
-            const currentFreeSlots = getFreeSlotsForDay(activeDay);
-            if (currentFreeSlots.length === 0) {
-              return (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 text-xs text-amber-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>
-                    O professor <strong>{tutor.name}</strong> ainda não configurou horários com status <strong className="text-emerald-400 font-black uppercase">LIVRE</strong> para {activeDay}. Por favor selecione outro dia da semana ou aguarde a atualização de agenda do tutor.
-                  </span>
-                </div>
-              );
-            }
-            return null;
-          })()}
         </div>
 
         {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX BRASIL) */}
