@@ -1086,9 +1086,60 @@ const isFakeMockTutor = (t) => {
     return rejectedBooking;
   };
 
+  const updateTutorProfile = async (tutorId, updatedFields) => {
+    // 1. Atualizar o estado local de tutores
+    setTutors(prev => {
+      const updated = prev.map(t => {
+        if (t.id === tutorId || (t.email && updatedFields.email && t.email === updatedFields.email)) {
+          const newRate = updatedFields.hourlyRate !== undefined 
+            ? Number(updatedFields.hourlyRate) 
+            : (updatedFields.hourly_rate !== undefined ? Number(updatedFields.hourly_rate) : t.hourlyRate);
+          return {
+            ...t,
+            ...updatedFields,
+            hourlyRate: newRate,
+            hourly_rate: newRate,
+            trialRate: Number((newRate * 0.5).toFixed(2))
+          };
+        }
+        return t;
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY_TUTORS, JSON.stringify(updated));
+      return updated;
+    });
+
+    // 2. Persistir no Supabase (tabelas public.tutors e public.profiles)
+    try {
+      if (tutorId) {
+        const rateNum = updatedFields.hourlyRate || updatedFields.hourly_rate;
+        if (rateNum) {
+          await supabase.from('tutors').update({
+            hourly_rate: rateNum,
+            headline: updatedFields.headline,
+            bio: updatedFields.bio,
+            video_url: updatedFields.videoUrl || updatedFields.video_url,
+            subject: updatedFields.subject,
+            country: updatedFields.country,
+            timezone: updatedFields.timezone,
+            updated_at: new Date().toISOString()
+          }).eq('id', tutorId);
+
+          await supabase.from('profiles').update({
+            hourly_rate: rateNum,
+            phone: updatedFields.phone,
+            updated_at: new Date().toISOString()
+          }).eq('id', tutorId);
+        }
+      }
+    } catch (err) {
+      console.warn('Error saving updated tutor profile to Supabase:', err);
+    }
+  };
+
   return (
     <MarketplaceContext.Provider value={{
       tutors,
+      updateTutorProfile,
       student,
       usedTrials,
       teacherAvailability,

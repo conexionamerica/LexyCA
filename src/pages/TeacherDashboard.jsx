@@ -11,7 +11,7 @@ import {
 
 export default function TeacherDashboard() {
   const { 
-    tutors, updateTutorSchedule, bookings, completeBooking, updateBookingStatus, 
+    tutors, updateTutorProfile, updateTutorSchedule, bookings, completeBooking, updateBookingStatus, 
     announcements, directChatMessages, sendDirectMessage, acceptBookingRequest, rejectBookingRequest, incrementTutorLessons, tierRates,
     teacherAvailability, saveAvailabilitySlot, removeAvailabilitySlot 
   } = useMarketplace();
@@ -463,6 +463,23 @@ export default function TeacherDashboard() {
     tutor.video_url = tutorVideoUrl;
     tutor.experienceYears = tutorExpYears;
     tutor.certifications = tutorCertifications;
+
+    if (updateTutorProfile && tutor?.id) {
+      updateTutorProfile(tutor.id, {
+        hourlyRate: rateNum,
+        hourly_rate: rateNum,
+        headline: tutorHeadline,
+        bio: tutorBio,
+        videoUrl: tutorVideoUrl,
+        subject: tutorSubject,
+        nativeLanguage: tutorNativeLang,
+        otherLanguages: tutorOtherLangs,
+        country: tutorCountry,
+        timezone: tutorTimezone,
+        phone: tutorPhone,
+        avatar: teacherAvatar || tutor.avatar
+      });
+    }
 
     if (teacherAvatar) {
       tutor.avatar = teacherAvatar;
@@ -2378,8 +2395,8 @@ export default function TeacherDashboard() {
                       <strong className="text-white font-black text-sm">R$ {hourlyRate},00 / h</strong>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-                      <span className="text-slate-400 font-medium">Aula Experimental:</span>
-                      <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.75).toFixed(2)}</strong>
+                      <span className="text-slate-400 font-medium">Aula Experimental (30 min):</span>
+                      <strong className="text-emerald-400 font-bold">R$ {(hourlyRate * 0.5).toFixed(2)}</strong>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-800">
                       <span className="text-slate-400 font-medium">Seu Repasse Líquido ({currentEarnPercent}%):</span>
