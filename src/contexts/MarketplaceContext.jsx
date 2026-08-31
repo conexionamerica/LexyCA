@@ -399,15 +399,13 @@ const isFakeMockTutor = (t) => {
 
         if (!error && data && active) {
           const filteredData = data.filter(dbApt => {
-            const bType = String(dbApt.booking_type || '').toLowerCase();
             const dayStr = String(dbApt.day_name || dbApt.day || '');
-            if (bType === 'trial' || bType === 'experimental') {
-              if (dayStr.includes('Semana 2') || dayStr.includes('Semana 3') || dayStr.includes('Semana 4') || dayStr.includes('Semana 5')) {
-                if (dbApt.id) {
-                  supabase.from('aulas').delete().eq('id', dbApt.id).then(() => {}).catch(e => console.warn(e));
-                }
-                return false;
+            // Eliminar registros antigos duplicados com (Semana 2), (Semana 3), etc.
+            if (dayStr.includes('Semana 2') || dayStr.includes('Semana 3') || dayStr.includes('Semana 4') || dayStr.includes('Semana 5')) {
+              if (dbApt.id) {
+                supabase.from('aulas').delete().eq('id', dbApt.id).then(() => {}).catch(e => console.warn(e));
               }
+              return false;
             }
             return true;
           });
@@ -425,7 +423,7 @@ const isFakeMockTutor = (t) => {
             studentName: dbApt.student_name || dbApt.full_name || 'Aluno Cadastrado',
             studentMatricula: dbApt.student_matricula || '',
             studentAvatar: dbApt.student_avatar || '',
-            day: dbApt.day_name || dbApt.day || 'Segunda-feira',
+            day: (dbApt.day_name || dbApt.day || 'Segunda-feira').replace(' (Semana 1)', ''),
             isoDateStr: dbApt.date || dbApt.iso_date || '',
             time: dbApt.time_slot || dbApt.time || '10:00',
             bookingType: dbApt.booking_type || 'regular',
@@ -824,7 +822,14 @@ const isFakeMockTutor = (t) => {
       }
     }
 
-    const isTrialBooking = (bookingType === 'trial' || bookingType === 'experimental' || (planName && planName.toLowerCase().includes('experimental')));
+    const isTrialBooking = (
+      bookingType === 'trial' || 
+      bookingType === 'experimental' || 
+      (planName && planName.toLowerCase().includes('experimental')) ||
+      (planName && planName.toLowerCase().includes('teste')) ||
+      Number(totalAmount) <= 30 ||
+      Number(planHours) === 1
+    );
 
     const totalContractedHours = isTrialBooking ? 1 : (Number(planHours) || 8);
 
@@ -902,6 +907,7 @@ const isFakeMockTutor = (t) => {
     let count = 0;
 
     for (let week = 1; week <= numWeeks; week++) {
+      if (isTrialBooking && count >= 1) break;
       for (let sIdx = 0; sIdx < numSlots; sIdx++) {
         if (count >= totalContractedHours) break;
         count++;
@@ -927,7 +933,7 @@ const isFakeMockTutor = (t) => {
           studentMatricula: effectiveStudentMatricula || '',
           day: dayFormatted,
           time: s.time || time,
-          bookingType: bookingType || 'regular',
+          bookingType: isTrialBooking ? 'trial' : (bookingType || 'regular'),
           amount: totalAmount,
           status: 'confirmed',
           createdAt: new Date().toISOString()
@@ -944,6 +950,10 @@ const isFakeMockTutor = (t) => {
           updateTutorSchedule(tutorId, updatedSchedule);
         }
       }
+    }
+
+    if (isTrialBooking) {
+      createdBookings.splice(1);
     }
 
     setBookings(prev => [...createdBookings, ...prev]);
