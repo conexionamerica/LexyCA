@@ -70,6 +70,62 @@ export default function TeacherDashboard() {
     return (bookings || []).filter(b => isBookingForThisTeacher(b));
   }, [bookings, profile, tutor]);
 
+  const myStudentsList = React.useMemo(() => {
+    const studentMap = {};
+    myTeacherBookings.forEach(b => {
+      const sId = b.studentId || b.studentEmail || b.studentName;
+      if (sId && !studentMap[sId]) {
+        studentMap[sId] = {
+          id: sId,
+          name: b.studentName || 'Aluno Lexy',
+          email: b.studentEmail || '',
+          avatar: b.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+          level: b.studentLevel || 'Nível em Avaliação',
+          lessonsCount: myTeacherBookings.filter(x => (x.studentId && x.studentId === sId) || (x.studentEmail && x.studentEmail === sId)).length,
+          phone: b.studentPhone || 'Telefone não informado'
+        };
+      }
+    });
+
+    return Object.values(studentMap);
+  }, [myTeacherBookings]);
+
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0] || null;
+
+  const activeStudentMessages = (directChatMessages || []).filter(msg => 
+    selectedStudent && (msg.studentId === selectedStudent.id || msg.studentEmail === selectedStudent.email)
+  );
+
+  const teacherMessagesContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab === 'chat' && teacherMessagesContainerRef.current) {
+      teacherMessagesContainerRef.current.scrollTop = teacherMessagesContainerRef.current.scrollHeight;
+    }
+  }, [directChatMessages, selectedStudentId, activeTab]);
+
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lexy_teacher_dismissed_announcements_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleDismissAnnouncement = (annId) => {
+    setDismissedAnnouncements(prev => {
+      const updated = [...prev, annId];
+      localStorage.setItem('lexy_teacher_dismissed_announcements_v1', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const teacherAnnouncements = (announcements || [])
+    .filter(a => a.target === 'teachers')
+    .filter(a => !dismissedAnnouncements.includes(a.id));
+
   const totalLessons = tutor.totalLessons || 0;
   const currentEarnPercent = getTeacherEarnPercent(totalLessons, false, tierRates);
 
