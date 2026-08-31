@@ -810,7 +810,7 @@ const isFakeMockTutor = (t) => {
       }
     }
 
-    const isTrialBooking = (bookingType === 'trial');
+    const isTrialBooking = (bookingType === 'trial' || bookingType === 'experimental' || (planName && planName.toLowerCase().includes('experimental')));
 
     const totalContractedHours = isTrialBooking ? 1 : (Number(planHours) || 8);
 
@@ -821,7 +821,7 @@ const isFakeMockTutor = (t) => {
         : [{ day: day || 'Segunda-feira', time: time || '10:00' }]);
 
     if (!bypassWallet) {
-      if ((student?.walletBalance || 0) < totalContractedHours && bookingType !== 'trial') {
+      if ((student?.walletBalance || 0) < totalContractedHours && !isTrialBooking) {
         return { 
           success: false, 
           error: 'insufficient_funds', 
@@ -831,7 +831,7 @@ const isFakeMockTutor = (t) => {
       }
 
       // Descontar saldo de horas de aula
-      if (bookingType !== 'trial') {
+      if (!isTrialBooking) {
         setStudent(prev => {
           const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
           return {
@@ -851,11 +851,11 @@ const isFakeMockTutor = (t) => {
       });
     }
 
-    if (bookingType === 'trial') {
+    if (isTrialBooking) {
       setUsedTrials(prev => [...prev, tutorId]);
     }
 
-    if (bookingType === 'package' || bookingType === 'subscription') {
+    if (!isTrialBooking && (bookingType === 'package' || bookingType === 'subscription')) {
       const now = new Date();
       const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
 
@@ -884,7 +884,7 @@ const isFakeMockTutor = (t) => {
     // Gerar todas as aulas do ciclo de 28 dias conforme a frequência contratada
     const createdBookings = [];
     const numSlots = baseSlots.length;
-    const numWeeks = bookingType === 'trial' ? 1 : Math.ceil(totalContractedHours / numSlots);
+    const numWeeks = isTrialBooking ? 1 : Math.ceil(totalContractedHours / numSlots);
     let count = 0;
 
     for (let week = 1; week <= numWeeks; week++) {
@@ -895,7 +895,7 @@ const isFakeMockTutor = (t) => {
         const bId = `booking-${Date.now()}-w${week}-s${sIdx}-${count}`;
         const lCode = generateLessonCode(bId);
 
-        const dayFormatted = numWeeks > 1 
+        const dayFormatted = (numWeeks > 1 && !isTrialBooking) 
           ? `${s.day || day} (Semana ${week})` 
           : (s.day || day);
 
