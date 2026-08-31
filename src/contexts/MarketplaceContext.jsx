@@ -395,8 +395,11 @@ const isFakeMockTutor = (t) => {
     let active = true;
     async function syncBookingsFromSupabase() {
       try {
-        let res = await supabase.from('appointments').select('*');
-        if (res.error) {
+        let res = await supabase.from('aulas').select('*');
+        if (res.error || !res.data || res.data.length === 0) {
+          res = await supabase.from('appointments').select('*');
+        }
+        if (res.error || !res.data || res.data.length === 0) {
           res = await supabase.from('bookings').select('*');
         }
 
@@ -764,9 +767,13 @@ const isFakeMockTutor = (t) => {
         lesson_code: b.lesson_code
       }));
 
-      supabase.from('appointments').insert(dbPayload).then(({ error }) => {
+      supabase.from('aulas').insert(dbPayload).then(({ error }) => {
         if (error) {
-          supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+          supabase.from('appointments').insert(dbPayload).then(({ error: err2 }) => {
+            if (err2) {
+              supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+            }
+          });
         }
       }).catch(err => console.warn('Supabase subscription insert error:', err));
     } catch (e) {
@@ -935,9 +942,13 @@ const isFakeMockTutor = (t) => {
         lesson_code: b.lesson_code
       }));
 
-      supabase.from('appointments').insert(dbPayload).then(({ error }) => {
+      supabase.from('aulas').insert(dbPayload).then(({ error }) => {
         if (error) {
-          supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+          supabase.from('appointments').insert(dbPayload).then(({ error: err2 }) => {
+            if (err2) {
+              supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+            }
+          });
         }
       }).catch(err => console.warn('Supabase createBooking insert error:', err));
     } catch (e) {

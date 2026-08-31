@@ -238,3 +238,37 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- =============================================
+-- 12. Tabla public.aulas (Aulas Experimentales e Agendamentos Realizados)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.aulas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lesson_code TEXT UNIQUE NOT NULL,
+  student_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  student_name TEXT,
+  student_email TEXT,
+  student_matricula TEXT,
+  tutor_id UUID REFERENCES public.tutors(id) ON DELETE SET NULL,
+  teacher_id UUID,
+  tutor_name TEXT,
+  teacher_name TEXT,
+  tutor_email TEXT,
+  teacher_email TEXT,
+  subject TEXT DEFAULT 'Espanhol',
+  day TEXT NOT NULL,
+  day_name TEXT,
+  time TEXT NOT NULL,
+  time_slot TEXT,
+  booking_type TEXT DEFAULT 'trial',
+  amount NUMERIC DEFAULT 0,
+  status TEXT DEFAULT 'confirmed',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.aulas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Aulas public view" ON public.aulas FOR SELECT USING (true);
+CREATE POLICY "Aulas insert" ON public.aulas FOR INSERT WITH CHECK (true);
+CREATE POLICY "Aulas update" ON public.aulas FOR UPDATE USING (true);
+
