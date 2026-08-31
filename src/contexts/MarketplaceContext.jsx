@@ -411,11 +411,13 @@ const isFakeMockTutor = (t) => {
             lesson_code: dbApt.lesson_code || generateLessonCode(dbApt.id),
             tutorId: dbApt.teacher_id || dbApt.tutor_id || dbApt.assigned_professor_id,
             tutorName: dbApt.teacher_name || dbApt.tutor_name || 'Professor',
+            tutorEmail: dbApt.teacher_email || dbApt.tutor_email || '',
             tutorAvatar: dbApt.teacher_avatar || dbApt.avatar_url || '',
             tutorSubject: dbApt.subject || 'Espanhol',
             studentId: dbApt.student_id || dbApt.user_id,
             studentEmail: dbApt.student_email || dbApt.email || '',
             studentName: dbApt.student_name || dbApt.full_name || 'Aluno Cadastrado',
+            studentMatricula: dbApt.student_matricula || '',
             studentAvatar: dbApt.student_avatar || '',
             day: dbApt.day_name || dbApt.day || 'Segunda-feira',
             isoDateStr: dbApt.date || dbApt.iso_date || '',
@@ -439,8 +441,20 @@ const isFakeMockTutor = (t) => {
 
     syncBookingsFromSupabase();
 
+    // Supabase Realtime Listener na tabela 'aulas' e 'appointments'
+    const channel = supabase
+      .channel('realtime_aulas_all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'aulas' }, () => {
+        syncBookingsFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        syncBookingsFromSupabase();
+      })
+      .subscribe();
+
     return () => {
       active = false;
+      supabase.removeChannel(channel);
     };
   }, []);
   const [teacherAvailability, setTeacherAvailability] = useState(() => {

@@ -61,17 +61,24 @@ export default function TeacherDashboard() {
     const tEmail = cleanStr(tutor?.email);
     const tName = cleanStr(tutor?.name);
 
-    if (pId && (bTutorId === pId || bTutorId.includes(pId) || pId.includes(bTutorId))) return true;
-    if (tId && (bTutorId === tId || bTutorId.includes(tId) || tId.includes(bTutorId))) return true;
+    // Direct ID match
+    if (pId && bTutorId && (bTutorId === pId || bTutorId.includes(pId) || pId.includes(bTutorId))) return true;
+    if (tId && bTutorId && (bTutorId === tId || bTutorId.includes(tId) || tId.includes(bTutorId))) return true;
 
-    if (pEmail && (bTutorEmail === pEmail || bTutorEmail.includes(pEmail) || pEmail.includes(bTutorEmail))) return true;
-    if (tEmail && (bTutorEmail === tEmail || bTutorEmail.includes(tEmail) || tEmail.includes(bTutorEmail))) return true;
+    // Direct Email match
+    if (pEmail && bTutorEmail && (bTutorEmail === pEmail || bTutorEmail.includes(pEmail) || pEmail.includes(bTutorEmail))) return true;
+    if (tEmail && bTutorEmail && (bTutorEmail === tEmail || bTutorEmail.includes(tEmail) || tEmail.includes(bTutorEmail))) return true;
 
-    if (pName && (bTutorName === pName || bTutorName.includes(pName) || pName.includes(bTutorName))) return true;
-    if (tName && (bTutorName === tName || bTutorName.includes(tName) || tName.includes(bTutorName))) return true;
+    // Name match (exact or substring)
+    if (pName && bTutorName && (bTutorName === pName || bTutorName.includes(pName) || pName.includes(bTutorName))) return true;
+    if (tName && bTutorName && (bTutorName === tName || bTutorName.includes(tName) || tName.includes(bTutorName))) return true;
 
-    if (bTutorName && tName && !bTutorName.includes(tName) && !tName.includes(bTutorName)) {
-      return false;
+    // Token match on teacher name (e.g. 'teste de hoje' matches 'teste de hoje !')
+    if (bTutorName && (pName || tName)) {
+      const targetName = pName || tName;
+      const bTokens = bTutorName.split(/\s+/).filter(x => x.length > 2);
+      const targetTokens = targetName.split(/\s+/).filter(x => x.length > 2);
+      if (bTokens.some(bt => targetTokens.includes(bt))) return true;
     }
 
     if (!bTutorId && !bTutorEmail && !bTutorName) return true;
@@ -715,7 +722,10 @@ export default function TeacherDashboard() {
   });
 
   const tutorBookings = (bookings || []).filter(b => {
-    return isBookingForThisTeacher(b) && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled');
+    if (!b) return false;
+    const st = String(b.status || '').toLowerCase();
+    if (st === 'cancelled' || st === 'cancelada' || st === 'rejected' || st === 'recusada') return false;
+    return isBookingForThisTeacher(b);
   });
   
   // Filter active bookings that are NOT expired by more than 10 mins and NOT completed
