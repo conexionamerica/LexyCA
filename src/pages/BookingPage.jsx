@@ -182,42 +182,9 @@ export default function BookingPage() {
 
     setTimeout(() => {
       setIsProcessing(false);
-
-      // Ejecutar reserva en MarketplaceContext bloqueando los slots seleccionados
-      const result = createBooking({
-        tutorId: tutor.id,
-        day: primarySlot.day,
-        time: primarySlot.time,
-        allSlots: activeSlots,
-        bookingType,
-        planHours: selectedPackage.hours || 8,
-        planName: selectedPackage.name || `Plano ${selectedPackage.hours || 8}h`,
-        totalAmount,
-        studentId: profile?.id || student?.id,
-        studentEmail: profile?.email || student?.email,
-        studentName: profile?.full_name || student?.name,
-        studentMatricula: profile?.matricula_code || student?.matricula_code
-      });
-
-      if (!result.success) {
-        if (result.error === 'insufficient_funds') {
-          setInsufficientBalanceError({
-            required: result.required,
-            current: result.current
-          });
-          // Abrir modal de pagamento Stone para completar cobrança em Reais
-          setIsStoneModalOpen(true);
-        } else if (result.error === 'trial_already_used') {
-          setErrorMessage(result.message);
-          setBookingType('package');
-        } else {
-          setErrorMessage('Erro ao processar reserva. Tente novamente.');
-        }
-        return;
-      }
-
-      setIsSuccess(true);
-    }, 1000);
+      // Abrir modal de checkout Stone Pagamentos S.A. para processar cobrança e liberar aula em Supabase
+      setIsStoneModalOpen(true);
+    }, 400);
   };
 
   const handleStoneBookingPaymentSuccess = (paymentResult) => {
