@@ -42,9 +42,7 @@ export default function BookingPage() {
   // Verificar si el alumno YA usó la aula experimental única con este profesor
   const isTrialAllowed = canBookTrial(tutor.id);
 
-  const initialTab = searchParams.get('tab') === 'packages' || !isTrialAllowed ? 'package' : 'trial';
-
-  const [bookingType, setBookingType] = useState(initialTab); // 'trial' | 'package'
+  const [bookingType, setBookingType] = useState('trial'); // 'trial' - Aula Experimental Única
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
   
   const rawSchedule = tutor?.weeklySchedule || {};
@@ -189,22 +187,20 @@ export default function BookingPage() {
 
   const handleStoneBookingPaymentSuccess = (paymentResult) => {
     setIsStoneModalOpen(false);
-    const isTrial = bookingType === 'trial';
-    const activeSlots = isTrial ? [selectedSlots[0]] : selectedSlots.slice(0, neededSlotsCount);
-    const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
+    const primarySlot = selectedSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
-    // Forçar reserva aprovada por Stone Pagamentos S.A.
+    // Forçar compra única de Aula Experimental (1 sola clase, 0 suscripciones, pago único)
     createBooking({
       tutorId: tutor.id,
       day: primarySlot.day,
       time: primarySlot.time,
-      allSlots: isTrial ? [primarySlot] : activeSlots,
-      bookingType: isTrial ? 'trial' : bookingType,
-      planHours: isTrial ? 1 : (selectedPackage.hours || 8),
-      planName: isTrial ? 'Aula Experimental de Idiomas (45 min)' : (selectedPackage.name || `Plano ${selectedPackage.hours || 8}h`),
-      totalAmount: isTrial ? trialRate : totalAmount,
+      allSlots: [primarySlot],
+      bookingType: 'trial',
+      planHours: 1,
+      planName: 'Aula Experimental de Idiomas (45 min)',
+      totalAmount: trialRate,
       bypassWallet: true,
-      paymentId: paymentResult.transactionId,
+      paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
       studentId: profile?.id || student?.id,
       studentEmail: profile?.email || student?.email,
       studentName: profile?.full_name || student?.name,
