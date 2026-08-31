@@ -390,28 +390,20 @@ const isFakeMockTutor = (t) => {
   // Bookings (Agenda de Aulas Nativa Real em Supabase)
   const [bookings, setBookings] = useState([]);
 
-  // Sincronizar reservas e agendamentos reais via Supabase (Stale-While-Revalidate)
+  // Sincronizar reservas e agendamentos reais exclusivamente via Supabase (Tabela public.aulas)
   useEffect(() => {
     let active = true;
     async function syncBookingsFromSupabase() {
       try {
-        let res = await supabase.from('aulas').select('*');
-        if (res.error || !res.data || res.data.length === 0) {
-          res = await supabase.from('appointments').select('*');
-        }
-        if (res.error || !res.data || res.data.length === 0) {
-          res = await supabase.from('bookings').select('*');
-        }
-
-        const { data, error } = res;
+        const { data, error } = await supabase.from('aulas').select('*');
 
         if (!error && data && active) {
           const fetchedBookings = data.map(dbApt => ({
             id: dbApt.id,
             lesson_code: dbApt.lesson_code || generateLessonCode(dbApt.id),
-            tutorId: dbApt.teacher_id || dbApt.tutor_id || dbApt.assigned_professor_id,
-            tutorName: dbApt.teacher_name || dbApt.tutor_name || 'Professor',
-            tutorEmail: dbApt.teacher_email || dbApt.tutor_email || '',
+            tutorId: dbApt.tutor_id || dbApt.teacher_id,
+            tutorName: dbApt.tutor_name || dbApt.teacher_name || 'Professor',
+            tutorEmail: dbApt.tutor_email || dbApt.teacher_email || '',
             tutorAvatar: dbApt.teacher_avatar || dbApt.avatar_url || '',
             tutorSubject: dbApt.subject || 'Espanhol',
             studentId: dbApt.student_id || dbApt.user_id,
@@ -430,24 +422,21 @@ const isFakeMockTutor = (t) => {
 
           setBookings(fetchedBookings);
           localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
-        } else if (!error && data && data.length === 0 && active) {
+        } else if (active) {
           setBookings([]);
           localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify([]));
         }
       } catch (err) {
-        console.warn('Error syncing appointments from Supabase:', err);
+        console.warn('Error syncing aulas from Supabase:', err);
       }
     }
 
     syncBookingsFromSupabase();
 
-    // Supabase Realtime Listener na tabela 'aulas' e 'appointments'
+    // Supabase Realtime Listener exclusivo na tabela 'aulas'
     const channel = supabase
-      .channel('realtime_aulas_all')
+      .channel('realtime_aulas_exclusive')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'aulas' }, () => {
-        syncBookingsFromSupabase();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
         syncBookingsFromSupabase();
       })
       .subscribe();

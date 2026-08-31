@@ -187,11 +187,6 @@ export default function StudentDashboard() {
         return true;
       }
 
-      // Fallback para aulas sem ID específico ou com aluno padrão
-      if (bStudentId === 'student-user' || bStudentEmail === 'aluno@lexy.com' || (!bStudentId && !bStudentEmail)) {
-        return true;
-      }
-
       return false;
     });
   }, [bookings, profile, student]);
