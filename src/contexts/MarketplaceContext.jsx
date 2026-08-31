@@ -960,7 +960,8 @@ const isFakeMockTutor = (t) => {
 
     // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase
     try {
-      const dbPayload = createdBookings.map(b => ({
+      const targetBookingsForDb = isTrialBooking ? createdBookings.slice(0, 1) : createdBookings;
+      const dbPayload = targetBookingsForDb.map(b => ({
         lesson_code: b.lesson_code,
         student_name: b.studentName || 'Aluno Lexy',
         student_email: b.studentEmail || '',
@@ -970,9 +971,9 @@ const isFakeMockTutor = (t) => {
         tutor_email: b.tutorEmail || '',
         teacher_email: b.tutorEmail || '',
         subject: b.tutorSubject || 'Espanhol',
-        day: b.day || 'Segunda-feira',
+        day: (b.day || 'Segunda-feira').replace(/ \(Semana \d+\)/g, ''),
         time: b.time || '10:00',
-        booking_type: b.bookingType || 'trial',
+        booking_type: isTrialBooking ? 'trial' : (b.bookingType || 'regular'),
         amount: Number(b.amount || 0),
         status: b.status || 'confirmed'
       }));
