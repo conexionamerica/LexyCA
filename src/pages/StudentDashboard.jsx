@@ -45,10 +45,10 @@ export default function StudentDashboard() {
     }
   }, [profile, navigate]);
 
-  const currentName = profile?.full_name || student.name || 'Aluno Lexy';
-  const currentEmail = profile?.email || student.email || 'aluno@lexy.com';
-  const currentDocument = profile?.documentNumber || student.documentNumber || '123.456.789-00';
-  const currentCountry = profile?.residenceCountry || student.residenceCountry || 'Brasil 🇧🇷';
+  const currentName = profile?.full_name || student?.name || 'Aluno Lexy';
+  const currentEmail = profile?.email || student?.email || 'aluno@lexy.com';
+  const currentDocument = profile?.documentNumber || student?.documentNumber || '123.456.789-00';
+  const currentCountry = profile?.residenceCountry || student?.residenceCountry || 'Brasil 🇧🇷';
   const currentLanguage = profile?.study_language || 'Inglês 🇬🇧🇺🇸';
   const currentLevel = profile?.language_level || 'B2 - Intermediário Avançado 🎓';
   const currentMotivation = profile?.study_motivation || 'Carreira Profissional 📈';
@@ -172,25 +172,29 @@ export default function StudentDashboard() {
   };
 
   const userBookings = useMemo(() => {
-    if (!profile) return [];
-    const pId = String(profile.id || '').toLowerCase();
-    const pEmail = String(profile.email || '').toLowerCase();
-    const pMat = String(profile.matricula_code || '').toLowerCase();
+    const pId = String(profile?.id || student?.id || '').toLowerCase();
+    const pEmail = String(profile?.email || student?.email || '').toLowerCase();
+    const pMat = String(profile?.matricula_code || student?.matricula_code || '').toLowerCase();
 
     return (bookings || []).filter(b => {
       const bStudentId = String(b.studentId || '').toLowerCase();
       const bStudentEmail = String(b.studentEmail || '').toLowerCase();
       const bStudentMat = String(b.studentMatricula || '').toLowerCase();
 
-      if (bStudentId || bStudentEmail || bStudentMat) {
-        return (pId && bStudentId === pId) || 
-               (pEmail && bStudentEmail === pEmail) || 
-               (pMat && bStudentMat === pMat);
+      if ((pId && bStudentId === pId) || 
+          (pEmail && bStudentEmail === pEmail) || 
+          (pMat && bStudentMat === pMat)) {
+        return true;
+      }
+
+      // Fallback para aulas sem ID específico ou com aluno padrão
+      if (bStudentId === 'student-user' || bStudentEmail === 'aluno@lexy.com' || (!bStudentId && !bStudentEmail)) {
+        return true;
       }
 
       return false;
     });
-  }, [bookings, profile]);
+  }, [bookings, profile, student]);
 
   const [myBookingsList, setMyBookingsList] = useState(userBookings);
 
@@ -455,7 +459,7 @@ export default function StudentDashboard() {
 
               <div className="flex justify-between items-baseline pt-0.5">
                 <span className="text-slate-400 text-xs">Saldo de Horas</span>
-                <span className="text-xl font-bold text-white tracking-tight">{(student.walletBalance ?? 0).toFixed(1)} <span className="text-xs font-medium text-cyan-400">Horas</span></span>
+                <span className="text-xl font-bold text-white tracking-tight">{(profile?.wallet_balance ?? student?.walletBalance ?? 0).toFixed(1)} <span className="text-xs font-medium text-cyan-400">Horas</span></span>
               </div>
 
               <button

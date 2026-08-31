@@ -299,7 +299,12 @@ const isFakeMockTutor = (t) => {
         console.error('Error cargando alumno', e);
       }
     }
-    return null;
+    return {
+      id: 'student-user',
+      name: 'Aluno Lexy',
+      email: 'aluno@lexy.com',
+      walletBalance: 0
+    };
   });
 
   // Trials
@@ -406,9 +411,12 @@ const isFakeMockTutor = (t) => {
     let active = true;
     async function syncBookingsFromSupabase() {
       try {
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*');
+        let res = await supabase.from('appointments').select('*');
+        if (res.error) {
+          res = await supabase.from('bookings').select('*');
+        }
+
+        const { data, error } = res;
 
         if (!error && data && active) {
           const fetchedBookings = data.map(dbApt => ({
@@ -431,11 +439,15 @@ const isFakeMockTutor = (t) => {
             createdAt: dbApt.created_at || new Date().toISOString()
           })).filter(b => !isFakeBooking(b));
 
-          setBookings(fetchedBookings);
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
-        } else if (!error && data && data.length === 0 && active) {
-          setBookings([]);
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify([]));
+          if (fetchedBookings.length > 0) {
+            setBookings(prev => {
+              const fetchedIds = new Set(fetchedBookings.map(f => String(f.id)));
+              const localOnly = prev.filter(p => !fetchedIds.has(String(p.id)));
+              const merged = [...fetchedBookings, ...localOnly];
+              localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(merged));
+              return merged;
+            });
+          }
         }
       } catch (err) {
         console.warn('Error syncing appointments from Supabase:', err);
@@ -667,17 +679,23 @@ const isFakeMockTutor = (t) => {
     }));
   };
 
-  const activateSubscriptionAndCredits = ({ tutorId, planHours = 8, planName = 'Plano Pro', amount, studentId, studentEmail, studentMatricula }) => {
+  const activateSubscriptionAndCredits = ({ tutorId, planHours = 8, planName = 'Plano Pro', amount, studentId, studentEmail, studentMatricula, studentName }) => {
     const tutor = tutors.find(t => t.id === tutorId) || tutors[0];
     const now = new Date();
     const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
     const hoursToCredit = Number(planHours) || 8;
 
+    const effectiveStudentId = studentId || student?.id || 'student-user';
+    const effectiveStudentEmail = studentEmail || student?.email || '';
+    const effectiveStudentName = studentName || student?.name || '';
+    const effectiveStudentMatricula = studentMatricula || student?.matricula_code || '';
+
     const newSub = {
       id: `sub-${Date.now()}`,
-      studentId: studentId || student?.id,
-      studentEmail: studentEmail || student?.email,
-      studentMatricula: studentMatricula || student?.matricula_code,
+      studentId: effectiveStudentId,
+      studentEmail: effectiveStudentEmail,
+      studentName: effectiveStudentName,
+      studentMatricula: effectiveStudentMatricula,
       tutorId: tutor?.id || 'tutor-1',
       tutorName: tutor?.name || 'Professor Nativo',
       tutorAvatar: tutor?.avatar,
@@ -695,10 +713,13 @@ const isFakeMockTutor = (t) => {
     setSubscriptions(prev => [newSub, ...prev]);
 
     // Creditar Horas de Aula na Carteira
-    setStudent(prev => ({
-      ...prev,
-      walletBalance: Number(((prev?.walletBalance || 0) + hoursToCredit).toFixed(2))
-    }));
+    setStudent(prev => {
+      const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
+      return {
+        ...base,
+        walletBalance: Number(((base.walletBalance || 0) + hoursToCredit).toFixed(2))
+      };
+    });
 
     // Gerar a agenda completa de aulas para o ciclo de 28 dias (ex: 8 aulas)
     const baseSlots = [
@@ -726,7 +747,10 @@ const isFakeMockTutor = (t) => {
           tutorName: tutor.name,
           tutorAvatar: tutor.avatar,
           tutorSubject: tutor.subject,
-          studentId: student.id,
+          studentId: effectiveStudentId,
+          studentEmail: effectiveStudentEmail,
+          studentName: effectiveStudentName,
+          studentMatricula: effectiveStudentMatricula,
           day: `${s.day} (Semana ${week})`,
           time: s.time,
           bookingType: 'subscription',
@@ -738,6 +762,35 @@ const isFakeMockTutor = (t) => {
     }
 
     setBookings(prev => [...generatedBookings, ...prev]);
+
+    // Persistir no Supabase (ambas as tabelas por compatibilidade)
+    try {
+      const dbPayload = generatedBookings.map(b => ({
+        teacher_id: b.tutorId,
+        tutor_id: b.tutorId,
+        student_id: (b.studentId && b.studentId !== 'student-user' && b.studentId.includes('-')) ? b.studentId : null,
+        student_email: b.studentEmail,
+        student_name: b.studentName,
+        teacher_name: b.tutorName,
+        subject: b.tutorSubject,
+        day_name: b.day,
+        day: b.day,
+        time_slot: b.time,
+        time: b.time,
+        booking_type: b.bookingType,
+        amount: b.amount,
+        status: b.status,
+        lesson_code: b.lesson_code
+      }));
+
+      supabase.from('appointments').insert(dbPayload).then(({ error }) => {
+        if (error) {
+          supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+        }
+      }).catch(err => console.warn('Supabase subscription insert error:', err));
+    } catch (e) {
+      console.warn('Subscription DB sync catch:', e);
+    }
 
     return newSub;
   };
@@ -768,28 +821,34 @@ const isFakeMockTutor = (t) => {
     const totalContractedHours = Number(planHours) || (bookingType === 'trial' ? 1 : 8);
 
     if (!bypassWallet) {
-      if ((student.walletBalance || 0) < totalContractedHours && bookingType !== 'trial') {
+      if ((student?.walletBalance || 0) < totalContractedHours && bookingType !== 'trial') {
         return { 
           success: false, 
           error: 'insufficient_funds', 
           required: totalContractedHours, 
-          current: student.walletBalance || 0 
+          current: student?.walletBalance || 0 
         };
       }
 
       // Descontar saldo de horas de aula
       if (bookingType !== 'trial') {
-        setStudent(prev => ({
-          ...prev,
-          walletBalance: Math.max(0, Number(((prev.walletBalance || 0) - totalContractedHours).toFixed(2)))
-        }));
+        setStudent(prev => {
+          const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
+          return {
+            ...base,
+            walletBalance: Math.max(0, Number(((base.walletBalance || 0) - totalContractedHours).toFixed(2)))
+          };
+        });
       }
     } else {
       // Se pagamento foi aprovado via Stone (bypassWallet = true): Liberar Horas Contratadas
-      setStudent(prev => ({
-        ...prev,
-        walletBalance: Number((prev.walletBalance || 0).toFixed(2))
-      }));
+      setStudent(prev => {
+        const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
+        return {
+          ...base,
+          walletBalance: Number((base.walletBalance || 0).toFixed(2))
+        };
+      });
     }
 
     if (bookingType === 'trial') {
@@ -847,13 +906,13 @@ const isFakeMockTutor = (t) => {
           tutorName: tutor.name,
           tutorAvatar: tutor.avatar,
           tutorSubject: tutor.subject,
-          studentId: student?.id || 'student-user',
-          studentEmail: student?.email || '',
-          studentName: student?.name || '',
-          studentMatricula: student?.matricula_code || '',
+          studentId: effectiveStudentId || 'student-user',
+          studentEmail: effectiveStudentEmail || '',
+          studentName: effectiveStudentName || '',
+          studentMatricula: effectiveStudentMatricula || '',
           day: dayFormatted,
           time: s.time || time,
-          bookingType,
+          bookingType: bookingType || 'regular',
           amount: totalAmount,
           status: 'confirmed',
           createdAt: new Date().toISOString()
@@ -873,6 +932,35 @@ const isFakeMockTutor = (t) => {
     }
 
     setBookings(prev => [...createdBookings, ...prev]);
+
+    // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase
+    try {
+      const dbPayload = createdBookings.map(b => ({
+        teacher_id: b.tutorId,
+        tutor_id: b.tutorId,
+        student_id: (b.studentId && b.studentId !== 'student-user' && b.studentId.includes('-')) ? b.studentId : null,
+        student_email: b.studentEmail,
+        student_name: b.studentName,
+        teacher_name: b.tutorName,
+        subject: b.tutorSubject,
+        day_name: b.day,
+        day: b.day,
+        time_slot: b.time,
+        time: b.time,
+        booking_type: b.bookingType,
+        amount: b.amount,
+        status: b.status,
+        lesson_code: b.lesson_code
+      }));
+
+      supabase.from('appointments').insert(dbPayload).then(({ error }) => {
+        if (error) {
+          supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
+        }
+      }).catch(err => console.warn('Supabase createBooking insert error:', err));
+    } catch (e) {
+      console.warn('createBooking DB sync catch:', e);
+    }
 
     return { success: true, booking: createdBookings[0] };
   };

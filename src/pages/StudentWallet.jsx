@@ -144,6 +144,7 @@ export default function StudentWallet() {
       activateSubscriptionAndCredits({
         studentId: profile?.id,
         studentEmail: profile?.email,
+        studentName: profile?.full_name || 'Aluno Lexy',
         studentMatricula: profile?.matricula_code,
         tutorId: 'tutor-default',
         planName: plan.name,

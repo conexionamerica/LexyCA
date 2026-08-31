@@ -193,10 +193,10 @@ export default function BookingPage() {
         planHours: selectedPackage.hours || 8,
         planName: selectedPackage.name || `Plano ${selectedPackage.hours || 8}h`,
         totalAmount,
-        studentId: profile?.id,
-        studentEmail: profile?.email,
-        studentName: profile?.full_name,
-        studentMatricula: profile?.matricula_code
+        studentId: profile?.id || student?.id,
+        studentEmail: profile?.email || student?.email,
+        studentName: profile?.full_name || student?.name,
+        studentMatricula: profile?.matricula_code || student?.matricula_code
       });
 
       if (!result.success) {
@@ -237,10 +237,10 @@ export default function BookingPage() {
       totalAmount,
       bypassWallet: true,
       paymentId: paymentResult.transactionId,
-      studentId: profile?.id,
-      studentEmail: profile?.email,
-      studentName: profile?.full_name,
-      studentMatricula: profile?.matricula_code
+      studentId: profile?.id || student?.id,
+      studentEmail: profile?.email || student?.email,
+      studentName: profile?.full_name || student?.name,
+      studentMatricula: profile?.matricula_code || student?.matricula_code
     });
 
     setIsSuccess(true);
