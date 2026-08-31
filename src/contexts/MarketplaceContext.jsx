@@ -812,7 +812,7 @@ const isFakeMockTutor = (t) => {
     const effectiveStudentName = studentName || student?.name;
     const effectiveStudentMatricula = studentMatricula || student?.matricula_code;
 
-    if (bookingType === 'trial') {
+    if (bookingType === 'trial' && !bypassWallet) {
       if (usedTrials.includes(tutorId)) {
         return {
           success: false,
