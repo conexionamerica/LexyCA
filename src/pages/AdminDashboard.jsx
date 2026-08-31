@@ -805,14 +805,17 @@ export default function AdminDashboard() {
               {/* Campo Aula Experimental */}
               <div>
                 <div className="flex justify-between items-center mb-1 text-xs">
-                  <label className="font-bold text-slate-300">Aula Experimental</label>
-                  <span className="text-amber-400 font-bold">{editableTierRates.trial}%</span>
+                  <label className="font-bold text-slate-300">Aula Experimental (Repasse % ao Professor)</label>
+                  <span className="text-amber-400 font-bold">{editableTierRates.trial}% Tutor / {100 - editableTierRates.trial}% Lexy</span>
                 </div>
                 <input
-                  type="number" min={50} max={100} value={editableTierRates.trial}
+                  type="number" min={0} max={100} value={editableTierRates.trial}
                   onChange={(e) => setEditableTierRates(prev => ({ ...prev, trial: Number(e.target.value) }))}
                   className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-amber-400"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Porcentagem de repasse ao professor para Aulas Experimentais (Ex: 10% repasse ao tutor / 90% comissão para a Lexy).
+                </p>
               </div>
 
               {/* Campo 0 a 7 aulas */}

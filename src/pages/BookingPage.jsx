@@ -117,7 +117,7 @@ export default function BookingPage() {
   const daysWithFreeSlots = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
-  const trialRate = Number(tutor?.trialRate || tutor?.trial_rate || Math.round(hourlyRate * 0.5));
+  const trialRate = Number((hourlyRate * 0.5).toFixed(2));
 
   const pkgHours = selectedPackage?.hours || selectedPackage?.lessonsCount || 4;
   const pkgDiscount = getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor?.id, selectedPackage?.id) : 0;

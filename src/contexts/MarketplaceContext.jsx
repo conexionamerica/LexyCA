@@ -34,7 +34,7 @@ export const getTutorPackageDiscount = (packageDiscounts, tutorId, pkgId) => {
 };
 
 export const DEFAULT_TIER_RATES = {
-  trial: 75, // Aula Experimental: 75% Ganho
+  trial: 10, // Aula Experimental: 10% Ganho do Professor (90% Retenção Lexy)
   tier1: 75, // 0 a 7 Aulas: 75% Ganho
   tier2: 80, // 8 a 15 Aulas: 80% Ganho
   tier3: 85, // 16 a 20 Aulas: 85% Ganho
