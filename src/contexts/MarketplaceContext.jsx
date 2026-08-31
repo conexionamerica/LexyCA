@@ -398,7 +398,21 @@ const isFakeMockTutor = (t) => {
         const { data, error } = await supabase.from('aulas').select('*');
 
         if (!error && data && active) {
-          const fetchedBookings = data.map(dbApt => ({
+          const filteredData = data.filter(dbApt => {
+            const bType = String(dbApt.booking_type || '').toLowerCase();
+            const dayStr = String(dbApt.day_name || dbApt.day || '');
+            if (bType === 'trial' || bType === 'experimental') {
+              if (dayStr.includes('Semana 2') || dayStr.includes('Semana 3') || dayStr.includes('Semana 4') || dayStr.includes('Semana 5')) {
+                if (dbApt.id) {
+                  supabase.from('aulas').delete().eq('id', dbApt.id).then(() => {}).catch(e => console.warn(e));
+                }
+                return false;
+              }
+            }
+            return true;
+          });
+
+          const fetchedBookings = filteredData.map(dbApt => ({
             id: dbApt.id,
             lesson_code: dbApt.lesson_code || generateLessonCode(dbApt.id),
             tutorId: dbApt.tutor_id || dbApt.teacher_id,
