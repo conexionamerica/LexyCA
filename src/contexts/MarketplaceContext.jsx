@@ -335,8 +335,12 @@ const isFakeMockTutor = (t) => {
 
   const isFakeBooking = (b) => {
     if (!b || !b.id) return true;
-    const fakeIds = ['booking-demo-01', 'booking-pending-01'];
-    if (fakeIds.includes(String(b.id))) return true;
+    const fakeIds = ['booking-demo-01', 'booking-pending-01', 'booking-sub-w'];
+    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva', 'Luky Snaider', 'Luky'];
+    const fakeEmails = ['gabriel@test.com', 'luciana@test.com', 'roberto@test.com', 'luky@test.com'];
+    if (fakeIds.some(fid => String(b.id).includes(fid))) return true;
+    if (fakeNames.includes(String(b.studentName || b.name || ''))) return true;
+    if (fakeEmails.includes(String(b.studentEmail || b.email || b.studentId || '').toLowerCase())) return true;
     return false;
   };
 

@@ -42,6 +42,11 @@ export default function TeacherDashboard() {
 
   const isBookingForThisTeacher = (b) => {
     if (!b) return false;
+
+    // Filter out fake demo mock students
+    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva', 'Luky Snaider', 'Luky'];
+    if (fakeNames.includes(String(b.studentName || b.name || ''))) return false;
+
     const cleanStr = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const bTutorId = cleanStr(b.tutorId);
@@ -65,11 +70,11 @@ export default function TeacherDashboard() {
     if (pName && (bTutorName === pName || bTutorName.includes(pName) || pName.includes(bTutorName))) return true;
     if (tName && (bTutorName === tName || bTutorName.includes(tName) || tName.includes(bTutorName))) return true;
 
-    if (!bTutorId && !bTutorEmail && !bTutorName) return true;
-
-    if (profile?.role === 'teacher' || profile?.role === 'professor') {
-      return true;
+    if (bTutorName && tName && !bTutorName.includes(tName) && !tName.includes(bTutorName)) {
+      return false;
     }
+
+    if (!bTutorId && !bTutorEmail && !bTutorName) return true;
 
     return false;
   };
