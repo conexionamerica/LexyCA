@@ -42,26 +42,34 @@ export default function TeacherDashboard() {
 
   const isBookingForThisTeacher = (b) => {
     if (!b) return false;
-    const bTutorId = String(b.tutorId || '').toLowerCase();
-    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
-    const bTutorName = String(b.tutorName || '').toLowerCase();
+    const cleanStr = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    const pId = String(profile?.id || '').toLowerCase();
-    const pEmail = String(profile?.email || '').toLowerCase();
-    const pName = String(profile?.full_name || '').toLowerCase();
+    const bTutorId = cleanStr(b.tutorId);
+    const bTutorEmail = cleanStr(b.tutorEmail);
+    const bTutorName = cleanStr(b.tutorName);
 
-    const tId = String(tutor?.id || '').toLowerCase();
-    const tEmail = String(tutor?.email || '').toLowerCase();
-    const tName = String(tutor?.name || '').toLowerCase();
+    const pId = cleanStr(profile?.id);
+    const pEmail = cleanStr(profile?.email);
+    const pName = cleanStr(profile?.full_name || profile?.name);
 
-    if (pId && bTutorId === pId) return true;
-    if (tId && bTutorId === tId) return true;
-    if (pEmail && bTutorEmail === pEmail) return true;
-    if (tEmail && bTutorEmail === tEmail) return true;
-    if (pName && bTutorName === pName) return true;
-    if (tName && bTutorName === tName) return true;
+    const tId = cleanStr(tutor?.id);
+    const tEmail = cleanStr(tutor?.email);
+    const tName = cleanStr(tutor?.name);
+
+    if (pId && (bTutorId === pId || bTutorId.includes(pId) || pId.includes(bTutorId))) return true;
+    if (tId && (bTutorId === tId || bTutorId.includes(tId) || tId.includes(bTutorId))) return true;
+
+    if (pEmail && (bTutorEmail === pEmail || bTutorEmail.includes(pEmail) || pEmail.includes(bTutorEmail))) return true;
+    if (tEmail && (bTutorEmail === tEmail || bTutorEmail.includes(tEmail) || tEmail.includes(bTutorEmail))) return true;
+
+    if (pName && (bTutorName === pName || bTutorName.includes(pName) || pName.includes(bTutorName))) return true;
+    if (tName && (bTutorName === tName || bTutorName.includes(tName) || tName.includes(bTutorName))) return true;
 
     if (!bTutorId && !bTutorEmail && !bTutorName) return true;
+
+    if (profile?.role === 'teacher' || profile?.role === 'professor') {
+      return true;
+    }
 
     return false;
   };
