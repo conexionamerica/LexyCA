@@ -387,24 +387,8 @@ const isFakeMockTutor = (t) => {
     return generated;
   };
 
-  // Bookings (Agenda de Aulas Nativa Real)
-  const [bookings, setBookings] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(b => !isFakeBooking(b)).map(b => ({
-            ...b,
-            lesson_code: b.lesson_code || generateLessonCode(b.id)
-          }));
-        }
-      } catch (e) {
-        console.error('Error cargando reservas', e);
-      }
-    }
-    return [];
-  });
+  // Bookings (Agenda de Aulas Nativa Real em Supabase)
+  const [bookings, setBookings] = useState([]);
 
   // Sincronizar reservas e agendamentos reais via Supabase (Stale-While-Revalidate)
   useEffect(() => {
@@ -430,24 +414,20 @@ const isFakeMockTutor = (t) => {
             studentEmail: dbApt.student_email || dbApt.email || '',
             studentName: dbApt.student_name || dbApt.full_name || 'Aluno Cadastrado',
             studentAvatar: dbApt.student_avatar || '',
-            day: dbApt.day_name || dbApt.day || 'Segunda',
+            day: dbApt.day_name || dbApt.day || 'Segunda-feira',
             isoDateStr: dbApt.date || dbApt.iso_date || '',
             time: dbApt.time_slot || dbApt.time || '10:00',
             bookingType: dbApt.booking_type || 'regular',
             amount: Number(dbApt.amount || dbApt.price || 0),
             status: dbApt.status || 'confirmed',
             createdAt: dbApt.created_at || new Date().toISOString()
-          })).filter(b => !isFakeBooking(b));
+          }));
 
-          if (fetchedBookings.length > 0) {
-            setBookings(prev => {
-              const fetchedIds = new Set(fetchedBookings.map(f => String(f.id)));
-              const localOnly = prev.filter(p => !fetchedIds.has(String(p.id)));
-              const merged = [...fetchedBookings, ...localOnly];
-              localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(merged));
-              return merged;
-            });
-          }
+          setBookings(fetchedBookings);
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
+        } else if (!error && data && data.length === 0 && active) {
+          setBookings([]);
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify([]));
         }
       } catch (err) {
         console.warn('Error syncing appointments from Supabase:', err);
