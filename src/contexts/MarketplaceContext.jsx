@@ -750,41 +750,42 @@ const isFakeMockTutor = (t) => {
 
     setBookings(prev => [...generatedBookings, ...prev]);
 
-    // Persistir no Supabase (ambas as tabelas por compatibilidade)
+    // Persistir no Supabase (tabela public.aulas)
     try {
       const dbPayload = generatedBookings.map(b => ({
-        teacher_id: (b.tutorId && String(b.tutorId).includes('-') && String(b.tutorId).length >= 30) ? b.tutorId : null,
-        tutor_id: (b.tutorId && String(b.tutorId).includes('-') && String(b.tutorId).length >= 30) ? b.tutorId : null,
-        student_id: (b.studentId && String(b.studentId).includes('-') && String(b.studentId).length >= 30) ? b.studentId : null,
+        lesson_code: b.lesson_code,
+        student_name: b.studentName || 'Aluno Lexy',
         student_email: b.studentEmail || '',
-        student_name: b.studentName || '',
         student_matricula: b.studentMatricula || '',
-        teacher_name: b.tutorName || '',
-        tutor_name: b.tutorName || '',
-        teacher_email: b.tutorEmail || '',
+        tutor_name: b.tutorName || 'Professor Lexy',
+        teacher_name: b.tutorName || 'Professor Lexy',
         tutor_email: b.tutorEmail || '',
+        teacher_email: b.tutorEmail || '',
         subject: b.tutorSubject || 'Espanhol',
-        day_name: b.day || '',
-        day: b.day || '',
-        time_slot: b.time || '',
-        time: b.time || '',
+        day: b.day || 'Segunda-feira',
+        time: b.time || '10:00',
         booking_type: b.bookingType || 'subscription',
-        amount: b.amount || 0,
-        status: b.status || 'confirmed',
-        lesson_code: b.lesson_code
+        amount: Number(b.amount || 0),
+        status: b.status || 'confirmed'
       }));
 
       supabase.from('aulas').insert(dbPayload).then(({ error }) => {
         if (error) {
-          supabase.from('appointments').insert(dbPayload).then(({ error: err2 }) => {
-            if (err2) {
-              supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
-            }
-          });
+          console.error('❌ Error inserting subscription into aulas:', error);
+          const minPayload = generatedBookings.map(b => ({
+            lesson_code: b.lesson_code,
+            student_name: b.studentName || 'Aluno',
+            tutor_name: b.tutorName || 'Prof',
+            day: b.day || '',
+            time: b.time || ''
+          }));
+          supabase.from('aulas').insert(minPayload).catch(e => console.warn(e));
+        } else {
+          console.log('✅ Subscription aulas inserted successfully:', dbPayload);
         }
-      }).catch(err => console.warn('Supabase subscription insert error:', err));
+      }).catch(err => console.error('Supabase subscription insert catch:', err));
     } catch (e) {
-      console.warn('Subscription DB sync catch:', e);
+      console.error('Subscription DB sync catch:', e);
     }
 
     return newSub;
@@ -932,38 +933,42 @@ const isFakeMockTutor = (t) => {
     // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase
     try {
       const dbPayload = createdBookings.map(b => ({
-        teacher_id: (b.tutorId && String(b.tutorId).includes('-') && String(b.tutorId).length >= 30) ? b.tutorId : null,
-        tutor_id: (b.tutorId && String(b.tutorId).includes('-') && String(b.tutorId).length >= 30) ? b.tutorId : null,
-        student_id: (b.studentId && String(b.studentId).includes('-') && String(b.studentId).length >= 30) ? b.studentId : null,
+        lesson_code: b.lesson_code,
+        student_name: b.studentName || 'Aluno Lexy',
         student_email: b.studentEmail || '',
-        student_name: b.studentName || '',
         student_matricula: b.studentMatricula || '',
-        teacher_name: b.tutorName || '',
-        tutor_name: b.tutorName || '',
-        teacher_email: b.tutorEmail || '',
+        tutor_name: b.tutorName || 'Professor Lexy',
+        teacher_name: b.tutorName || 'Professor Lexy',
         tutor_email: b.tutorEmail || '',
+        teacher_email: b.tutorEmail || '',
         subject: b.tutorSubject || 'Espanhol',
-        day_name: b.day || '',
-        day: b.day || '',
-        time_slot: b.time || '',
-        time: b.time || '',
+        day: b.day || 'Segunda-feira',
+        time: b.time || '10:00',
         booking_type: b.bookingType || 'trial',
-        amount: b.amount || 0,
-        status: b.status || 'confirmed',
-        lesson_code: b.lesson_code
+        amount: Number(b.amount || 0),
+        status: b.status || 'confirmed'
       }));
 
       supabase.from('aulas').insert(dbPayload).then(({ error }) => {
         if (error) {
-          supabase.from('appointments').insert(dbPayload).then(({ error: err2 }) => {
-            if (err2) {
-              supabase.from('bookings').insert(dbPayload).catch(e => console.warn(e));
-            }
+          console.error('❌ Error inserting booking into aulas table:', error);
+          const minPayload = createdBookings.map(b => ({
+            lesson_code: b.lesson_code,
+            student_name: b.studentName || 'Aluno',
+            tutor_name: b.tutorName || 'Prof',
+            day: b.day || '',
+            time: b.time || ''
+          }));
+          supabase.from('aulas').insert(minPayload).then(({ error: minErr }) => {
+            if (minErr) console.error('❌ Supabase minimal insert error:', minErr);
+            else console.log('✅ Supabase minimal insert succeeded!');
           });
+        } else {
+          console.log('✅ Supabase aulas insert succeeded!', dbPayload);
         }
-      }).catch(err => console.warn('Supabase createBooking insert error:', err));
+      }).catch(err => console.error('Supabase createBooking insert catch:', err));
     } catch (e) {
-      console.warn('createBooking DB sync catch:', e);
+      console.error('createBooking DB sync catch:', e);
     }
 
     return { success: true, booking: createdBookings[0] };

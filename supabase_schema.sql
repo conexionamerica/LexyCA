@@ -245,12 +245,9 @@ CREATE TRIGGER on_auth_user_created
 CREATE TABLE IF NOT EXISTS public.aulas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_code TEXT UNIQUE NOT NULL,
-  student_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   student_name TEXT,
   student_email TEXT,
   student_matricula TEXT,
-  tutor_id UUID REFERENCES public.tutors(id) ON DELETE SET NULL,
-  teacher_id UUID,
   tutor_name TEXT,
   teacher_name TEXT,
   tutor_email TEXT,
@@ -266,7 +263,29 @@ CREATE TABLE IF NOT EXISTS public.aulas (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Garantir que todas as colunas existam caso a tabela tenha sido criada com campos parciais
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS lesson_code TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS student_email TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS student_matricula TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS tutor_name TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS teacher_name TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS tutor_email TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS teacher_email TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'Espanhol';
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS day TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS day_name TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS time TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS time_slot TEXT;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS booking_type TEXT DEFAULT 'trial';
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed';
+
 ALTER TABLE public.aulas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Aulas public view" ON public.aulas;
+DROP POLICY IF EXISTS "Aulas insert" ON public.aulas;
+DROP POLICY IF EXISTS "Aulas update" ON public.aulas;
 
 CREATE POLICY "Aulas public view" ON public.aulas FOR SELECT USING (true);
 CREATE POLICY "Aulas insert" ON public.aulas FOR INSERT WITH CHECK (true);
