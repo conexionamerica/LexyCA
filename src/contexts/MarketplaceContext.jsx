@@ -810,11 +810,15 @@ const isFakeMockTutor = (t) => {
       }
     }
 
-    const baseSlots = (Array.isArray(allSlots) && allSlots.length > 0) 
-      ? allSlots 
-      : [{ day: day || 'Segunda-feira', time: time || '10:00' }];
+    const isTrialBooking = (bookingType === 'trial');
 
-    const totalContractedHours = Number(planHours) || (bookingType === 'trial' ? 1 : 8);
+    const totalContractedHours = isTrialBooking ? 1 : (Number(planHours) || 8);
+
+    const baseSlots = isTrialBooking
+      ? [{ day: day || 'Segunda-feira', time: time || '10:00' }]
+      : ((Array.isArray(allSlots) && allSlots.length > 0) 
+        ? allSlots 
+        : [{ day: day || 'Segunda-feira', time: time || '10:00' }]);
 
     if (!bypassWallet) {
       if ((student?.walletBalance || 0) < totalContractedHours && bookingType !== 'trial') {

@@ -189,19 +189,20 @@ export default function BookingPage() {
 
   const handleStoneBookingPaymentSuccess = (paymentResult) => {
     setIsStoneModalOpen(false);
-    const activeSlots = selectedSlots.slice(0, neededSlotsCount);
-    const primarySlot = activeSlots[0];
+    const isTrial = bookingType === 'trial';
+    const activeSlots = isTrial ? [selectedSlots[0]] : selectedSlots.slice(0, neededSlotsCount);
+    const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
     // Forçar reserva aprovada por Stone Pagamentos S.A.
     createBooking({
       tutorId: tutor.id,
       day: primarySlot.day,
       time: primarySlot.time,
-      allSlots: activeSlots,
+      allSlots: isTrial ? [primarySlot] : activeSlots,
       bookingType,
-      planHours: selectedPackage.hours || 8,
-      planName: selectedPackage.name || `Plano ${selectedPackage.hours || 8}h`,
-      totalAmount,
+      planHours: isTrial ? 1 : (selectedPackage.hours || 8),
+      planName: isTrial ? 'Aula Experimental de Idiomas (45 min)' : (selectedPackage.name || `Plano ${selectedPackage.hours || 8}h`),
+      totalAmount: isTrial ? (tutor.trialRate || 10) : totalAmount,
       bypassWallet: true,
       paymentId: paymentResult.transactionId,
       studentId: profile?.id || student?.id,
