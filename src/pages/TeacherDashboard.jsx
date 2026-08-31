@@ -25,75 +25,11 @@ export default function TeacherDashboard() {
   const MAX_RATE = 40;
   const RECOMMENDED_RATE = 23;
 
-  const myTeacherBookings = React.useMemo(() => {
-    if (!profile) return [];
-    const pId = String(profile?.id || '').toLowerCase();
-    const pEmail = String(profile?.email || '').toLowerCase();
-
-    return (bookings || []).filter(b => {
-      const bTutorId = String(b.tutorId || '').toLowerCase();
-      const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
-      return (pId && bTutorId === pId) || (pEmail && bTutorEmail === pEmail);
-    });
-  }, [bookings, profile]);
-
-  const myStudentsList = React.useMemo(() => {
-    const studentMap = {};
-    myTeacherBookings.forEach(b => {
-      const sId = b.studentId || b.studentEmail || b.studentName;
-      if (sId && !studentMap[sId]) {
-        studentMap[sId] = {
-          id: sId,
-          name: b.studentName || 'Aluno Lexy',
-          email: b.studentEmail || '',
-          avatar: b.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-          level: b.studentLevel || 'Nível em Avaliação',
-          lessonsCount: myTeacherBookings.filter(x => (x.studentId && x.studentId === sId) || (x.studentEmail && x.studentEmail === sId)).length,
-          phone: b.studentPhone || 'Telefone não informado'
-        };
-      }
-    });
-
-    return Object.values(studentMap);
-  }, [myTeacherBookings]);
-
-  const [selectedStudentId, setSelectedStudentId] = useState(null);
-  const selectedStudent = myStudentsList.find(s => s.id === selectedStudentId) || myStudentsList[0] || null;
-
-  const activeStudentMessages = directChatMessages.filter(msg => 
-    selectedStudent && (msg.studentId === selectedStudent.id || msg.studentEmail === selectedStudent.email)
-  );
-
-  const teacherMessagesContainerRef = useRef(null);
-
-  useEffect(() => {
-    if (activeTab === 'chat' && teacherMessagesContainerRef.current) {
-      teacherMessagesContainerRef.current.scrollTop = teacherMessagesContainerRef.current.scrollHeight;
-    }
-  }, [directChatMessages, selectedStudentId, activeTab]);
-
-  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lexy_teacher_dismissed_announcements_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const handleDismissAnnouncement = (annId) => {
-    setDismissedAnnouncements(prev => {
-      const updated = [...prev, annId];
-      localStorage.setItem('lexy_teacher_dismissed_announcements_v1', JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  const teacherAnnouncements = (announcements || [])
-    .filter(a => a.target === 'teachers')
-    .filter(a => !dismissedAnnouncements.includes(a.id));
-
-  const tutor = tutors.find(t => t.email === profile?.email || t.id === profile?.id) || {
+  const tutor = tutors.find(t => 
+    (profile?.id && String(t.id).toLowerCase() === String(profile.id).toLowerCase()) || 
+    (profile?.email && String(t.email).toLowerCase() === String(profile.email).toLowerCase()) ||
+    (profile?.full_name && String(t.name).toLowerCase() === String(profile.full_name).toLowerCase())
+  ) || tutors[0] || {
     id: profile?.id || 'tutor-current',
     name: profile?.full_name || 'Professor Nativo',
     email: profile?.email || '',
@@ -103,6 +39,36 @@ export default function TeacherDashboard() {
     earnedBalance: 0.00,
     weeklySchedule: profile?.weekly_schedule || {}
   };
+
+  const isBookingForThisTeacher = (b) => {
+    if (!b) return false;
+    const bTutorId = String(b.tutorId || '').toLowerCase();
+    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
+    const bTutorName = String(b.tutorName || '').toLowerCase();
+
+    const pId = String(profile?.id || '').toLowerCase();
+    const pEmail = String(profile?.email || '').toLowerCase();
+    const pName = String(profile?.full_name || '').toLowerCase();
+
+    const tId = String(tutor?.id || '').toLowerCase();
+    const tEmail = String(tutor?.email || '').toLowerCase();
+    const tName = String(tutor?.name || '').toLowerCase();
+
+    if (pId && bTutorId === pId) return true;
+    if (tId && bTutorId === tId) return true;
+    if (pEmail && bTutorEmail === pEmail) return true;
+    if (tEmail && bTutorEmail === tEmail) return true;
+    if (pName && bTutorName === pName) return true;
+    if (tName && bTutorName === tName) return true;
+
+    if (!bTutorId && !bTutorEmail && !bTutorName) return true;
+
+    return false;
+  };
+
+  const myTeacherBookings = React.useMemo(() => {
+    return (bookings || []).filter(b => isBookingForThisTeacher(b));
+  }, [bookings, profile, tutor]);
 
   const totalLessons = tutor.totalLessons || 0;
   const currentEarnPercent = getTeacherEarnPercent(totalLessons, false, tierRates);
@@ -676,25 +642,11 @@ export default function TeacherDashboard() {
   const gridTimeSlots = getGridTimeSlots();
 
   const pendingRequests = (bookings || []).filter(b => {
-    if (!profile) return false;
-    const tId = String(tutor?.id || profile?.id || '').toLowerCase();
-    const tEmail = String(tutor?.email || profile?.email || '').toLowerCase();
-    const bTutorId = String(b.tutorId || '').toLowerCase();
-    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
-
-    const isMyTutor = (tId && bTutorId === tId) || (tEmail && bTutorEmail === tEmail);
-    return isMyTutor && (b.status === 'pending' || b.status === 'solicitada');
+    return isBookingForThisTeacher(b) && (b.status === 'pending' || b.status === 'solicitada');
   });
 
   const tutorBookings = (bookings || []).filter(b => {
-    if (!profile) return false;
-    const tId = String(tutor?.id || profile?.id || '').toLowerCase();
-    const tEmail = String(tutor?.email || profile?.email || '').toLowerCase();
-    const bTutorId = String(b.tutorId || '').toLowerCase();
-    const bTutorEmail = String(b.tutorEmail || '').toLowerCase();
-
-    const isMyTutor = (tId && bTutorId === tId) || (tEmail && bTutorEmail === tEmail);
-    return isMyTutor && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled');
+    return isBookingForThisTeacher(b) && (b.status === 'confirmed' || b.status === 'agendada' || b.status === 'rescheduled');
   });
   
   // Filter active bookings that are NOT expired by more than 10 mins and NOT completed
