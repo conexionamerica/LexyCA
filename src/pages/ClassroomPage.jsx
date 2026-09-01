@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 export default function ClassroomPage() {
   const { bookingId } = useParams();
@@ -104,9 +105,15 @@ export default function ClassroomPage() {
     return `lexy_private_room_${bookingId || 'session'}`;
   }, [currentBooking, bookingId]);
 
-  // WebRTC & Media Stream States for 100% Native Lexy Video Engine
+  // WebRTC Media Stream States (Local & Remote Streams)
   const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const pcRef = useRef(null);
+
   const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+  const [isSwapped, setIsSwapped] = useState(false); // Inverter vista grande x vista pequena
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [cameraError, setCameraError] = useState(null);
 
@@ -497,41 +504,67 @@ Dicas:
               ) : (
                 /* VÍDEO PRINCIPAL DA CÂMERA DO NAVEGADOR QUANDO DENTRO DA SALA */
                 <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950">
-                  {isVideoOn ? (
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
-                    />
-                  ) : (
-                    /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO DO OUTRO PARTICIPANTE */
-                    <div className="flex flex-col items-center justify-center space-y-4 p-6">
-                      <div className="relative">
-                        <img
-                          src={otherParticipantDisplay.avatar || tutor.avatar}
-                          alt={otherParticipantDisplay.name}
-                          className="w-32 h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
-                        />
-                        {isMicOn && (
+                  
+                  {/* ── TELA PRINCIPAL (GRANDE): TRANSMISSÃO DO OUTRO PARTICIPANTE (PROFESSOR OU ALUNO) ── */}
+                  {!isSwapped ? (
+                    isRemoteConnected && remoteStream ? (
+                      <video
+                        ref={remoteVideoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover rounded-2xl"
+                      />
+                    ) : (
+                      /* AGUARDANDO A ENTRADA / CÂMERA DO OUTRO PARTICIPANTE NA TELA GRANDE */
+                      <div className="flex flex-col items-center justify-center space-y-4 p-6 text-center animate-fade-in my-auto">
+                        <div className="relative">
+                          <img
+                            src={otherParticipantDisplay.avatar || tutor.avatar}
+                            alt={otherParticipantDisplay.name}
+                            className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
+                          />
                           <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                        )}
+                          <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs">
+                            ✓
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 max-w-sm">
+                          <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-wider inline-flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                            <span>Aguardando {otherParticipantDisplay.roleLabel}</span>
+                          </span>
+                          <h3 className="text-lg font-extrabold text-white">{otherParticipantDisplay.name}</h3>
+                          <p className="text-xs text-slate-400 leading-relaxed">
+                            Assim que <strong>{otherParticipantDisplay.name}</strong> entrar na sala virtual, o vídeo transmitirá automaticamente nesta tela principal.
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-center space-y-1">
-                        <h3 className="text-lg font-extrabold text-white">{otherParticipantDisplay.name}</h3>
-                        <span className="text-xs text-cyan-300 font-mono font-semibold block">
-                          {isMicOn ? '🎤 Microfone Ativo • Câmera Oculta' : '🔇 Câmera & Microfone Mute'}
-                        </span>
+                    )
+                  ) : (
+                    /* MODO INVERTIDO (SUA CÂMERA NA TELA GRANDE) */
+                    isVideoOn ? (
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-3 p-6">
+                        <div className="w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 font-extrabold flex items-center justify-center text-2xl uppercase">
+                          {currentUserDisplay.name.charAt(0)}
+                        </div>
+                        <h3 className="text-base font-bold text-white">{currentUserDisplay.name} (Sua Câmera Desativada)</h3>
                       </div>
-                    </div>
+                    )
                   )}
 
                   {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
-                  <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
+                  <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                     <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                      {isScreenSharing ? '🖥️ Compartilhando Tela' : `🔴 Sala Privada: ${otherParticipantDisplay.name}`}
+                      {isScreenSharing ? '🖥️ Compartilhando Tela' : `🔴 Participante: ${otherParticipantDisplay.name}`}
                     </span>
                   </div>
 
@@ -551,19 +584,56 @@ Dicas:
                     </div>
                   )}
 
-                  {/* MINIATURA PIP COM NOME E FOTO DO USUÁRIO LOGADO (SELF VIEW) */}
-                  <div className="absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
-                    <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
-                      {currentUserDisplay.avatar ? (
-                        <img src={currentUserDisplay.avatar} alt={currentUserDisplay.name} className="w-10 h-10 rounded-full object-cover border border-cyan-400" />
+                  {/* ── MINIATURA PIP QUADRO PEQUENO (SUA CÂMERA LOCAL "VOCÊ") ── */}
+                  <div
+                    onClick={() => setIsSwapped(prev => !prev)}
+                    className="absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-32 h-24 sm:w-44 sm:h-32 rounded-2xl bg-slate-950 border-2 border-cyan-400/80 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-200 hover:border-cyan-300"
+                    title="Clique para inverter telas principal x miniatura 🔄"
+                  >
+                    {!isSwapped ? (
+                      isVideoOn ? (
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover transform scale-x-[-1]"
+                        />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs uppercase">
-                          {currentUserDisplay.name.charAt(0)}
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-2 text-center">
+                          {currentUserDisplay.avatar ? (
+                            <img src={currentUserDisplay.avatar} alt={currentUserDisplay.name} className="w-10 h-10 rounded-full object-cover border border-cyan-400 mb-1" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs uppercase mb-1">
+                              {currentUserDisplay.name.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-[10px] text-slate-300 font-bold">Câmera Mute</span>
                         </div>
-                      )}
-                      <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.5 rounded border border-slate-800 truncate text-center">
-                        {currentUserDisplay.roleLabel}: {currentUserDisplay.name}
+                      )
+                    ) : (
+                      /* QUANDO INVERTIDO: EXIBE A MINIATURA DO OUTRO PARTICIPANTE */
+                      isRemoteConnected && remoteStream ? (
+                        <video
+                          ref={remoteVideoRef}
+                          autoPlay
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-2 text-center">
+                          <img src={otherParticipantDisplay.avatar || tutor.avatar} alt={otherParticipantDisplay.name} className="w-10 h-10 rounded-full object-cover border border-cyan-400 mb-1" />
+                          <span className="text-[10px] text-cyan-300 font-bold truncate max-w-[90%]">{otherParticipantDisplay.name}</span>
+                        </div>
+                      )
+                    )}
+
+                    {/* BADGE DE NOME "VOCÊ (ALUNO / PROFESSOR)" */}
+                    <div className="absolute bottom-1 left-1 right-1 bg-slate-950/90 backdrop-blur-md px-1.5 py-0.5 rounded-lg border border-slate-800 flex items-center justify-between text-[9px] font-extrabold text-white">
+                      <span className="truncate">
+                        {!isSwapped ? currentUserDisplay.roleLabel : otherParticipantDisplay.roleLabel}
                       </span>
+                      <ArrowLeftRight className="w-3 h-3 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
 
