@@ -43,35 +43,70 @@ export default function ClassroomPage() {
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
 
-  // Função para Entrar na Sala com Gesto Direto do Usuário (Bypassa política de Autoplay dos navegadores)
+  // Função para Entrar na Sala com Gesto Direto do Usuário e Fallbacks de Mídia
   const handleJoinRoom = async () => {
     setIsConnecting(true);
     setCameraError(null);
+    let stream = null;
+
+    // 1ª Tentativa: Vídeo + Áudio padrão flexível
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: true
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setIsVideoOn(true);
+      setIsMicOn(true);
+    } catch (err1) {
+      console.warn('Tentativa 1 (Video+Audio) falhou:', err1);
+      
+      // 2ª Tentativa: Apenas Vídeo (se microfone estiver bloqueado ou ausente)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        setIsVideoOn(true);
+        setIsMicOn(false);
+      } catch (err2) {
+        console.warn('Tentativa 2 (Apenas Video) falhou:', err2);
+        
+        // 3ª Tentativa: Apenas Áudio (se a câmera estiver bloqueada ou em uso)
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+          setIsVideoOn(false);
+          setIsMicOn(true);
+        } catch (err3) {
+          console.warn('Tentativa 3 (Apenas Audio) falhou:', err3);
+        }
+      }
+    }
+
+    if (stream) {
       setLocalStream(stream);
       setHasJoinedRoom(true);
       setIsLiveVideoActive(true);
-      setIsVideoOn(true);
-      setIsMicOn(true);
+
+      const hasVideoTrack = stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
+      const hasAudioTrack = stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+
+      setIsVideoOn(hasVideoTrack);
+      setIsMicOn(hasAudioTrack);
+
+      if (!hasVideoTrack) {
+        setCameraError('Sua câmera física está sendo usada por outro aplicativo (Zoom, Teams, OBS ou outra aba). O áudio e a sala virtual estão 100% ativos!');
+      } else {
+        setCameraError(null);
+      }
 
       setTimeout(() => {
-        if (localVideoRef.current) {
+        if (localVideoRef.current && hasVideoTrack) {
           localVideoRef.current.srcObject = stream;
-          localVideoRef.current.play().catch(e => console.warn('Play error:', e));
+          localVideoRef.current.play().catch(e => console.warn('Play video error:', e));
         }
-      }, 100);
-    } catch (err) {
-      console.warn('Erro ao acessar mídia do navegador:', err);
-      setCameraError('Permissão para câmera ou microfone negada. Verifique as configurações de mídia no seu navegador.');
-      // Incluso se a câmera falhar, permite entrar na sala em modo estúdio
+      }, 150);
+    } else {
+      setCameraError('Permissão para câmera/microfone negada no navegador ou câmera em uso. A sala virtual está ativa em modo estúdio.');
+      setIsVideoOn(false);
+      setIsMicOn(false);
       setHasJoinedRoom(true);
-    } finally {
-      setIsConnecting(false);
     }
+    
+    setIsConnecting(false);
   };
 
   // Limpeza de mídia ao sair da página
