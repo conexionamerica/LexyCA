@@ -340,7 +340,10 @@ export default function StudentDashboard() {
 
                 <div className="pt-1 flex flex-col sm:flex-row items-center gap-3">
                   <button
-                    onClick={() => setSearchParams({ tab: 'meu-plano' })}
+                    onClick={() => {
+                      const tutorId = trialBooking?.tutorId || nextBooking?.tutorId || '';
+                      setSearchParams({ tab: 'meu-plano', tutorId: tutorId, subscribe: 'true' });
+                    }}
                     className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-6 rounded-xl shadow-lg shadow-amber-500/25 border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
                   >
                     <Zap className="w-4 h-4 fill-current text-slate-950" />

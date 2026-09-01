@@ -236,53 +236,174 @@ export default function StudentSubscriptionTab() {
       </div>
 
       {!activeSub ? (
-        <div className="glass-panel border border-cyan-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="space-y-6">
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-            <div className="flex items-center gap-4">
-              <img 
-                src={targetTutor?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
-                alt={targetTutor?.name}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md shrink-0" 
-              />
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold uppercase tracking-wider mb-1">
-                  <span>Professor Selecionado</span>
+          {/* Banner do Professor Selecionado */}
+          <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <img 
+                  src={targetTutor?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
+                  alt={targetTutor?.name}
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md shrink-0 ring-4 ring-cyan-500/20" 
+                />
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold uppercase tracking-wider mb-1">
+                    <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Professor Selecionado</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-white">{targetTutor?.name}</h3>
+                  <p className="text-xs text-slate-300">{targetTutor?.subject || 'Idiomas'} • Tarifa por hora: <strong className="text-emerald-400 font-bold text-sm">R$ {tutorHourlyRate}.00 / hora</strong></p>
                 </div>
-                <h3 className="text-xl font-extrabold text-white">{targetTutor?.name}</h3>
-                <p className="text-xs text-slate-400">{targetTutor?.subject} • Tarifa: <strong className="text-emerald-400">R$ {tutorHourlyRate}.00 / hora</strong></p>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-2.5 text-right shadow-sm">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Status da Assinatura</span>
+                <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Sem Assinatura Recorrente Ativa
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO PRINCIPAL DE PACOTES DE AULAS RECORRENTES (30 DIAS) */}
+          <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
+                <Zap className="w-3.5 h-3.5 fill-amber-300" />
+                <span>Pacotes de Aulas Recorrentes a cada 30 Dias</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Escolha o Pacote de Aulas Recorrente com {targetTutor?.name}
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Selecione a frequência semanal ideal. Os valores são calculados com base na tarifa por hora fixada pelo seu professor (<strong>R$ {tutorHourlyRate}.00/h</strong>) com cobrança recorrente a cada 30 dias.
+              </p>
+            </div>
+
+            {/* CARDS DOS 4 PACOTES (1x, 2x, 3x, 4x por semana) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { freq: 1, name: '1x por Semana', hours: 4, badge: 'Essencial', popular: false },
+                { freq: 2, name: '2x por Semana', hours: 8, badge: 'Mais Popular ⭐', popular: true },
+                { freq: 3, name: '3x por Semana', hours: 12, badge: 'Avançado 🚀', popular: false },
+                { freq: 4, name: '4x por Semana', hours: 16, badge: 'Intensivo ⚡', popular: false }
+              ].map(pkg => {
+                const totalAmount = Number((tutorHourlyRate * pkg.hours).toFixed(2));
+                const isSelected = selectedLessonsPerWeek === pkg.freq;
+
+                return (
+                  <div
+                    key={pkg.freq}
+                    onClick={() => setSelectedLessonsPerWeek(pkg.freq)}
+                    className={`relative p-5 rounded-2xl border text-left cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 ${
+                      isSelected 
+                        ? 'bg-gradient-to-b from-cyan-950/70 via-slate-900 to-slate-900 border-2 border-cyan-400 glow-cyan ring-4 ring-cyan-500/20 shadow-2xl scale-[1.02]' 
+                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 hover:bg-slate-900/70'
+                    }`}
+                  >
+                    {pkg.popular && (
+                      <span className="absolute -top-3 right-4 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] uppercase px-3 py-0.5 rounded-full shadow-md">
+                        {pkg.badge}
+                      </span>
+                    )}
+
+                    <div>
+                      <span className="text-[11px] font-mono text-cyan-400 font-bold block uppercase tracking-wider mb-1">
+                        {pkg.freq} Aula{pkg.freq > 1 ? 's' : ''} / semana
+                      </span>
+                      <h3 className="text-lg font-black text-white">{pkg.name}</h3>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">
+                        {pkg.hours} aulas no ciclo de 30 dias
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-800/80">
+                      <div className="text-2xl font-black text-emerald-400">
+                        R$ {totalAmount.toFixed(2)}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                        R$ {tutorHourlyRate}.00 por hora • Cobrado a cada 30 dias
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`w-full py-2.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        isSelected
+                          ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
+                          : 'bg-slate-900 text-slate-300 border border-slate-700 hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>{isSelected ? '✓ Selecionado' : 'Selecionar Plano'}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SELEÇÃO DE HORÁRIOS DA AGENDA SEMANAL DO PROFESSOR */}
+            <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-5 space-y-4">
+              <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-cyan-400" />
+                <span>Configure seus {selectedLessonsPerWeek} Dia(s) e Horário(s) Fixos na Agenda</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {Array.from({ length: selectedLessonsPerWeek }).map((_, idx) => {
+                  const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda-feira', time: '09:00' };
+                  const availableTimes = tutorSchedule[currentSlot.day] || ['09:00'];
+
+                  return (
+                    <div key={idx} className="bg-slate-900 border border-slate-800/90 rounded-xl p-3 flex items-center justify-between gap-3 text-xs shadow-inner">
+                      <span className="font-bold text-white shrink-0">Aula Semanal #{idx + 1}:</span>
+
+                      <div className="flex items-center gap-2 flex-1 justify-end">
+                        <select
+                          value={currentSlot.day}
+                          onChange={(e) => handleWeeklySlotChange(idx, 'day', e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-white font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer text-xs"
+                        >
+                          {availableDays.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={currentSlot.time}
+                          onChange={(e) => handleWeeklySlotChange(idx, 'time', e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer text-xs"
+                        >
+                          {availableTimes.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 text-right">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Status da Assinatura</span>
-              <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                Sem Assinatura Recorrente Ativa
-              </span>
-            </div>
-          </div>
+            {/* BARRA DE BOTÃO FINAL DE ASSINATURA STONE */}
+            <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <span className="text-xs text-slate-400 font-medium block">Total do Ciclo de 30 Dias ({selectedLessonsPerWeek * 4} aulas):</span>
+                <span className="text-3xl font-black text-emerald-400">R$ {totalCycleAmount.toFixed(2)}</span>
+              </div>
 
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-3">
-            <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>Ative seu Plano Recorrente de 30 Dias com {targetTutor?.name}</span>
-            </h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Garanta seu horário semanal reservado na agenda nativa do seu professor. A cobrança é realizada a cada 30 dias com base na tarifa por hora fixada pelo seu professor (<strong>R$ {tutorHourlyRate}.00/hora</strong>).
-            </p>
-
-            <div className="pt-2">
               <button
-                onClick={() => setIsSubscribeModalOpen(true)}
-                className="bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-xs px-6 py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all flex items-center gap-2 cursor-pointer"
+                type="button"
+                onClick={() => setIsStoneModalOpen(true)}
+                className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-xl shadow-emerald-500/20 transition-all cursor-pointer transform hover:scale-[1.02] flex items-center justify-center gap-2"
               >
-                <Sparkles className="w-4 h-4 fill-slate-950" />
-                <span>Ativar Assinatura Recorrente de 30 Dias com {targetTutor?.name}</span>
+                <Lock className="w-5 h-5 fill-slate-950" />
+                <span>Pagar R$ {totalCycleAmount.toFixed(2)} e Ativar Assinatura Recorrente ⚡</span>
               </button>
             </div>
-          </div>
 
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
