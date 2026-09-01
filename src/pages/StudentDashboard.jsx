@@ -8,7 +8,7 @@ import {
   Search, Star, CheckCircle2, Award, Heart, Plus, Sparkles, 
   BookOpen, ChevronRight, Wallet, UserCheck, ShieldCheck, 
   RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown,
-  Camera, Save, Upload
+  Camera, Save, Upload, Zap
 } from 'lucide-react';
 import StudentSubscriptionTab from '../components/subscription/StudentSubscriptionTab';
 
