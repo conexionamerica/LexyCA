@@ -12,7 +12,7 @@ import StoneCheckoutModal from '../payment/StoneCheckoutModal';
 export default function StudentSubscriptionTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { subscriptions, tutors, createBooking, bookings } = useMarketplace();
+  const { subscriptions, tutors, createBooking, bookings, teacherAvailability } = useMarketplace();
   const { profile } = useAuth();
 
   const studentMatricula = profile?.matricula_code || 'LXY-2026-784219';
@@ -67,27 +67,100 @@ export default function StudentSubscriptionTab() {
   }, [bookings, profile]);
 
   const targetTutor = useMemo(() => {
+    const paramTutorId = searchParams.get('tutorId');
+    if (paramTutorId) {
+      const match = tutors.find(t => String(t.id).toLowerCase() === String(paramTutorId).toLowerCase());
+      if (match) return match;
+    }
     if (activeSub) {
-      return tutors.find(t => t.id === activeSub.tutorId) || tutors[0];
+      const match = tutors.find(t => String(t.id).toLowerCase() === String(activeSub.tutorId).toLowerCase());
+      if (match) return match;
     }
     if (lastBooking) {
-      return tutors.find(t => t.id === lastBooking.tutorId) || tutors[0];
+      const match = tutors.find(t => String(t.id).toLowerCase() === String(lastBooking.tutorId).toLowerCase());
+      if (match) return match;
     }
     return tutors.find(t => t.status === 'approved') || tutors[0];
-  }, [tutors, activeSub, lastBooking]);
+  }, [tutors, activeSub, lastBooking, searchParams]);
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
 
-  const tutorSchedule = targetTutor?.weeklySchedule || {};
+  // HELPER: Convertir fecha YYYY-MM-DD o día a formato estandarizado ('Segunda-feira', etc.)
+  const getDayNameFromDateString = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = String(dateStr).trim();
+    if (!cleanStr.includes('-')) return cleanStr;
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return weekDays[d.getDay()] || cleanStr;
+  };
+
+  // HELPER: Obtener horarios 100% libres (activos por el profesor targetTutor, NO ocupados por reservas confirmed/rescheduled y NO bloqueados)
+  const getFreeSlotsForDay = (dayName) => {
+    if (!dayName || !targetTutor) return [];
+
+    const rawSchedule = targetTutor?.weeklySchedule || {};
+    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
+    const matchedKey = Object.keys(rawSchedule).find(k => 
+      k.toLowerCase().replace('-feira', '').trim() === targetClean
+    );
+
+    // Tomamos ÚNICAMENTE las horas activas configuradas por el profesor en su agenda
+    const baseSlots = matchedKey ? (rawSchedule[matchedKey] || []) : [];
+
+    // Horarios marcados explícitamente como 'free' en teacher_availability para este profesor
+    const extraFreeFromDb = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id).toLowerCase() === String(targetTutor?.id || '').toLowerCase() && a.status === 'free')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
+
+    // Horarios ocupados por agendamentos do professor
+    const occupiedTimes = (bookings || [])
+      .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(targetTutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
+      .filter(b => {
+        const bookingDayName = getDayNameFromDateString(b.date || b.day || '');
+        const cleanBookingDay = String(bookingDayName).split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        return cleanBookingDay === targetClean;
+      })
+      .map(b => String(b.time || '').trim());
+
+    // Horarios bloqueados explícitamente por el profesor en teacher_availability
+    const blockedTimesForTeacher = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id).toLowerCase() === String(targetTutor?.id || '').toLowerCase() && a.status === 'blocked')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
+  };
+
   const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-  const configuredDays = Object.keys(tutorSchedule).filter(d => (tutorSchedule[d] || []).length > 0);
-  const availableDays = configuredDays.length > 0 ? configuredDays : ALL_WEEK_DAYS;
+  
+  // Días que realmente contienen al menos 1 horario LIVRE para este profesor
+  const availableDays = useMemo(() => {
+    const freeDays = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
+    return freeDays.length > 0 ? freeDays : ALL_WEEK_DAYS;
+  }, [targetTutor, teacherAvailability, bookings]);
 
   const [weeklySlots, setWeeklySlots] = useState(() => {
     return Array.from({ length: 4 }, (_, idx) => {
-      const day = availableDays[idx % availableDays.length] || 'Segunda';
-      const times = tutorSchedule[day] || ['09:00'];
-      return { day, time: times[0] || '09:00' };
+      const day = availableDays[idx % availableDays.length] || 'Segunda-feira';
+      const freeTimes = getFreeSlotsForDay(day);
+      return { day, time: freeTimes[0] || '09:00' };
     });
   });
 
@@ -95,8 +168,8 @@ export default function StudentSubscriptionTab() {
     setWeeklySlots(prev => {
       const copy = [...prev];
       if (field === 'day') {
-        const times = tutorSchedule[value] || ['09:00'];
-        copy[index] = { day: value, time: times[0] || '09:00' };
+        const freeTimes = getFreeSlotsForDay(value);
+        copy[index] = { day: value, time: freeTimes[0] || '09:00' };
       } else {
         copy[index] = { ...copy[index], time: value };
       }
@@ -353,7 +426,7 @@ export default function StudentSubscriptionTab() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Array.from({ length: selectedLessonsPerWeek }).map((_, idx) => {
                   const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda-feira', time: '09:00' };
-                  const availableTimes = tutorSchedule[currentSlot.day] || ['09:00'];
+                  const availableTimes = getFreeSlotsForDay(currentSlot.day);
 
                   return (
                     <div key={idx} className="bg-slate-900 border border-slate-800/90 rounded-xl p-3 flex items-center justify-between gap-3 text-xs shadow-inner">
@@ -375,9 +448,13 @@ export default function StudentSubscriptionTab() {
                           onChange={(e) => handleWeeklySlotChange(idx, 'time', e.target.value)}
                           className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer text-xs"
                         >
-                          {availableTimes.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
+                          {availableTimes.length > 0 ? (
+                            availableTimes.map(t => (
+                              <option key={t} value={t}>{t}</option>
+                            ))
+                          ) : (
+                            <option value="">Sem horário livre neste dia</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -517,7 +594,7 @@ export default function StudentSubscriptionTab() {
             <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-2xl p-4 space-y-3 shadow-sm">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                Regras do Ciclo de 28 Dias
+                Regras do Ciclo de 30 Dias
               </h3>
 
               <div className="space-y-3 text-xs">
@@ -527,7 +604,7 @@ export default function StudentSubscriptionTab() {
                     Agendamento Recorrente Fixo
                   </span>
                   <p className="text-slate-300 text-[11px] leading-relaxed">
-                    Seus horários ficam bloqueados e reservados semanalmente com seu professor durante os 28 dias do ciclo.
+                    Seus horários ficam bloqueados e reservados semanalmente com seu professor durante os 30 dias do ciclo.
                   </p>
                 </div>
 
@@ -586,7 +663,7 @@ export default function StudentSubscriptionTab() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-extrabold text-white">Assinar Plano de Aulas com {targetTutor?.name}</h3>
-                <p className="text-xs text-slate-400">Ciclo de 28 Dias • Tarifa do Professor: R$ {tutorHourlyRate}.00/h</p>
+                <p className="text-xs text-slate-400">Ciclo de 30 Dias • Tarifa do Professor: R$ {tutorHourlyRate}.00/h</p>
               </div>
               <button 
                 onClick={() => setIsSubscribeModalOpen(false)}
@@ -618,9 +695,9 @@ export default function StudentSubscriptionTab() {
                       }`}
                     >
                       <span className="text-xs font-black text-white block">{freq} aula(s) / semana</span>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">{hoursInCycle} aulas por ciclo de 28 dias</span>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">{hoursInCycle} aulas por ciclo de 30 dias</span>
                       <div className="mt-2 text-sm font-black text-emerald-400">
-                        R$ {priceInCycle} / 28 dias
+                        R$ {priceInCycle} / 30 dias
                       </div>
                     </div>
                   );
@@ -635,8 +712,8 @@ export default function StudentSubscriptionTab() {
 
               <div className="space-y-2.5">
                 {Array.from({ length: selectedLessonsPerWeek }).map((_, idx) => {
-                  const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda', time: '09:00' };
-                  const availableTimes = tutorSchedule[currentSlot.day] || ['09:00'];
+                  const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda-feira', time: '09:00' };
+                  const availableTimes = getFreeSlotsForDay(currentSlot.day);
 
                   return (
                     <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
@@ -658,9 +735,13 @@ export default function StudentSubscriptionTab() {
                           onChange={(e) => handleWeeklySlotChange(idx, 'time', e.target.value)}
                           className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
                         >
-                          {availableTimes.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
+                          {availableTimes.length > 0 ? (
+                            availableTimes.map(t => (
+                              <option key={t} value={t}>{t}</option>
+                            ))
+                          ) : (
+                            <option value="">Sem horário livre neste dia</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -671,7 +752,7 @@ export default function StudentSubscriptionTab() {
 
             <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-4">
               <div>
-                <span className="text-[11px] text-slate-400 block">Valor do Ciclo de 28 Dias:</span>
+                <span className="text-[11px] text-slate-400 block">Valor do Ciclo de 30 Dias:</span>
                 <span className="text-2xl font-black text-emerald-400">R$ {totalCycleAmount.toFixed(2)}</span>
               </div>
 
@@ -693,7 +774,7 @@ export default function StudentSubscriptionTab() {
         isOpen={isStoneModalOpen}
         onClose={() => setIsStoneModalOpen(false)}
         amount={totalCycleAmount}
-        description={`Assinatura Recorrente de 28 Dias (${selectedLessonsPerWeek}x/sem) - ${targetTutor?.name}`}
+        description={`Assinatura Recorrente de 30 Dias (${selectedLessonsPerWeek}x/sem) - ${targetTutor?.name}`}
         isRecurring={true}
         customerInfo={{
           name: profile?.full_name || 'Aluno Lexy',
