@@ -17,7 +17,7 @@ export default function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
     student, tutors, bookings, completeBooking, 
-    announcements, directChatMessages, sendDirectMessage 
+    announcements, directChatMessages, sendDirectMessage, subscriptions 
   } = useMarketplace();
   const { profile, signOut, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
@@ -192,6 +192,7 @@ export default function StudentDashboard() {
   }, [bookings, profile, student]);
 
   const [myBookingsList, setMyBookingsList] = useState(userBookings);
+  const [isTrialBannerDismissed, setIsTrialBannerDismissed] = useState(false);
 
   const trialBooking = useMemo(() => {
     return userBookings.find(b => {
@@ -199,6 +200,36 @@ export default function StudentDashboard() {
       return bType === 'trial' || bType === 'experimental' || String(b.lesson_code || '').includes('EXP');
     });
   }, [userBookings]);
+
+  const hasSubscribedPackage = useMemo(() => {
+    if (!profile) return false;
+    const pId = String(profile.id || '').toLowerCase();
+    const pEmail = String(profile.email || '').toLowerCase();
+    const pMat = String(profile.matricula_code || '').toLowerCase();
+
+    // Check if there is an active subscription in subscriptions list
+    const activeSub = (subscriptions || []).some(sub => {
+      const sStudentId = String(sub.studentId || '').toLowerCase();
+      const sStudentEmail = String(sub.studentEmail || '').toLowerCase();
+      const sStudentMat = String(sub.studentMatricula || '').toLowerCase();
+
+      const isForStudent = (sStudentId || sStudentEmail || sStudentMat) && (
+        (pId && sStudentId === pId) || 
+        (pEmail && sStudentEmail === pEmail) || 
+        (pMat && sStudentMat === pMat)
+      );
+
+      return isForStudent && sub.status === 'active';
+    });
+
+    if (activeSub) return true;
+
+    // Check if userBookings contains any package or subscription booking
+    return (userBookings || []).some(b => {
+      const bType = String(b.bookingType || b.booking_type || '').toLowerCase();
+      return (bType === 'package' || bType === 'subscription') && b.status !== 'canceled';
+    });
+  }, [subscriptions, profile, userBookings]);
 
   useEffect(() => {
     setMyBookingsList(userBookings);
@@ -314,8 +345,8 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* ANÚNCIO DESTACADO DE INCENTIVO A ASSINATURA DE PACOTE DE AULAS RECORRENTES (APÓS AULA EXPERIMENTAL) */}
-            {trialBooking && (
+            {/* ANÚNCIO DESTACADO DE INCENTIVO A ASSINATURA DE PACOTE DE AULAS RECORRENTES (APÓS AULA EXPERIMENTAL - DESAPARECE AUTOMATICAMENTE QUANDO O ALUNO ASSINA) */}
+            {trialBooking && !hasSubscribedPackage && !isTrialBannerDismissed && (
               <div className="bg-gradient-to-r from-amber-950/70 via-slate-900 to-cyan-950/70 border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl shadow-amber-950/40 space-y-3 relative overflow-hidden animate-fade-in glow-amber">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -332,6 +363,14 @@ export default function StudentDashboard() {
                       </h3>
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => setIsTrialBannerDismissed(true)}
+                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors cursor-pointer shrink-0"
+                    title="Fechar anúncio"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
                 <p className="text-xs text-slate-300 leading-relaxed font-medium">
