@@ -466,7 +466,7 @@ Dicas:
                   )}
 
                   {/* MINIATURA PIP DO ALUNO (SELF VIEW) NA ESQUINA INFERIOR DIREITA */}
-                  <div className="absolute bottom-3 right-3 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
+                  <div className="absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
                     <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
                       <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs">
                         A
@@ -476,6 +476,64 @@ Dicas:
                       </span>
                     </div>
                   </div>
+
+                  {/* BARRA DE CONTROLES FLUTUANTE (ESTILO GOOGLE MEET / ZOOM) */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 bg-slate-950/95 backdrop-blur-xl border border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl shadow-2xl">
+                    {/* BOTÃO MICROFONE */}
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
+                        isMicOn 
+                          ? 'bg-slate-900 border-emerald-500/50 text-emerald-400 hover:bg-slate-800' 
+                          : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                      }`}
+                      title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
+                    >
+                      {isMicOn ? <Mic className="w-4 h-4 text-emerald-400" /> : <MicOff className="w-4 h-4 text-rose-400" />}
+                      <span className="hidden sm:inline">{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
+                    </button>
+
+                    {/* BOTÃO CÂMERA */}
+                    <button
+                      type="button"
+                      onClick={toggleVideo}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
+                        isVideoOn 
+                          ? 'bg-slate-900 border-cyan-500/50 text-cyan-400 hover:bg-slate-800' 
+                          : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                      }`}
+                      title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
+                    >
+                      {isVideoOn ? <Video className="w-4 h-4 text-cyan-400" /> : <VideoOff className="w-4 h-4 text-rose-400" />}
+                      <span className="hidden sm:inline">{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
+                    </button>
+
+                    {/* BOTÃO COMPARTILHAR TELA */}
+                    <button
+                      type="button"
+                      onClick={toggleScreenShare}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
+                        isScreenSharing
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                          : 'bg-slate-900 border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800'
+                      }`}
+                      title="Compartilhar Tela"
+                    >
+                      <Monitor className="w-4 h-4 text-amber-400" />
+                      <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Compartilhar Tela'}</span>
+                    </button>
+
+                    {/* BOTÃO ENCERRAR AULA */}
+                    <button
+                      type="button"
+                      onClick={handleEndClass}
+                      className="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="hidden sm:inline">Sair da Aula</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -484,49 +542,30 @@ Dicas:
             {/* Barra de Controles Inferior Nativas da Lexy */}
             <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 mt-2">
               <div className="flex items-center gap-2">
-                {/* BOTÃO MICROFONE */}
                 <button
                   type="button"
                   onClick={toggleMic}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
                     isMicOn 
                       ? 'bg-slate-950 border-slate-800 text-emerald-400 hover:bg-slate-800' 
                       : 'bg-rose-500/20 border-rose-500 text-rose-400'
                   }`}
-                  title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
                 >
                   {isMicOn ? <Mic className="w-4 h-4 text-emerald-400" /> : <MicOff className="w-4 h-4 text-rose-400" />}
-                  <span className="hidden sm:inline">{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
+                  <span>{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
                 </button>
 
-                {/* BOTÃO CÂMERA */}
                 <button
                   type="button"
                   onClick={toggleVideo}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
                     isVideoOn 
                       ? 'bg-slate-950 border-slate-800 text-cyan-400 hover:bg-slate-800' 
                       : 'bg-rose-500/20 border-rose-500 text-rose-400'
                   }`}
-                  title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
                 >
                   {isVideoOn ? <Video className="w-4 h-4 text-cyan-400" /> : <VideoOff className="w-4 h-4 text-rose-400" />}
-                  <span className="hidden sm:inline">{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
-                </button>
-
-                {/* BOTÃO COMPARTILHAR TELA */}
-                <button
-                  type="button"
-                  onClick={toggleScreenShare}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
-                    isScreenSharing
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                  title="Compartilhar Tela"
-                >
-                  <Monitor className="w-4 h-4 text-amber-400" />
-                  <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Compartilhar Tela'}</span>
+                  <span>{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
                 </button>
               </div>
 
