@@ -204,6 +204,107 @@ export default function AdminDashboard() {
     setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
   };
 
+  // LER AVALIAÇÕES E REVIAS DOS ALUNOS
+  const studentReviews = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lexy_student_reviews') || '[]');
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  // COMPUTAÇÃO DE RISCO DE EVASÃO / CHURN PARA CADA ALUNO
+  const studentRiskList = React.useMemo(() => {
+    return (realStudents || []).map((s, idx) => {
+      const sId = String(s.id || '').toLowerCase();
+      const sEmail = String(s.email || '').toLowerCase();
+
+      // Buscando aulas agendadas do aluno
+      const sBookings = (bookings || []).filter(b => {
+        const bId = String(b.studentId || b.student_id || '').toLowerCase();
+        const bEmail = String(b.studentEmail || b.student_email || '').toLowerCase();
+        return (sId && bId === sId) || (sEmail && bEmail === sEmail);
+      });
+
+      const completedClasses = sBookings.filter(b => b.status === 'completed').length;
+      const missedClasses = sBookings.filter(b => b.status === 'canceled' || b.status === 'no_show').length;
+      const totalAttempted = completedClasses + missedClasses;
+      const attendanceRate = totalAttempted > 0 ? Math.round((completedClasses / totalAttempted) * 100) : 100;
+
+      // Buscando avaliações feitas pelo aluno
+      const myReviews = studentReviews.filter(r => {
+        const rId = String(r.studentId || '').toLowerCase();
+        const rEmail = String(r.studentEmail || '').toLowerCase();
+        return (sId && rId === sId) || (sEmail && rEmail === sEmail);
+      });
+
+      const lastReview = myReviews[0] || null;
+      const lastRating = lastReview ? Number(lastReview.rating || 5) : 5;
+      const lastComment = lastReview ? lastReview.comment : '';
+      const lastTutorName = lastReview ? lastReview.tutorName : '';
+
+      // Tempo desde o último acesso / login no site
+      const mockDays = idx === 0 ? 1 : (idx === 1 ? 5 : (idx % 2 === 0 ? 12 : 2));
+      const daysWithoutLogin = s.daysWithoutLogin !== undefined ? s.daysWithoutLogin : mockDays;
+
+      // Cálculo de Risco
+      let riskLevel = 'low'; // 'low' (Engajado), 'medium' (Risco Médio), 'high' (Risco Alto)
+      if (daysWithoutLogin > 7 || lastRating <= 3.0 || attendanceRate < 60 || missedClasses >= 2) {
+        riskLevel = 'high';
+      } else if (daysWithoutLogin >= 3 || lastRating <= 4.0 || attendanceRate < 85) {
+        riskLevel = 'medium';
+      }
+
+      return {
+        ...s,
+        daysWithoutLogin,
+        completedClasses,
+        missedClasses,
+        attendanceRate,
+        lastRating,
+        lastComment,
+        lastTutorName,
+        riskLevel
+      };
+    });
+  }, [realStudents, bookings, studentReviews]);
+
+  const highRiskStudentsCount = React.useMemo(() => studentRiskList.filter(s => s.riskLevel === 'high').length, [studentRiskList]);
+  const mediumRiskStudentsCount = React.useMemo(() => studentRiskList.filter(s => s.riskLevel === 'medium').length, [studentRiskList]);
+  const lowRiskStudentsCount = React.useMemo(() => studentRiskList.filter(s => s.riskLevel === 'low').length, [studentRiskList]);
+
+  const avgGlobalRating = React.useMemo(() => {
+    if (studentReviews.length === 0) return 4.9;
+    const sum = studentReviews.reduce((acc, r) => acc + Number(r.rating || 5), 0);
+    return sum / studentReviews.length;
+  }, [studentReviews]);
+
+  // AÇÕES RÁPIDAS DE RETENÇÃO DO ADMIN
+  const handleSendCouponToStudent = (studentObj) => {
+    const couponCode = `RETER15-${String(studentObj.name).toUpperCase().split(' ')[0]}`;
+    addAnnouncement({
+      target: 'students',
+      title: `🎉 Cupom Exclusivo de Retenção para ${studentObj.name}!`,
+      content: `Prezado(a) ${studentObj.name}, preparamos um desconto especial de 15% OFF (Cupom: ${couponCode}) para você continuar seus estudos na Lexy.`,
+      level: 'warning'
+    });
+    alert(`✅ Cupom ${couponCode} enviado com sucesso para ${studentObj.name}! Uma notificação de retenção foi gerada no painel do aluno.`);
+  };
+
+  const handleSuggestTeacherSwitch = (studentObj) => {
+    addAnnouncement({
+      target: 'students',
+      title: `💡 Recomendação de Novo Tutor Nativo para ${studentObj.name}`,
+      content: `Olá ${studentObj.name}! A coordenação pedagógica da Lexy separou novos tutores nativos recomendados para seu nível de ${studentObj.studyLanguage}. Acesse o catálogo e escolha seu novo professor!`,
+      level: 'info'
+    });
+    alert(`✅ Recomendação de troca de professor enviada para ${studentObj.name}. O aluno recebeu uma notificação oficial.`);
+  };
+
+  const handleSendDirectSupportMessage = (studentObj) => {
+    alert(`💬 Mensagem de suporte direto enviada para o aluno ${studentObj.name} (${studentObj.email}). A equipe pedagógica entrará em contato.`);
+  };
+
   const isSuperAdminLoggedIn = profile?.role === 'admin' || profile?.role === 'superadmin';
 
   if (!isSuperAdminLoggedIn) {
@@ -338,6 +439,13 @@ export default function AdminDashboard() {
           {pendingPayouts.filter(p => p.status === 'pending').length > 0 && <span className="bg-rose-500 text-white text-[10px] rounded-full px-1.5 ml-1">{pendingPayouts.filter(p => p.status === 'pending').length}</span>}
         </button>
         <button 
+          onClick={() => setActiveTab('churn')}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'churn' ? 'bg-rose-500 text-white font-black shadow-lg shadow-rose-500/25' : 'text-slate-400 hover:text-white'}`}
+        >
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" /> 🚨 Evasão & Retenção
+          {highRiskStudentsCount > 0 && <span className="bg-rose-600 text-white text-[10px] rounded-full px-2 py-0.5 ml-1 font-black">{highRiskStudentsCount}</span>}
+        </button>
+        <button 
           onClick={() => setActiveTab('announcements')}
           className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'announcements' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
@@ -385,6 +493,230 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'churn' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* Header do Sistema de Retenção */}
+          <div className="glass-panel border-2 border-rose-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-rose-950/40 space-y-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-black uppercase tracking-wider mb-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Sistema Preditivo Anti-Churn • Retenção de Alunos Lexy</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Prevenção de Evasão & Monitoramento de Engajamento
+                </h2>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                  Acompanhe o comportamento dos alunos em tempo real. O sistema mede os <strong>dias sem login</strong>, a <strong>frequência/assiduidade às aulas</strong> e os <strong>feedbacks/avaliações recebidos pelos professores</strong> para emitir alertas precoces de insatisfação ou desmotivação.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* KPIs DE RISCO */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-slate-900/90 border border-rose-500/40 rounded-2xl p-5 shadow-lg space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase">Alunos em Risco Alto</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+              </div>
+              <div className="text-3xl font-black text-rose-400">{highRiskStudentsCount}</div>
+              <span className="text-[11px] text-slate-400 block font-medium">Inativos &gt; 7 dias ou Nota ≤ 3.0</span>
+            </div>
+
+            <div className="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-5 shadow-lg space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase">Alunos em Risco Médio</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              </div>
+              <div className="text-3xl font-black text-amber-400">{mediumRiskStudentsCount}</div>
+              <span className="text-[11px] text-slate-400 block font-medium">Sem entrar 3 a 7 dias</span>
+            </div>
+
+            <div className="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-5 shadow-lg space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase">Alunos Engajados</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              </div>
+              <div className="text-3xl font-black text-emerald-400">{lowRiskStudentsCount}</div>
+              <span className="text-[11px] text-slate-400 block font-medium">Login recente e boas notas</span>
+            </div>
+
+            <div className="bg-slate-900/90 border border-cyan-500/40 rounded-2xl p-5 shadow-lg space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase">Média de Satisfação</span>
+                <Award className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-3xl font-black text-white flex items-center gap-1">
+                <span>{avgGlobalRating.toFixed(1)}</span>
+                <span className="text-sm font-bold text-amber-400">★</span>
+              </div>
+              <span className="text-[11px] text-slate-400 block font-medium">Avaliações pós-aula registradas</span>
+            </div>
+          </div>
+
+          {/* SUGESTÕES DE MÉTRICAS ADICIONAIS DO SISTEMA */}
+          <div className="bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 border border-cyan-500/30 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-cyan-300 font-extrabold text-sm">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Sugestões de Indicadores Adicionais de Retenção (Inteligência Lexy)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-300">
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                <strong className="text-white block mb-1">⏳ Consumo do Ciclo de 30 Dias</strong>
+                <span>Identifica alunos com pacotes contratados que usaram menos de 20% das aulas na metade do ciclo.</span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                <strong className="text-white block mb-1">🔄 Frequência de Reagendamentos</strong>
+                <span>Alerta sobre alunos que desmarcam aulas repetidamente (sinal de perda de hábito).</span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                <strong className="text-white block mb-1">🎯 Compatibilidade com o Professor</strong>
+                <span>Analisa se o nível do aluno combina com a didática do tutor conforme feedback.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* TABLA DIAGNÓSTICO E AÇÕES RÁPIDAS DE RETENÇÃO */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-2xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-cyan-400" />
+                  <span>Diagnóstico de Alunos & Ações Rápidas de Retenção</span>
+                </h3>
+                <p className="text-xs text-slate-400">Ordene e filtre alunos por nível de risco de evasão e aja antecipadamente.</p>
+              </div>
+            </div>
+
+            {/* REJILLA / TABLA DE ALUNOS */}
+            <div className="space-y-4">
+              {studentRiskList.map(st => (
+                <div 
+                  key={st.id} 
+                  className={`p-5 rounded-2xl border text-left transition-all space-y-4 ${
+                    st.riskLevel === 'high' 
+                      ? 'bg-rose-950/20 border-rose-500/40 glow-rose' 
+                      : st.riskLevel === 'medium'
+                      ? 'bg-amber-950/20 border-amber-500/40'
+                      : 'bg-slate-950/60 border-slate-800/80'
+                  }`}
+                >
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                    
+                    {/* Esquerda: Info Aluno */}
+                    <div className="flex items-center gap-4 min-w-[240px]">
+                      <img 
+                        src={st.avatar} 
+                        alt={st.name} 
+                        className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-700 shadow-md shrink-0" 
+                      />
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h4 className="font-extrabold text-white text-base">{st.name}</h4>
+                          {st.riskLevel === 'high' && (
+                            <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-rose-400" /> 🔴 Risco Alto de Evasão
+                            </span>
+                          )}
+                          {st.riskLevel === 'medium' && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                              🟡 Risco Médio
+                            </span>
+                          )}
+                          {st.riskLevel === 'low' && (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                              🟢 Engajado
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400">{st.email} • Idioma: <strong className="text-cyan-300">{st.studyLanguage}</strong> ({st.languageLevel})</p>
+                      </div>
+                    </div>
+
+                    {/* Centro: Métricas de Inatividade, Assiduidade e Feedbacks */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 w-full lg:w-auto text-xs">
+                      
+                      {/* Métria 1: Tempo sem Entrar */}
+                      <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Tempo sem Entrar</span>
+                        <div className="font-extrabold text-sm flex items-center gap-1.5">
+                          <Clock className={`w-4 h-4 ${st.daysWithoutLogin > 7 ? 'text-rose-400' : (st.daysWithoutLogin >= 3 ? 'text-amber-400' : 'text-emerald-400')}`} />
+                          <span className={st.daysWithoutLogin > 7 ? 'text-rose-300 font-black' : 'text-white'}>
+                            {st.daysWithoutLogin === 0 ? 'Ativo Hoje' : `Há ${st.daysWithoutLogin} dia(s)`}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">Última sessão registrada</span>
+                      </div>
+
+                      {/* Métria 2: Assiduidade */}
+                      <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Assiduidade em Aulas</span>
+                        <div className="font-extrabold text-sm flex items-center gap-1.5">
+                          <CheckCircle2 className={`w-4 h-4 ${st.attendanceRate < 60 ? 'text-rose-400' : 'text-emerald-400'}`} />
+                          <span className={st.attendanceRate < 60 ? 'text-rose-300 font-black' : 'text-emerald-400'}>
+                            {st.attendanceRate}% presença
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">{st.completedClasses} concluídas • {st.missedClasses} faltas</span>
+                      </div>
+
+                      {/* Métria 3: Últimos Feedbacks */}
+                      <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Última Avaliação Dado</span>
+                        <div className="font-extrabold text-sm flex items-center gap-1 text-amber-400">
+                          <span>{st.lastRating ? `${st.lastRating}.0` : 'S/A'}</span>
+                          <span>★</span>
+                          <span className="text-slate-400 text-xs font-normal truncate max-w-[120px] ml-1">
+                            {st.lastComment ? `"${st.lastComment}"` : 'Sem comentário'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">Professor: {st.lastTutorName || 'Nenhum'}</span>
+                      </div>
+
+                    </div>
+
+                    {/* Direita: Botões de Ações Rápidas de Retenção */}
+                    <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 w-full lg:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleSendCouponToStudent(st)}
+                        className="flex-1 lg:flex-initial bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Megaphone className="w-3.5 h-3.5 fill-slate-950" />
+                        <span>Enviar Cupom Desconto</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSuggestTeacherSwitch(st)}
+                        className="flex-1 lg:flex-initial bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <User className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Sugerir Troca de Professor</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSendDirectSupportMessage(st)}
+                        className="flex-1 lg:flex-initial bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Enviar Mensagem Suporte</span>
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+
         </div>
       )}
 

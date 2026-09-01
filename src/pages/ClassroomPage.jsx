@@ -142,6 +142,27 @@ Dicas:
   const handleSubmitReview = (e) => {
     e.preventDefault();
     setIsReviewSubmitted(true);
+
+    try {
+      const newReview = {
+        id: `rev-${Date.now()}`,
+        bookingId: bookingId || 'aula-demo',
+        tutorId: tutor?.id || 'tutor-1',
+        tutorName: tutor?.name || currentBooking?.tutorName || 'Professor Lexy',
+        studentId: currentBooking?.studentId || 'student-user',
+        studentName: currentBooking?.studentName || 'Aluno Lexy',
+        studentEmail: currentBooking?.studentEmail || 'aluno@lexy.com',
+        rating: studentRating,
+        comment: studentComment || 'Aula finalizada sem comentário em texto.',
+        createdAt: new Date().toISOString()
+      };
+
+      const existing = JSON.parse(localStorage.getItem('lexy_student_reviews') || '[]');
+      localStorage.setItem('lexy_student_reviews', JSON.stringify([newReview, ...existing]));
+    } catch (err) {
+      console.warn('Erro ao salvar avaliação do aluno:', err);
+    }
+
     setTimeout(() => {
       navigate('/dashboard/student');
     }, 1800);
