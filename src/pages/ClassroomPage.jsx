@@ -28,7 +28,9 @@ export default function ClassroomPage() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [cameraError, setCameraError] = useState(null);
 
-  // Estados da Sala Virtual
+  // Estados da Sala Virtual & Saguão de Entrada (Lobby)
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isLiveVideoActive, setIsLiveVideoActive] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -41,43 +43,53 @@ export default function ClassroomPage() {
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
 
-  // Inicializar câmera nativa WebRTC do navegador ao entrar na sala
-  useEffect(() => {
-    let streamInstance = null;
+  // Função para Entrar na Sala com Gesto Direto do Usuário (Bypassa política de Autoplay dos navegadores)
+  const handleJoinRoom = async () => {
+    setIsConnecting(true);
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true
+      });
+      setLocalStream(stream);
+      setHasJoinedRoom(true);
+      setIsLiveVideoActive(true);
+      setIsVideoOn(true);
+      setIsMicOn(true);
 
-    const startNativeCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true
-        });
-        streamInstance = stream;
-        setLocalStream(stream);
-        setCameraError(null);
+      setTimeout(() => {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(e => console.warn('Play error:', e));
         }
-      } catch (err) {
-        console.warn('Câmera/Microfone nativo WebRTC:', err);
-        setCameraError('Permissão para câmera/microfone aguardando aprovação no navegador.');
-      }
-    };
-
-    startNativeCamera();
-
-    return () => {
-      if (streamInstance) {
-        streamInstance.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  // Controlar o fluxo do vídeo quando se oculta a câmera
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+      }, 100);
+    } catch (err) {
+      console.warn('Erro ao acessar mídia do navegador:', err);
+      setCameraError('Permissão para câmera ou microfone negada. Verifique as configurações de mídia no seu navegador.');
+      // Incluso se a câmera falhar, permite entrar na sala em modo estúdio
+      setHasJoinedRoom(true);
+    } finally {
+      setIsConnecting(false);
     }
-  }, [localStream, isVideoOn, isLiveVideoActive]);
+  };
+
+  // Limpeza de mídia ao sair da página
+  useEffect(() => {
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [localStream]);
+
+  // Manter a referência de vídeo atualizada
+  useEffect(() => {
+    if (hasJoinedRoom && localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [hasJoinedRoom, localStream, isVideoOn]);
 
   // Ligar/Desligar Microfone nativo
   const toggleMic = () => {
@@ -316,82 +328,121 @@ Dicas:
             {/* CUADRO DE VIDEOCHAMADA NATIVA WEBRTC LEXY SPACE */}
             <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[380px]">
               
-              {/* VÍDEO PRINCIPAL DA CÂMERA DO NAVEGADOR OU SPLASH DE CÂMERA DESATIVADA */}
-              <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950">
-                {isVideoOn ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
-                  />
-                ) : (
-                  /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO */
-                  <div className="flex flex-col items-center justify-center space-y-4 p-6">
-                    <div className="relative">
-                      <img
-                        src={tutor.avatar}
-                        alt={tutor.name}
-                        className="w-32 h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
-                      />
-                      {isMicOn && (
-                        <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                      )}
+              {!hasJoinedRoom ? (
+                /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM BOTÃO SOLICITADO PELO USUÁRIO) */
+                <div className="flex flex-col items-center justify-center p-6 text-center space-y-5 relative z-10 w-full h-full my-auto">
+                  <div className="relative">
+                    <img
+                      src={tutor.avatar}
+                      alt={tutor.name}
+                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/30"
+                    />
+                    <span className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-md">
+                      ✓
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 max-w-md">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>Sala Virtual Pronta • Aula Particular 1-on-1</span>
                     </div>
-                    <div className="text-center space-y-1">
-                      <h3 className="text-lg font-extrabold text-white">{tutor.name}</h3>
-                      <span className="text-xs text-cyan-300 font-mono font-semibold block">
-                        {isMicOn ? '🎤 Microfone Ativo • Câmera Desativada' : '🔇 Câmera & Microfone Mute'}
+                    <h3 className="text-xl font-extrabold text-white">Aula com {tutor.name}</h3>
+                    <p className="text-xs text-cyan-300 font-semibold">{tutor.subject} • Nível Intermediário</p>
+                    <p className="text-xs text-slate-300 leading-relaxed pt-1">
+                      Clique no botão abaixo para <strong>ativar sua câmera e microfone</strong> e entrar na videochamada ao vivo com seu professor!
+                    </p>
+                  </div>
+
+                  {cameraError && (
+                    <div className="bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs p-3 rounded-xl max-w-sm flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{cameraError}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 w-full max-w-xs">
+                    <button
+                      type="button"
+                      onClick={handleJoinRoom}
+                      disabled={isConnecting}
+                      className="w-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-sm py-4 px-6 rounded-2xl shadow-xl shadow-emerald-500/30 border border-emerald-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                    >
+                      <Video className="w-5 h-5 fill-slate-950 text-slate-950" />
+                      <span>{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* VÍDEO PRINCIPAL DA CÂMERA DO NAVEGADOR QUANDO DENTRO DA SALA */
+                <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950">
+                  {isVideoOn ? (
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
+                    />
+                  ) : (
+                    /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO */
+                    <div className="flex flex-col items-center justify-center space-y-4 p-6">
+                      <div className="relative">
+                        <img
+                          src={tutor.avatar}
+                          alt={tutor.name}
+                          className="w-32 h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
+                        />
+                        {isMicOn && (
+                          <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
+                        )}
+                      </div>
+                      <div className="text-center space-y-1">
+                        <h3 className="text-lg font-extrabold text-white">{tutor.name}</h3>
+                        <span className="text-xs text-cyan-300 font-mono font-semibold block">
+                          {isMicOn ? '🎤 Microfone Ativo • Câmera Desativada' : '🔇 Câmera & Microfone Mute'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
+                  <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                      {isScreenSharing ? '🖥️ Compartilhando Tela' : '🔴 Lexy Space WebRTC Live'}
+                    </span>
+                  </div>
+
+                  {/* ALERTA SI FALTA PERMISO DE CÁMARA */}
+                  {cameraError && (
+                    <div className="absolute top-14 left-3 right-3 bg-amber-950/90 border border-amber-500/40 text-amber-300 text-xs p-3 rounded-xl backdrop-blur-md z-20 flex items-center justify-between shadow-xl">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>{cameraError}</span>
+                      </div>
+                      <button
+                        onClick={handleJoinRoom}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[10px] px-3 py-1 rounded-lg shrink-0 cursor-pointer"
+                      >
+                        Reativar Câmera
+                      </button>
+                    </div>
+                  )}
+
+                  {/* MINIATURA PIP DO ALUNO (SELF VIEW) NA ESQUINA INFERIOR DIREITA */}
+                  <div className="absolute bottom-3 right-3 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
+                    <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
+                      <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs">
+                        A
+                      </div>
+                      <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.2 rounded border border-slate-800">
+                        Você (Aluno)
                       </span>
                     </div>
                   </div>
-                )}
-
-                {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
-                <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                    {isScreenSharing ? '🖥️ Compartilhando Tela' : '🔴 Lexy Space WebRTC Live'}
-                  </span>
                 </div>
-
-                {/* ALERTA SI FALTA PERMISO DE CÁMARA */}
-                {cameraError && (
-                  <div className="absolute top-14 left-3 right-3 bg-amber-950/90 border border-amber-500/40 text-amber-300 text-xs p-3 rounded-xl backdrop-blur-md z-20 flex items-center justify-between shadow-xl">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>{cameraError}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                          .then(st => {
-                            setLocalStream(st);
-                            setCameraError(null);
-                            if (localVideoRef.current) localVideoRef.current.srcObject = st;
-                          })
-                          .catch(() => {});
-                      }}
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[10px] px-3 py-1 rounded-lg shrink-0 cursor-pointer"
-                    >
-                      Ativar Câmera
-                    </button>
-                  </div>
-                )}
-
-                {/* MINIATURA PIP DO ALUNO (SELF VIEW) NA ESQUINA INFERIOR DIREITA */}
-                <div className="absolute bottom-3 right-3 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
-                  <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
-                    <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs">
-                      A
-                    </div>
-                    <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.2 rounded border border-slate-800">
-                      Você (Aluno)
-                    </span>
-                  </div>
-                </div>
-              </div>
+              )}
 
             </div>
 
