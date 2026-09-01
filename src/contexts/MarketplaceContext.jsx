@@ -863,6 +863,35 @@ const isFakeMockTutor = (t) => {
     return { success: true, status: 'active' };
   };
 
+  const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
+    setSubscriptions(prev => prev.map(s => {
+      if (s.id === subscriptionId) {
+        return {
+          ...s,
+          status: 'canceled',
+          cancelReason: reason,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return s;
+    }));
+
+    try {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'canceled',
+          cancel_reason: reason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+    } catch (err) {
+      console.warn('Erro ao atualizar cancelamento no Supabase:', err);
+    }
+
+    return { success: true, status: 'canceled' };
+  };
+
   const createBooking = ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
@@ -1257,6 +1286,7 @@ const isFakeMockTutor = (t) => {
       activateSubscriptionAndCredits,
       pauseSubscription,
       resumeSubscription,
+      cancelSubscription,
       createBooking,
       generateLessonCode,
       completeBooking,

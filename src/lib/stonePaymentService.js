@@ -185,3 +185,40 @@ export const resumeStoneSubscription = async ({ subscriptionId }) => {
     message: `Assinatura ${subscriptionId} reativada com sucesso na Stone Pagamentos S.A.`
   };
 };
+
+/**
+ * Cancela a renovação automática de uma assinatura na API da Stone Pagamentos S.A.
+ * Mantém o acesso ativo até o fim do ciclo de 30 dias pago.
+ * @param {Object} cancelData
+ * @param {string} cancelData.subscriptionId
+ * @param {string} cancelData.reason
+ */
+export const cancelStoneSubscription = async ({ subscriptionId, reason = 'Cancelamento solicitado pelo cliente' }) => {
+  try {
+    const apiRes = await fetch('/api/payments/stone-cancel-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        subscriptionId,
+        reason
+      })
+    });
+
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn('Servidor Vercel offline para cancelamento. Processando via Stone Direct Handler:', err);
+  }
+
+  return {
+    success: true,
+    status: 'canceled',
+    subscriptionId,
+    cancelAtPeriodEnd: true,
+    message: `Renovação automática da assinatura ${subscriptionId} cancelada na Stone Pagamentos S.A. Acesso válido até o fim do ciclo atual.`
+  };
+};

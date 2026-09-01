@@ -8,12 +8,15 @@ import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import StoneCheckoutModal from '../payment/StoneCheckoutModal';
-import { pauseStoneSubscription, resumeStoneSubscription } from '../../lib/stonePaymentService';
+import { pauseStoneSubscription, resumeStoneSubscription, cancelStoneSubscription } from '../../lib/stonePaymentService';
 
 export default function StudentSubscriptionTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { subscriptions, tutors, createBooking, bookings, teacherAvailability, pauseSubscription, resumeSubscription } = useMarketplace();
+  const { 
+    subscriptions, tutors, createBooking, bookings, teacherAvailability, 
+    pauseSubscription, resumeSubscription, cancelSubscription 
+  } = useMarketplace();
   const { profile } = useAuth();
 
   const studentMatricula = profile?.matricula_code || 'LXY-2026-784219';
@@ -43,6 +46,9 @@ export default function StudentSubscriptionTab() {
 
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1); // 1: Pausa, 2: Motivo/Alternativa, 3: Confirmar
+  const [cancelReason, setCancelReason] = useState('financeiro');
+  const [cancelComment, setCancelComment] = useState('');
   const [pauseDays, setPauseDays] = useState(15);
   const [actionNotice, setActionNotice] = useState('');
 
@@ -231,6 +237,26 @@ export default function StudentSubscriptionTab() {
       setTimeout(() => setActionNotice(''), 5000);
     } else {
       alert('Erro ao reativar assinatura na Stone S.A.');
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!activeSub) return;
+
+    const stoneRes = await cancelStoneSubscription({
+      subscriptionId: activeSub.id,
+      reason: `${cancelReason}: ${cancelComment}`
+    });
+
+    if (stoneRes.success) {
+      await cancelSubscription(activeSub.id, cancelReason);
+      setActiveSubState(prev => prev ? { ...prev, status: 'canceled' } : null);
+      setIsCancelModalOpen(false);
+      setCancelStep(1);
+      setActionNotice('ℹ️ Renovação automática cancelada na Stone Pagamentos S.A. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
+      setTimeout(() => setActionNotice(''), 6000);
+    } else {
+      alert('Erro ao agendar cancelamento de renovação na Stone Pagamentos S.A.');
     }
   };
 
@@ -752,6 +778,160 @@ export default function StudentSubscriptionTab() {
                 <span>Confirmar Pausa na Stone S.A.</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Cancelar Renovação da Assinatura</h3>
+                  <p className="text-[11px] text-slate-400">Lexy Retention & Cancellation Flow</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsCancelModalOpen(false); setCancelStep(1); }} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* PASO 1: OFRECER PAUSA (RETENCIÓN PRINCIPAL) */}
+            {cancelStep === 1 && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 space-y-2">
+                  <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+                    <PauseCircle className="w-4 h-4" />
+                    💡 Recomendação Lexy: Que tal Pausar em vez de Cancelar?
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Ao cancelar, você <strong className="text-rose-400">perderá a reserva semanal fixa</strong> com seu professor {targetTutor?.name}. Se você vai viajar ou precisa de um descanso, pode <strong>pausar os cobros na Stone por até 20 dias</strong> mantendo seu horário garantido.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsCancelModalOpen(false); setIsPauseModalOpen(true); }}
+                    className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-5 rounded-xl shadow-lg border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <PauseCircle className="w-4 h-4 fill-slate-950 text-slate-950" />
+                    <span>Pausar por até 20 Dias na Stone (Manter Horário)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(2)}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs py-3 rounded-xl border border-slate-800 transition-all cursor-pointer text-center"
+                  >
+                    Desejo continuar com a pesquisa de cancelamento →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: PESQUISA DE MOTIVO E SOLUÇÕES ALTERNATIVAS */}
+            {cancelStep === 2 && (
+              <div className="space-y-4 animate-fade-in">
+                <label className="text-xs font-extrabold text-slate-300 uppercase tracking-wider block">
+                  Qual o principal motivo do cancelamento?
+                </label>
+
+                <div className="space-y-2 text-xs">
+                  {[
+                    { id: 'financeiro', label: '💸 Motivos financeiros / Preço do pacote', altText: '🎁 Ganhar 15% OFF de desconto na próxima mensalidade' },
+                    { id: 'trocar_professor', label: '👨‍🏫 Quero testar outro professor nativo', altText: '💡 Sugerir troca de tutor sem custo de matrícula' },
+                    { id: 'sem_tempo', label: '⏳ Não tenho tempo suficiente para estudar agora', altText: '⏸️ Pausar por 20 dias até sua rotina estabilizar' },
+                    { id: 'outro', label: '📝 Outro motivo pessoal', altText: '' }
+                  ].map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => setCancelReason(item.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                        cancelReason === item.id 
+                          ? 'bg-cyan-500/15 border-cyan-400 font-bold text-white' 
+                          : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      {item.altText && cancelReason === item.id && (
+                        <div className="mt-1 text-[11px] text-amber-300 font-semibold flex items-center gap-1">
+                          <span>{item.altText}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <textarea
+                  value={cancelComment}
+                  onChange={(e) => setCancelComment(e.target.value)}
+                  placeholder="Comentário adicional (opcional)..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-cyan-400 h-20 resize-none"
+                />
+
+                <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(1)}
+                    className="bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-800 cursor-pointer"
+                  >
+                    ← Voltar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(3)}
+                    className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer"
+                  >
+                    Avançar para confirmação →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 3: CONFIRMAÇÃO FINAL DE CANCELAMENTO DE RENOVAÇÃO */}
+            {cancelStep === 3 && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="bg-slate-900 border border-rose-500/40 rounded-2xl p-4 space-y-2">
+                  <h4 className="font-extrabold text-white text-sm">Confirmação de Cancelamento de Renovação</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Sua cobrança automática recorrente na <strong className="text-white">Stone Pagamentos S.A.</strong> será cancelada. 
+                  </p>
+                  <p className="text-xs text-emerald-400 font-bold bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                    ✓ Você continuará com acesso a todas as aulas pagas do seu ciclo atual de 30 dias até o encerramento do período vigente.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(2)}
+                    className="bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-800 cursor-pointer"
+                  >
+                    ← Voltar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmCancel}
+                    className="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <XCircle className="w-4 h-4 text-white" />
+                    <span>Confirmar Cancelamento da Renovação</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
