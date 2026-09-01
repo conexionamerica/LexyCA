@@ -6,11 +6,12 @@ import {
 } from 'lucide-react';
 import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import StoneCheckoutModal from '../payment/StoneCheckoutModal';
 
 export default function StudentSubscriptionTab() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { subscriptions, tutors, createBooking, bookings } = useMarketplace();
   const { profile } = useAuth();
 
@@ -47,6 +48,12 @@ export default function StudentSubscriptionTab() {
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [selectedLessonsPerWeek, setSelectedLessonsPerWeek] = useState(2);
   const [isStoneModalOpen, setIsStoneModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (searchParams.get('subscribe') === 'true') {
+      setIsSubscribeModalOpen(true);
+    }
+  }, [searchParams]);
 
   const lastBooking = useMemo(() => {
     if (!profile || !bookings) return null;
@@ -183,7 +190,7 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
     const updatedSub = { ...activeSub, status: 'active', pausedUntil: null };
     setActiveSubState(updatedSub);
-    setActionNotice(`▶️ Assinatura reativada com sucesso! Cobrança de 28 dias mantida.`);
+    setActionNotice(`▶️ Assinatura reativada com sucesso! Cobrança de 30 dias mantida.`);
     setTimeout(() => setActionNotice(''), 6000);
   };
 
@@ -192,7 +199,7 @@ export default function StudentSubscriptionTab() {
     const updatedSub = { ...activeSub, status: 'canceled' };
     setActiveSubState(updatedSub);
     setIsCancelModalOpen(false);
-    setActionNotice(`🚫 Assinatura cancelada. As cobranças automáticas de 28 dias foram interrompidas.`);
+    setActionNotice(`🚫 Assinatura cancelada. As cobranças automáticas de 30 dias foram interrompidas.`);
     setTimeout(() => setActionNotice(''), 7000);
   };
 
@@ -214,7 +221,7 @@ export default function StudentSubscriptionTab() {
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            Meu Plano de Aulas & Assinatura Recorrente (28 Dias)
+            Meu Plano de Aulas & Assinatura Recorrente (30 Dias)
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">Gerencie sua assinatura ativa, agende pacotes de aulas e acompanhe seu histórico financeiro.</p>
         </div>
@@ -259,10 +266,10 @@ export default function StudentSubscriptionTab() {
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-3">
             <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>Ative seu Plano Recorrente de 28 Dias com {targetTutor?.name}</span>
+              <span>Ative seu Plano Recorrente de 30 Dias com {targetTutor?.name}</span>
             </h4>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Garanta seu horário semanal reservado na agenda nativa do seu professor. A cobrança é realizada a cada 28 dias com base na tarifa por hora fixada pelo seu professor (<strong>R$ {tutorHourlyRate}.00/hora</strong>).
+              Garanta seu horário semanal reservado na agenda nativa do seu professor. A cobrança é realizada a cada 30 dias com base na tarifa por hora fixada pelo seu professor (<strong>R$ {tutorHourlyRate}.00/hora</strong>).
             </p>
 
             <div className="pt-2">
@@ -271,7 +278,7 @@ export default function StudentSubscriptionTab() {
                 className="bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-xs px-6 py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 fill-slate-950" />
-                <span>Ativar Assinatura Recorrente de 28 Dias com {targetTutor?.name}</span>
+                <span>Ativar Assinatura Recorrente de 30 Dias com {targetTutor?.name}</span>
               </button>
             </div>
           </div>
