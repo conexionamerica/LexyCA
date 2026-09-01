@@ -342,10 +342,10 @@ Dicas:
         {/* ── COLUMNA IZQUIERDA: VÍDEO TRANSMISSÃO DENTRO DO PRÓPRIO CUADRO DO SITE (7 columnas) ── */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           
-          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-4 min-h-[480px]">
+          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-2.5 sm:p-3">
             
             {/* Header del Cuadro de Transmisión Nativa WebRTC */}
-            <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 rounded-2xl mb-2">
+            <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl mb-2">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-black text-white">
@@ -354,14 +354,14 @@ Dicas:
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">
-                  Transmissão Direta Sem Jitsi
+                <span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
+                  Sem Jitsi • Direto no Site
                 </span>
               </div>
             </div>
 
             {/* CUADRO DE VIDEOCHAMADA NATIVA WEBRTC LEXY SPACE */}
-            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[380px]">
+            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[320px] max-h-[58vh]">
               
               {!hasJoinedRoom ? (
                 /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM BOTÃO SOLICITADO PELO USUÁRIO) */
@@ -537,42 +537,6 @@ Dicas:
                 </div>
               )}
 
-            </div>
-
-            {/* Barra de Controles Inferior Nativas da Lexy */}
-            <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 mt-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={toggleMic}
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
-                    isMicOn 
-                      ? 'bg-slate-950 border-slate-800 text-emerald-400 hover:bg-slate-800' 
-                      : 'bg-rose-500/20 border-rose-500 text-rose-400'
-                  }`}
-                >
-                  {isMicOn ? <Mic className="w-4 h-4 text-emerald-400" /> : <MicOff className="w-4 h-4 text-rose-400" />}
-                  <span>{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleVideo}
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
-                    isVideoOn 
-                      ? 'bg-slate-950 border-slate-800 text-cyan-400 hover:bg-slate-800' 
-                      : 'bg-rose-500/20 border-rose-500 text-rose-400'
-                  }`}
-                >
-                  {isVideoOn ? <Video className="w-4 h-4 text-cyan-400" /> : <VideoOff className="w-4 h-4 text-rose-400" />}
-                  <span>{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Nativo Lexy WebRTC • 100% Criptografado & Sem Jitsi</span>
-              </div>
             </div>
 
           </div>
