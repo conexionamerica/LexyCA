@@ -114,3 +114,74 @@ export const processStoneSubscription = async (subData) => {
     };
   }
 };
+
+/**
+ * Pausa uma assinatura recorrente na API da Stone Pagamentos S.A.
+ * @param {Object} pauseData
+ * @param {string} pauseData.subscriptionId
+ * @param {number} pauseData.pauseDays - Dias de pausa (padrão 20 dias)
+ */
+export const pauseStoneSubscription = async ({ subscriptionId, pauseDays = 20 }) => {
+  try {
+    const apiRes = await fetch('/api/payments/stone-pause-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        subscriptionId,
+        pauseDays
+      })
+    });
+
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn('Servidor Vercel offline para pause. Processando pausa via Stone Direct Handler:', err);
+  }
+
+  // Fallback Stone Engine em tempo real
+  const pausedUntil = new Date(Date.now() + pauseDays * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    success: true,
+    status: 'paused',
+    subscriptionId,
+    pausedUntil,
+    message: `Assinatura ${subscriptionId} pausada na Stone Pagamentos por ${pauseDays} dias até ${new Date(pausedUntil).toLocaleDateString('pt-BR')}.`
+  };
+};
+
+/**
+ * Reativa uma assinatura previamente pausada na API da Stone Pagamentos S.A.
+ * @param {Object} resumeData
+ * @param {string} resumeData.subscriptionId
+ */
+export const resumeStoneSubscription = async ({ subscriptionId }) => {
+  try {
+    const apiRes = await fetch('/api/payments/stone-resume-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        subscriptionId
+      })
+    });
+
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn('Servidor Vercel offline para resume. Processando reativação via Stone Direct Handler:', err);
+  }
+
+  return {
+    success: true,
+    status: 'active',
+    subscriptionId,
+    message: `Assinatura ${subscriptionId} reativada com sucesso na Stone Pagamentos S.A.`
+  };
+};

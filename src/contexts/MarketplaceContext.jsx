@@ -803,6 +803,66 @@ const isFakeMockTutor = (t) => {
     return newSub;
   };
 
+  const pauseSubscription = async (subscriptionId, days = 20) => {
+    const pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+    setSubscriptions(prev => prev.map(s => {
+      if (s.id === subscriptionId) {
+        return {
+          ...s,
+          status: 'paused',
+          pausedUntil,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return s;
+    }));
+
+    try {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'paused',
+          paused_until: pausedUntil,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+    } catch (err) {
+      console.warn('Erro ao atualizar pausa no Supabase:', err);
+    }
+
+    return { success: true, status: 'paused', pausedUntil };
+  };
+
+  const resumeSubscription = async (subscriptionId) => {
+    setSubscriptions(prev => prev.map(s => {
+      if (s.id === subscriptionId) {
+        return {
+          ...s,
+          status: 'active',
+          pausedUntil: null,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return s;
+    }));
+
+    try {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          paused_until: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+    } catch (err) {
+      console.warn('Erro ao atualizar reativação no Supabase:', err);
+    }
+
+    return { success: true, status: 'active' };
+  };
+
   const createBooking = ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
@@ -1195,6 +1255,8 @@ const isFakeMockTutor = (t) => {
       registerStudentAccount,
       topUpWallet,
       activateSubscriptionAndCredits,
+      pauseSubscription,
+      resumeSubscription,
       createBooking,
       generateLessonCode,
       completeBooking,

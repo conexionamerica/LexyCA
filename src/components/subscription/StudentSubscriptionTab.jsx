@@ -8,11 +8,12 @@ import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import StoneCheckoutModal from '../payment/StoneCheckoutModal';
+import { pauseStoneSubscription, resumeStoneSubscription } from '../../lib/stonePaymentService';
 
 export default function StudentSubscriptionTab() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { subscriptions, tutors, createBooking, bookings, teacherAvailability } = useMarketplace();
+  const { subscriptions, tutors, createBooking, bookings, teacherAvailability, pauseSubscription, resumeSubscription } = useMarketplace();
   const { profile } = useAuth();
 
   const studentMatricula = profile?.matricula_code || 'LXY-2026-784219';
@@ -196,6 +197,42 @@ export default function StudentSubscriptionTab() {
       return true;
     });
   }, [profile]);
+
+  const handleConfirmPause = async () => {
+    if (!activeSub) return;
+    setIsPauseModalOpen(false);
+
+    const stoneRes = await pauseStoneSubscription({
+      subscriptionId: activeSub.id,
+      pauseDays: 20
+    });
+
+    if (stoneRes.success) {
+      await pauseSubscription(activeSub.id, 20);
+      setActiveSubState(prev => prev ? { ...prev, status: 'paused' } : null);
+      setActionNotice('⏸️ Assinatura pausada com sucesso na Stone Pagamentos S.A. por 20 dias!');
+      setTimeout(() => setActionNotice(''), 5000);
+    } else {
+      alert('Erro ao processar pausa de assinatura na Stone S.A.');
+    }
+  };
+
+  const handleConfirmResume = async () => {
+    if (!activeSub) return;
+
+    const stoneRes = await resumeStoneSubscription({
+      subscriptionId: activeSub.id
+    });
+
+    if (stoneRes.success) {
+      await resumeSubscription(activeSub.id);
+      setActiveSubState(prev => prev ? { ...prev, status: 'active' } : null);
+      setActionNotice('⚡ Assinatura reativada com sucesso na Stone Pagamentos S.A.!');
+      setTimeout(() => setActionNotice(''), 5000);
+    } else {
+      alert('Erro ao reativar assinatura na Stone S.A.');
+    }
+  };
 
   const handleStoneSubscriptionPaymentSuccess = (paymentResult) => {
     setIsStoneModalOpen(false);
@@ -558,14 +595,14 @@ export default function StudentSubscriptionTab() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60">
-                {activeSub.status === 'active' ? (
+                {activeSub.status === 'active' && (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => setIsPauseModalOpen(true)}
                       className="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-300 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <PauseCircle className="w-4 h-4 text-amber-400" />
-                      <span>Pausar Assinatura</span>
+                      <span>Pausar Assinatura (Até 20 Dias)</span>
                     </button>
 
                     <button
@@ -576,7 +613,26 @@ export default function StudentSubscriptionTab() {
                       <span>Cancelar Assinatura</span>
                     </button>
                   </div>
-                ) : (
+                )}
+
+                {activeSub.status === 'paused' && (
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    <span className="text-xs text-amber-300 font-medium flex items-center gap-1.5">
+                      <PauseCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                      Cobranças suspensas na Stone Pagamentos. Horários preservados!
+                    </span>
+
+                    <button
+                      onClick={handleConfirmResume}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
+                      <span>Reativar Assinatura Agora ⚡</span>
+                    </button>
+                  </div>
+                )}
+
+                {activeSub.status === 'canceled' && (
                   <button
                     onClick={handleReactivateSubscription}
                     className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
@@ -655,6 +711,50 @@ export default function StudentSubscriptionTab() {
           </div>
         )}
       </div>
+
+      {isPauseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-950 border border-amber-500/40 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <PauseCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Pausar Assinatura na Stone S.A.</h3>
+                  <p className="text-[11px] text-slate-400">Suspensão de cobranças automáticas por até 20 dias</p>
+                </div>
+              </div>
+              <button onClick={() => setIsPauseModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              Ao confirmar, a cobrança recorrente na Stone Pagamentos S.A. será <strong className="text-amber-300">pausada por até 20 dias</strong>. Seus horários semanais com seu professor permanecem reservados. Você poderá reativar a qualquer momento.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsPauseModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-800 cursor-pointer"
+              >
+                Voltar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmPause}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <PauseCircle className="w-4 h-4 fill-slate-950 text-slate-950" />
+                <span>Confirmar Pausa na Stone S.A.</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isSubscribeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
