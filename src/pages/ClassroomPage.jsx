@@ -28,6 +28,19 @@ export default function ClassroomPage() {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [cameraError, setCameraError] = useState(null);
 
+  // Estados da Sala Virtual
+  const [isLiveVideoActive, setIsLiveVideoActive] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [activeTab, setActiveTab] = useState('whiteboard'); // 'whiteboard' | 'notes' | 'chat'
+  
+  // Timer de clase (50 minutos regresivo)
+  const [timeLeft, setTimeLeft] = useState(50 * 60);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [studentRating, setStudentRating] = useState(5);
+  const [studentComment, setStudentComment] = useState('');
+  const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
+
   // Inicializar câmera nativa WebRTC do navegador ao entrar na sala
   useEffect(() => {
     let streamInstance = null;
