@@ -378,6 +378,47 @@ export default function StudentDashboard() {
   };
 
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
+  const [lexySpaceDateFilter, setLexySpaceDateFilter] = useState('todas'); // 'hoje' | 'amanha' | 'todas'
+
+  // Helper para categorizar aulas em Hoje, Amanhã ou Outras
+  const getBookingDayCategory = (dayStr, dateStr) => {
+    const rawStr = String(dayStr || dateStr || '').toLowerCase();
+    
+    const weekDaysPt = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
+    const now = new Date();
+    
+    const todayIndex = now.getDay();
+    const tomorrowIndex = (todayIndex + 1) % 7;
+
+    const todayName = weekDaysPt[todayIndex === 0 ? 0 : todayIndex === 6 ? 7 : todayIndex];
+    const tomorrowName = weekDaysPt[tomorrowIndex === 0 ? 0 : tomorrowIndex === 6 ? 7 : tomorrowIndex];
+
+    const cleanInput = rawStr.replace('-feira', '').trim();
+
+    if (cleanInput.includes('hoje') || (todayName && cleanInput.includes(todayName))) {
+      return 'hoje';
+    }
+    if (cleanInput.includes('amanhã') || cleanInput.includes('amanha') || (tomorrowName && cleanInput.includes(tomorrowName))) {
+      return 'amanha';
+    }
+
+    return 'outros';
+  };
+
+  // Filtrado de reservas para o tab Lexy Space
+  const lexySpaceBookings = useMemo(() => {
+    return myBookingsList.filter(b => {
+      if (b.status === 'canceled') return false;
+      const cat = getBookingDayCategory(b.day, b.date);
+      if (lexySpaceDateFilter === 'hoje') return cat === 'hoje';
+      if (lexySpaceDateFilter === 'amanha') return cat === 'amanha';
+      return true;
+    });
+  }, [myBookingsList, lexySpaceDateFilter]);
+
+  const countHoje = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date) === 'hoje').length, [myBookingsList]);
+  const countAmanha = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date) === 'amanha').length, [myBookingsList]);
+  const countTodas = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled').length, [myBookingsList]);
 
   const filteredBookingsList = useMemo(() => {
     if (!lessonSearchQuery.trim()) return myBookingsList;
@@ -1219,6 +1260,196 @@ export default function StudentDashboard() {
               <span>Encerrar Sessão</span>
             </button>
           </div>
+
+        </div>
+      )}
+
+      {/* TAB: LEXY SPACE (AULAS AO VIVO E SALA VIRTUAL) */}
+      {(activeTab === 'lexy-space' || activeTab === 'aulas') && (
+        <div className="space-y-5 animate-fade-in-up">
+          
+          {/* HEADER DESTACADO DO LEXY SPACE */}
+          <div className="bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 border border-cyan-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1.5 z-10">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-black uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span>Lexy Space • Central de Aulas ao Vivo</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Suas Aulas Particulares & Sala Virtual
+              </h2>
+              <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                Entre na sua videochamada ao vivo com lousa interativa compartilhada, quadro de anotações e chat nativo sincronizado em tempo real.
+              </p>
+            </div>
+
+            {/* BOTÃO DE ATALHO RÁPIDO PARA O CATÁLOGO */}
+            <button
+              onClick={() => setSearchParams({ tab: 'catalogo' })}
+              className="z-10 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 shrink-0 shadow-md"
+            >
+              <Search className="w-4 h-4 text-cyan-400" />
+              <span>+ Agendar Nova Aula</span>
+            </button>
+          </div>
+
+          {/* BARRA DE FILTROS RÁPIDOS: HOJE | AMANHÃ | TODAS */}
+          <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-2 sm:p-3 flex items-center gap-2 flex-wrap shadow-lg">
+            <span className="text-xs font-bold text-slate-400 px-2 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Filtrar por Período:</span>
+            </span>
+
+            {/* BOTÃO HOJE */}
+            <button
+              type="button"
+              onClick={() => setLexySpaceDateFilter('hoje')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                lexySpaceDateFilter === 'hoje'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md shadow-amber-500/20 scale-105'
+                  : 'bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+              }`}
+            >
+              <span>⚡ Hoje</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${lexySpaceDateFilter === 'hoje' ? 'bg-slate-950 text-amber-300' : 'bg-slate-900 text-slate-400'}`}>
+                {countHoje}
+              </span>
+            </button>
+
+            {/* BOTÃO AMANHÃ */}
+            <button
+              type="button"
+              onClick={() => setLexySpaceDateFilter('amanha')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                lexySpaceDateFilter === 'amanha'
+                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-slate-950 shadow-md shadow-cyan-500/20 scale-105'
+                  : 'bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+              }`}
+            >
+              <span>🌅 Amanhã</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${lexySpaceDateFilter === 'amanha' ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-400'}`}>
+                {countAmanha}
+              </span>
+            </button>
+
+            {/* BOTÃO TODAS */}
+            <button
+              type="button"
+              onClick={() => setLexySpaceDateFilter('todas')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                lexySpaceDateFilter === 'todas'
+                  ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white border border-slate-600 shadow-md scale-105'
+                  : 'bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+              }`}
+            >
+              <span>📋 Todas as Aulas</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${lexySpaceDateFilter === 'todas' ? 'bg-slate-900 text-cyan-400' : 'bg-slate-900 text-slate-400'}`}>
+                {countTodas}
+              </span>
+            </button>
+          </div>
+
+          {/* LISTA DE AULAS FILTRADAS */}
+          {lexySpaceBookings.length === 0 ? (
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 text-center space-y-3">
+              <Calendar className="w-10 h-10 text-slate-600 mx-auto" />
+              <h3 className="text-base font-bold text-white">Nenhuma aula encontrada para este filtro ({lexySpaceDateFilter.toUpperCase()})</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Você não possui aulas agendadas neste período. Alterne o filtro para "Todas as Aulas" ou escolha um tutor no catálogo.
+              </p>
+              <button
+                onClick={() => setLexySpaceDateFilter('todas')}
+                className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer"
+              >
+                Ver Todas as Aulas
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {lexySpaceBookings.map((b) => {
+                const dayCat = getBookingDayCategory(b.day, b.date);
+                const tutorObj = tutors.find(t => String(t.id).toLowerCase() === String(b.tutorId || b.tutor_id).toLowerCase()) || {
+                  name: b.tutorName || 'Professor Nativo',
+                  subject: b.tutorSubject || 'Idiomas',
+                  avatar: b.tutorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
+                };
+
+                return (
+                  <div 
+                    key={b.id} 
+                    className={`bg-slate-900/60 border rounded-2xl p-4 sm:p-5 shadow-xl transition-all space-y-4 ${
+                      dayCat === 'hoje'
+                        ? 'border-amber-500/50 bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 shadow-amber-950/30'
+                        : dayCat === 'amanha'
+                        ? 'border-cyan-500/40 bg-gradient-to-r from-slate-900 via-cyan-950/20 to-slate-900 shadow-cyan-950/30'
+                        : 'border-slate-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                      <div className="flex items-center gap-3">
+                        {renderAvatar(tutorObj.avatar, tutorObj.name, "w-11 h-11 rounded-2xl border border-cyan-400/40 object-cover shrink-0")}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-white text-sm sm:text-base">{tutorObj.name}</h4>
+                            {dayCat === 'hoje' && (
+                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                <Zap className="w-3 h-3 fill-amber-300" />
+                                <span>HOJE</span>
+                              </span>
+                            )}
+                            {dayCat === 'amanha' && (
+                              <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                <span>AMANHÃ</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">{tutorObj.subject} • Nível Intermediário</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="bg-cyan-500/10 text-cyan-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                          Código: {b.lesson_code || b.id}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                          <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <span>{b.day || b.date || 'Quarta-feira'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                          <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>Horário: {b.time || '16:00'} (Duração: 50 min)</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBookingForReschedule(b)}
+                          className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs px-4 py-3 rounded-xl border border-slate-800 transition-all cursor-pointer"
+                        >
+                          Reagendar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/classroom/${b.id}`)}
+                          className="flex-1 sm:flex-initial bg-gradient-to-r from-cyan-500 via-cyan-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-xs px-6 py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
+                        >
+                          <Video className="w-4 h-4 fill-slate-950 text-slate-950" />
+                          <span>Entrar no Lexy Space 🚀</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
         </div>
       )}

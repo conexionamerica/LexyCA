@@ -36,6 +36,7 @@ export default function Navbar() {
 
   const studentTabs = [
     { id: 'inicio', label: '🏠 Início' },
+    { id: 'lexy-space', label: '🚀 Lexy Space' },
     { id: 'meu-plano', label: '⭐ Meu Plano' },
     { id: 'catalogo', label: '📚 Catálogo' },
     { id: 'chat', label: '💬 Chat' },
@@ -44,6 +45,7 @@ export default function Navbar() {
 
   const teacherTabs = [
     { id: 'inicio', label: '🏠 Início' },
+    { id: 'lexy-space', label: '🚀 Lexy Space' },
     { id: 'agenda', label: '📅 Agenda' },
     { id: 'alunos', label: '👥 Alunos' },
     { id: 'chat', label: '💬 Chat' },
