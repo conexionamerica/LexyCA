@@ -17,7 +17,7 @@ export default function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
     student, tutors, bookings, completeBooking, 
-    announcements, directChatMessages, sendDirectMessage, subscriptions 
+    announcements, directChatMessages, sendDirectMessage, subscriptions, teacherAvailability 
   } = useMarketplace();
   const { profile, signOut, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
@@ -236,9 +236,113 @@ export default function StudentDashboard() {
   }, [userBookings]);
 
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState(null);
-  const [rescheduleDay, setRescheduleDay] = useState('Quarta-feira');
-  const [rescheduleTime, setRescheduleTime] = useState('16:00');
+  const [rescheduleDay, setRescheduleDay] = useState('Segunda-feira');
+  const [rescheduleTime, setRescheduleTime] = useState('09:00');
   const [actionSuccessMessage, setActionSuccessMessage] = useState('');
+
+  // Professor alvo da aula a ser reagendada
+  const rescheduleTargetTutor = useMemo(() => {
+    if (!selectedBookingForReschedule) return null;
+    const bTutorId = String(selectedBookingForReschedule.tutorId || selectedBookingForReschedule.tutor_id || '').toLowerCase();
+    const bTutorEmail = String(selectedBookingForReschedule.tutorEmail || '').toLowerCase();
+    return tutors.find(t => String(t.id).toLowerCase() === bTutorId || (t.email && String(t.email).toLowerCase() === bTutorEmail)) || tutors[0];
+  }, [selectedBookingForReschedule, tutors]);
+
+  // Função para buscar os slots verdadeiramente LIVRES do professor no dia
+  const getRescheduleFreeSlotsForDay = (dayName) => {
+    if (!rescheduleTargetTutor) return [];
+
+    const dayNameMap = {
+      'segunda': 'Segunda-feira', 'terça': 'Terça-feira', 'terca': 'Terça-feira',
+      'quarta': 'Quarta-feira', 'quinta': 'Quinta-feira', 'sexta': 'Sexta-feira',
+      'sábado': 'Sábado', 'sabado': 'Sábado', 'domingo': 'Domingo'
+    };
+
+    const getDayNameFromDateString = (dateStr) => {
+      if (!dateStr) return '';
+      const clean = String(dateStr).trim();
+      const lower = clean.toLowerCase();
+      for (const [key, full] of Object.entries(dayNameMap)) {
+        if (lower.startsWith(key)) return full;
+      }
+      return clean;
+    };
+
+    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
+
+    // Schedule base do tutor
+    const tutorSchedule = rescheduleTargetTutor.weeklySchedule || rescheduleTargetTutor.availability || {
+      'Segunda-feira': ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+      'Terça-feira': ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+      'Quarta-feira': ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+      'Quinta-feira': ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+      'Sexta-feira': ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+      'Sábado': ['09:00', '10:00', '11:00', '14:00', '15:00'],
+      'Domingo': []
+    };
+
+    let baseSlots = [];
+    Object.keys(tutorSchedule).forEach(dayKey => {
+      const cleanDayKey = String(dayKey).toLowerCase().replace('-feira', '').trim();
+      if (cleanDayKey === targetClean) {
+        baseSlots = tutorSchedule[dayKey] || [];
+      }
+    });
+
+    // Slots extras marcados como 'free' em teacher_availability
+    const extraFreeFromDb = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id).toLowerCase() === String(rescheduleTargetTutor.id).toLowerCase() && a.status === 'free')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
+
+    // Horários ocupados por outras reservas confirmadas do professor
+    const occupiedTimes = (bookings || [])
+      .filter(b => b.id !== selectedBookingForReschedule?.id)
+      .filter(b => String(b.tutorId || b.tutor_id).toLowerCase() === String(rescheduleTargetTutor.id).toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
+      .filter(b => {
+        const bookingDayName = getDayNameFromDateString(b.date || b.day || '');
+        const cleanBookingDay = String(bookingDayName).split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        return cleanBookingDay === targetClean;
+      })
+      .map(b => String(b.time || '').trim());
+
+    // Horários bloqueados em teacher_availability
+    const blockedTimesForTeacher = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id).toLowerCase() === String(rescheduleTargetTutor.id).toLowerCase() && a.status === 'blocked')
+      .filter(a => {
+        const slotDayName = getDayNameFromDateString(a.date || a.day || '');
+        const cleanSlotDay = String(slotDayName).toLowerCase().replace('-feira', '').trim();
+        return cleanSlotDay === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    return combinedSlots.filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()));
+  };
+
+  const ALL_WEEK_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+
+  // Delinear os dias com pelo menos 1 horário livre para o professor
+  const rescheduleAvailableDays = useMemo(() => {
+    if (!selectedBookingForReschedule || !rescheduleTargetTutor) return ALL_WEEK_DAYS;
+    const freeDays = ALL_WEEK_DAYS.filter(day => getRescheduleFreeSlotsForDay(day).length > 0);
+    return freeDays.length > 0 ? freeDays : ALL_WEEK_DAYS;
+  }, [selectedBookingForReschedule, rescheduleTargetTutor, teacherAvailability, bookings]);
+
+  // Atualizar o dia e horário selecionado automaticamente quando o modal abre
+  useEffect(() => {
+    if (selectedBookingForReschedule && rescheduleAvailableDays.length > 0) {
+      const initialDay = rescheduleAvailableDays[0];
+      setRescheduleDay(initialDay);
+      const freeTimes = getRescheduleFreeSlotsForDay(initialDay);
+      setRescheduleTime(freeTimes[0] || '09:00');
+    }
+  }, [selectedBookingForReschedule]);
 
   const handleConfirmReschedule = (e) => {
     e.preventDefault();
@@ -1133,33 +1237,45 @@ export default function StudentDashboard() {
 
             <form onSubmit={handleConfirmReschedule} className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Dia Preferencial</label>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Dia Preferencial (Disponibilidade do Professor)</label>
                 <select
                   value={rescheduleDay}
-                  onChange={(e) => setRescheduleDay(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg p-2.5 text-xs outline-none"
+                  onChange={(e) => {
+                    const newDay = e.target.value;
+                    setRescheduleDay(newDay);
+                    const freeTimes = getRescheduleFreeSlotsForDay(newDay);
+                    if (freeTimes.length > 0) {
+                      setRescheduleTime(freeTimes[0]);
+                    }
+                  }}
+                  className="w-full bg-slate-900 border border-slate-800 text-white font-bold rounded-lg p-2.5 text-xs outline-none cursor-pointer"
                 >
-                  <option value="Segunda-feira">Segunda-feira</option>
-                  <option value="Terça-feira">Terça-feira</option>
-                  <option value="Quarta-feira">Quarta-feira</option>
-                  <option value="Quinta-feira">Quinta-feira</option>
-                  <option value="Sexta-feira">Sexta-feira</option>
+                  {rescheduleAvailableDays.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-300 block mb-1">Horário</label>
-                <select
-                  value={rescheduleTime}
-                  onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-white rounded-lg p-2.5 text-xs outline-none"
-                >
-                  <option value="09:00">09:00</option>
-                  <option value="11:00">11:00</option>
-                  <option value="14:00">14:00</option>
-                  <option value="16:00">16:00</option>
-                  <option value="18:00">18:00</option>
-                </select>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Horário Livre na Agenda</label>
+                {(() => {
+                  const availableTimes = getRescheduleFreeSlotsForDay(rescheduleDay);
+                  return (
+                    <select
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 text-cyan-300 font-bold rounded-lg p-2.5 text-xs outline-none cursor-pointer"
+                    >
+                      {availableTimes.length > 0 ? (
+                        availableTimes.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))
+                      ) : (
+                        <option value="">Sem horário livre neste dia</option>
+                      )}
+                    </select>
+                  );
+                })()}
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -1172,7 +1288,8 @@ export default function StudentDashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-cyan-500 text-slate-950 text-xs font-medium py-2 rounded-lg shadow-sm cursor-pointer"
+                  disabled={getRescheduleFreeSlotsForDay(rescheduleDay).length === 0}
+                  className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs py-2 rounded-lg shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirmar
                 </button>
