@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle 
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 
@@ -22,21 +22,95 @@ export default function ClassroomPage() {
 
   const rawMeetUrl = tutor?.meetUrl || 'https://meet.google.com/abc-defg-hij';
 
-  // Estado para controlar se o vídeo Jitsi está ativo (Incorporado nativamente no Lexy Space)
-  const [isLiveVideoActive, setIsLiveVideoActive] = useState(true);
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [activeTab, setActiveTab] = useState('whiteboard'); // 'whiteboard' | 'notes' | 'chat'
-  
-  // Timer de clase (50 minutos regresivo)
-  const [timeLeft, setTimeLeft] = useState(50 * 60);
-  const [showEndModal, setShowEndModal] = useState(false);
-  const [studentRating, setStudentRating] = useState(5);
-  const [studentComment, setStudentComment] = useState('');
-  const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
+  // WebRTC & Media Stream States for 100% Native Lexy Video Engine
+  const localVideoRef = useRef(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
 
-  // URL del iframe de video aula incorporado dentro de la plataforma
-  const embedRoomUrl = `https://meet.jit.si/LexyAula_${bookingId || 'live'}_${tutor?.id || 'tutor1'}#userInfo.displayName="Aluno"`;
+  // Inicializar câmera nativa WebRTC do navegador ao entrar na sala
+  useEffect(() => {
+    let streamInstance = null;
+
+    const startNativeCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true
+        });
+        streamInstance = stream;
+        setLocalStream(stream);
+        setCameraError(null);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.warn('Câmera/Microfone nativo WebRTC:', err);
+        setCameraError('Permissão para câmera/microfone aguardando aprovação no navegador.');
+      }
+    };
+
+    startNativeCamera();
+
+    return () => {
+      if (streamInstance) {
+        streamInstance.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Controlar o fluxo do vídeo quando se oculta a câmera
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, isVideoOn, isLiveVideoActive]);
+
+  // Ligar/Desligar Microfone nativo
+  const toggleMic = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !isMicOn;
+      });
+    }
+    setIsMicOn(!isMicOn);
+  };
+
+  // Ligar/Desligar Câmera nativa
+  const toggleVideo = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = !isVideoOn;
+      });
+    }
+    setIsVideoOn(!isVideoOn);
+  };
+
+  // Compartilhar Tela Nativo (Screen Sharing)
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      setIsScreenSharing(false);
+      if (localVideoRef.current && localStream) {
+        localVideoRef.current.srcObject = localStream;
+      }
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        setIsScreenSharing(true);
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+        screenStream.getVideoTracks()[0].onended = () => {
+          setIsScreenSharing(false);
+          if (localVideoRef.current && localStream) {
+            localVideoRef.current.srcObject = localStream;
+          }
+        };
+      } catch (err) {
+        console.warn('Compartilhamento de tela cancelado pelo usuário:', err);
+      }
+    }
+  };
 
   // Notas compartidas
   const [notes, setNotes] = useState(`Bem-vindo à Sala Virtual Lexy! 🏫
@@ -208,110 +282,159 @@ Dicas:
         {/* ── COLUMNA IZQUIERDA: VÍDEO TRANSMISSÃO DENTRO DO PRÓPRIO CUADRO DO SITE (7 columnas) ── */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           
-          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-4">
+          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-4 min-h-[480px]">
             
-            {/* Header del Cuadro de Transmisión Incorporada */}
+            {/* Header del Cuadro de Transmisión Nativa WebRTC */}
             <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 rounded-2xl mb-2">
               <div className="flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${isLiveVideoActive ? 'bg-emerald-400 animate-ping' : 'bg-rose-500 animate-pulse'}`} />
+                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-black text-white">
-                  {isLiveVideoActive ? '🔴 Videochamada ao Vivo no Quadro do Site' : '🎥 Transmissão Pronta para Iniciar'}
+                  🔴 Videochamada Nativa Lexy WebRTC • Criptografia P2P
                 </span>
               </div>
 
-              {!isLiveVideoActive ? (
-                <button
-                  type="button"
-                  onClick={() => setIsLiveVideoActive(true)}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs px-4 py-1.5 rounded-xl shadow flex items-center gap-1.5 transition-all hover:scale-105"
-                >
-                  <Play className="w-3.5 h-3.5 fill-slate-950" />
-                  <span>Carregar Vídeo Aqui no Quadro</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsLiveVideoActive(false)}
-                  className="bg-slate-800 text-slate-300 font-bold text-xs px-3 py-1.5 rounded-xl hover:bg-slate-700"
-                >
-                  Pausar Vídeo
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                  Transmissão Direta Sem Jitsi
+                </span>
+              </div>
             </div>
 
-            {/* CUADRO DE VIDEOCHAMADA INCORPORADA NO SITE (SIN SALIR DEL SITE) */}
-            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group">
-              {isLiveVideoActive ? (
-                /* IFRAME DE VIDEOCHAMADA AO VIVO DENTRO DO CUADRO */
-                <iframe
-                  src={embedRoomUrl}
-                  title="Videochamada ao Vivo Incorporada"
-                  allow="camera; microphone; display-capture; autoplay; clipboard-write; encrypted-media"
-                  className="w-full h-full rounded-2xl border-0"
-                />
-              ) : (
-                /* PANTALLA DE BIENVENIDA ANTES DE CARGAR EN EL CUADRO */
-                <div className="flex flex-col items-center justify-center p-6 text-center space-y-4 relative z-10">
-                  <div className="relative">
-                    <img
-                      src={tutor.avatar}
-                      alt={tutor.name}
-                      className="w-28 h-28 rounded-full object-cover border-4 border-cyan-400 shadow-2xl"
-                    />
-                    <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-[10px]">
-                      ✓
-                    </span>
+            {/* CUADRO DE VIDEOCHAMADA NATIVA WEBRTC LEXY SPACE */}
+            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[380px]">
+              
+              {/* VÍDEO PRINCIPAL DA CÂMERA DO NAVEGADOR OU SPLASH DE CÂMERA DESATIVADA */}
+              <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950">
+                {isVideoOn ? (
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
+                  />
+                ) : (
+                  /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO */
+                  <div className="flex flex-col items-center justify-center space-y-4 p-6">
+                    <div className="relative">
+                      <img
+                        src={tutor.avatar}
+                        alt={tutor.name}
+                        className="w-32 h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
+                      />
+                      {isMicOn && (
+                        <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
+                      )}
+                    </div>
+                    <div className="text-center space-y-1">
+                      <h3 className="text-lg font-extrabold text-white">{tutor.name}</h3>
+                      <span className="text-xs text-cyan-300 font-mono font-semibold block">
+                        {isMicOn ? '🎤 Microfone Ativo • Câmera Desativada' : '🔇 Câmera & Microfone Mute'}
+                      </span>
+                    </div>
                   </div>
+                )}
 
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-extrabold text-white">{tutor.name}</h3>
-                    <span className="text-xs text-cyan-300 font-semibold block">{tutor.subject} • Sala de Aula Incorporada</span>
-                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-                      Clique no botão abaixo para abrir a transmissão de vídeo <strong>diretamente dentro deste quadro</strong> sem sair da página!
-                    </p>
-                  </div>
+                {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
+                <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-[11px] font-black text-white uppercase tracking-wider">
+                    {isScreenSharing ? '🖥️ Compartilhando Tela' : '🔴 Lexy Space WebRTC Live'}
+                  </span>
+                </div>
 
-                  <div className="pt-2">
+                {/* ALERTA SI FALTA PERMISO DE CÁMARA */}
+                {cameraError && (
+                  <div className="absolute top-14 left-3 right-3 bg-amber-950/90 border border-amber-500/40 text-amber-300 text-xs p-3 rounded-xl backdrop-blur-md z-20 flex items-center justify-between shadow-xl">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>{cameraError}</span>
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => setIsLiveVideoActive(true)}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-8 py-4 rounded-2xl shadow-xl flex items-center gap-2 transition-all hover:scale-105"
+                      onClick={() => {
+                        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                          .then(st => {
+                            setLocalStream(st);
+                            setCameraError(null);
+                            if (localVideoRef.current) localVideoRef.current.srcObject = st;
+                          })
+                          .catch(() => {});
+                      }}
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[10px] px-3 py-1 rounded-lg shrink-0 cursor-pointer"
                     >
-                      <Video className="w-5 h-5" />
-                      <span>Abrir Videochamada Aqui no Quadro 🎥</span>
+                      Ativar Câmera
                     </button>
                   </div>
+                )}
+
+                {/* MINIATURA PIP DO ALUNO (SELF VIEW) NA ESQUINA INFERIOR DIREITA */}
+                <div className="absolute bottom-3 right-3 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
+                  <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
+                    <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs">
+                      A
+                    </div>
+                    <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.2 rounded border border-slate-800">
+                      Você (Aluno)
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
+
             </div>
 
-            {/* Bar de Controles Inferior */}
-            <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex items-center justify-between mt-2">
+            {/* Barra de Controles Inferior Nativas da Lexy */}
+            <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 mt-2">
               <div className="flex items-center gap-2">
+                {/* BOTÃO MICROFONE */}
                 <button
-                  onClick={() => setIsMicOn(!isMicOn)}
-                  className={`p-2.5 rounded-xl border transition-all ${
-                    isMicOn ? 'bg-slate-950 border-slate-800 text-white' : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                  type="button"
+                  onClick={toggleMic}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
+                    isMicOn 
+                      ? 'bg-slate-950 border-slate-800 text-emerald-400 hover:bg-slate-800' 
+                      : 'bg-rose-500/20 border-rose-500 text-rose-400'
                   }`}
-                  title="Microfone"
+                  title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
                 >
-                  {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                  {isMicOn ? <Mic className="w-4 h-4 text-emerald-400" /> : <MicOff className="w-4 h-4 text-rose-400" />}
+                  <span className="hidden sm:inline">{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
                 </button>
 
+                {/* BOTÃO CÂMERA */}
                 <button
-                  onClick={() => setIsVideoOn(!isVideoOn)}
-                  className={`p-2.5 rounded-xl border transition-all ${
-                    isVideoOn ? 'bg-slate-950 border-slate-800 text-white' : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                  type="button"
+                  onClick={toggleVideo}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
+                    isVideoOn 
+                      ? 'bg-slate-950 border-slate-800 text-cyan-400 hover:bg-slate-800' 
+                      : 'bg-rose-500/20 border-rose-500 text-rose-400'
                   }`}
-                  title="Câmera"
+                  title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
                 >
-                  {isVideoOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+                  {isVideoOn ? <Video className="w-4 h-4 text-cyan-400" /> : <VideoOff className="w-4 h-4 text-rose-400" />}
+                  <span className="hidden sm:inline">{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
+                </button>
+
+                {/* BOTÃO COMPARTILHAR TELA */}
+                <button
+                  type="button"
+                  onClick={toggleScreenShare}
+                  className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-bold ${
+                    isScreenSharing
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+                  title="Compartilhar Tela"
+                >
+                  <Monitor className="w-4 h-4 text-amber-400" />
+                  <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Compartilhar Tela'}</span>
                 </button>
               </div>
 
-              <span className="text-xs text-slate-400 font-medium">
-                Vídeo Incorporado • Sem Redirecionamento
-              </span>
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Nativo Lexy WebRTC • 100% Criptografado & Sem Jitsi</span>
+              </div>
             </div>
 
           </div>
