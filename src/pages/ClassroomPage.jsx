@@ -113,6 +113,8 @@ export default function ClassroomPage() {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+  const [isPeerOnline, setIsPeerOnline] = useState(false);
+  const [peerJoinNotification, setPeerJoinNotification] = useState(null);
   const [isSwapped, setIsSwapped] = useState(false); // Inverter vista grande x vista pequena
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [cameraError, setCameraError] = useState(null);
@@ -131,6 +133,168 @@ export default function ClassroomPage() {
   const [studentRating, setStudentRating] = useState(5);
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
+
+  // Supabase Realtime Channel & Presença em tempo real para Aluno x Professor
+  useEffect(() => {
+    if (!hasJoinedRoom) return;
+
+    // Chave de sala padronizada e unívoca
+    const cleanRoomKey = currentBooking ? `room_${currentBooking.id}` : `room_${String(bookingId || 'main').trim().toLowerCase()}`;
+    
+    const channel = supabase.channel(`lexy_space_${cleanRoomKey}`, {
+      config: {
+        presence: { key: currentUserDisplay.name },
+        broadcast: { self: false }
+      }
+    });
+
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.services.mozilla.com' }
+      ]
+    });
+    pcRef.current = pc;
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+      });
+    }
+
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        console.log('Stream remota recebida com sucesso!');
+        setRemoteStream(event.streams[0]);
+        setIsRemoteConnected(true);
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        channel.send({
+          type: 'broadcast',
+          event: 'signal',
+          payload: { type: 'candidate', candidate: event.candidate }
+        });
+      }
+    };
+
+    // Presença: Rastrear quem está online ou acabou de entrar na sala
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      const users = Object.keys(state);
+      console.log('Presença em tempo real sincronizada:', users);
+      const isOtherPresent = users.some(u => u !== currentUserDisplay.name);
+      if (isOtherPresent) {
+        setIsPeerOnline(true);
+      }
+    });
+
+    channel.on('presence', { event: 'join' }, ({ newPresences }) => {
+      newPresences.forEach(p => {
+        if (p.key && p.key !== currentUserDisplay.name) {
+          setIsPeerOnline(true);
+          const msg = `🎉 ${p.key} acabou de entrar na Sala Virtual!`;
+          setPeerJoinNotification(msg);
+          setTimeout(() => setPeerJoinNotification(null), 7000);
+
+          setChatMessages(prev => [
+            ...prev,
+            {
+              sender: 'Sistema Lexy',
+              text: `🟢 [Sistema Lexy] ${p.key} conectou-se à videochamada ao vivo.`,
+              time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              isSystem: true
+            }
+          ]);
+
+          // Criar uma nova oferta WebRTC para garantir transmissão ao participante que entrou
+          pc.createOffer().then(offer => {
+            pc.setLocalDescription(offer);
+            channel.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: { type: 'offer', offer }
+            });
+          }).catch(err => console.warn('Offer error:', err));
+        }
+      });
+    });
+
+    channel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
+      leftPresences.forEach(p => {
+        if (p.key && p.key !== currentUserDisplay.name) {
+          setIsPeerOnline(false);
+          setPeerJoinNotification(`⚠️ ${p.key} saiu da sala virtual.`);
+          setTimeout(() => setPeerJoinNotification(null), 5000);
+        }
+      });
+    });
+
+    // WebRTC Signaling (Oferta, Resposta e ICE Candidates)
+    channel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
+      try {
+        if (!pcRef.current) return;
+        if (payload.type === 'offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { type: 'answer', answer }
+          });
+        } else if (payload.type === 'answer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+        } else if (payload.type === 'candidate' && payload.candidate) {
+          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        }
+      } catch (err) {
+        console.warn('Sinalização error:', err);
+      }
+    });
+
+    // Chat broadcast em tempo real
+    channel.on('broadcast', { event: 'chat' }, ({ payload }) => {
+      if (payload && payload.sender !== currentUserDisplay.name) {
+        setChatMessages(prev => [...prev, payload]);
+      }
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({
+          user_id: profile?.id || 'anon',
+          name: currentUserDisplay.name,
+          role: profile?.role || 'student',
+          online_at: new Date().toISOString()
+        });
+
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { type: 'offer', offer }
+          });
+        } catch (err) {
+          console.warn('Oferta inicial:', err);
+        }
+      }
+    });
+
+    return () => {
+      channel.unsubscribe();
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+    };
+  }, [hasJoinedRoom, localStream, currentBooking, bookingId, currentUserDisplay, profile]);
 
   // Função para Entrar na Sala com Gesto Direto do Usuário e Fallbacks de Mídia
   const handleJoinRoom = async () => {
@@ -562,11 +726,22 @@ Dicas:
 
                   {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
                   <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className={`w-2.5 h-2.5 rounded-full ${isPeerOnline || isRemoteConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
                     <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                      {isScreenSharing ? '🖥️ Compartilhando Tela' : `🔴 Participante: ${otherParticipantDisplay.name}`}
+                      {isScreenSharing ? '🖥️ Compartilhando Tela' : isPeerOnline || isRemoteConnected ? `🟢 ${otherParticipantDisplay.name} Online` : `🟡 Aguardando ${otherParticipantDisplay.roleLabel}`}
                     </span>
                   </div>
+
+                  {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE */}
+                  {peerJoinNotification && (
+                    <div className="absolute top-14 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl shadow-2xl z-50 flex items-center gap-2.5 animate-bounce border border-emerald-300">
+                      <Sparkles className="w-4 h-4 fill-slate-950 text-slate-950 animate-pulse" />
+                      <span>{peerJoinNotification}</span>
+                      <button onClick={() => setPeerJoinNotification(null)} className="ml-2 bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 px-2 py-0.5 rounded-lg text-[10px] font-extrabold cursor-pointer">
+                        ✕
+                      </button>
+                    </div>
+                  )}
 
                   {/* ALERTA SI FALTA PERMISO DE CÁMARA */}
                   {cameraError && (
@@ -682,6 +857,32 @@ Dicas:
                     >
                       <Monitor className="w-4 h-4 text-amber-400" />
                       <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Compartilhar Tela'}</span>
+                    </button>
+
+                    {/* BOTÃO TESTE DE CONEXÃO REMOTA (SIMULAÇÃO 2 PARTICIPANTES AO VIVO) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRemoteConnected(prev => !prev);
+                        if (!isRemoteConnected) {
+                          setRemoteStream(localStream);
+                          setPeerJoinNotification(`🎉 ${otherParticipantDisplay.name} (${otherParticipantDisplay.roleLabel}) conectou-se à chamada!`);
+                          setTimeout(() => setPeerJoinNotification(null), 5000);
+                        } else {
+                          setRemoteStream(null);
+                          setPeerJoinNotification(`⚠️ ${otherParticipantDisplay.name} desconectou da chamada.`);
+                          setTimeout(() => setPeerJoinNotification(null), 5000);
+                        }
+                      }}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
+                        isRemoteConnected 
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' 
+                          : 'bg-slate-900 border-cyan-500/40 text-cyan-300 hover:bg-slate-800'
+                      }`}
+                      title="Testar entrada e simular transmissão ao vivo do outro participante"
+                    >
+                      <RefreshCw className={`w-4 h-4 text-cyan-400 ${isRemoteConnected ? 'animate-spin' : ''}`} />
+                      <span className="hidden sm:inline">{isRemoteConnected ? 'Conectado (Ao Vivo)' : 'Simular Entrada'}</span>
                     </button>
 
                     {/* BOTÃO ENCERRAR AULA */}
