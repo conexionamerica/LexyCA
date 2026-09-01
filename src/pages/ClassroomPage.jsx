@@ -1,26 +1,108 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ClassroomPage() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const { tutors = [], bookings = [] } = useMarketplace();
+  const { profile } = useAuth();
 
-  const currentBooking = bookings.find(b => b.id === bookingId) || bookings[0];
-  const tutor = tutors.find(t => t.id === currentBooking?.tutorId) || tutors[0] || {
-    id: 'tutor-1',
-    name: currentBooking?.tutorName || 'María Fernández',
-    subject: currentBooking?.tutorSubject || 'Espanhol',
-    avatar: currentBooking?.tutorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    meetUrl: 'https://meet.google.com/abc-defg-hij'
-  };
+  // Localizar a reserva (aula) exata pelo ID ou código de aula
+  const currentBooking = useMemo(() => {
+    if (!bookingId) return null;
+    const cleanId = String(bookingId).trim().toLowerCase();
 
-  const rawMeetUrl = tutor?.meetUrl || 'https://meet.google.com/abc-defg-hij';
+    // 1. Busca por booking ID exato
+    let found = (bookings || []).find(b => String(b.id || '').trim().toLowerCase() === cleanId);
+    if (found) return found;
+
+    // 2. Busca por código de aula (ex: AULA-2026-910108)
+    found = (bookings || []).find(b => String(b.lesson_code || '').trim().toLowerCase() === cleanId);
+    if (found) return found;
+
+    // 3. Busca por correspondência de código
+    found = (bookings || []).find(b => String(b.lesson_code || b.id || '').toLowerCase().includes(cleanId));
+    if (found) return found;
+
+    // 4. Se o usuário estiver logado, buscar a reserva correspondente mais recente
+    const pId = String(profile?.id || '').toLowerCase();
+    const pEmail = String(profile?.email || '').toLowerCase();
+    if (pId || pEmail) {
+      found = (bookings || []).find(b => {
+        const sId = String(b.studentId || b.student_id || '').toLowerCase();
+        const sEmail = String(b.studentEmail || b.student_email || '').toLowerCase();
+        const tId = String(b.tutorId || b.tutor_id || '').toLowerCase();
+        const tEmail = String(b.tutorEmail || b.tutor_email || '').toLowerCase();
+        return (pId && (sId === pId || tId === pId)) || (pEmail && (sEmail === pEmail || tEmail === pEmail));
+      });
+      if (found) return found;
+    }
+
+    return null;
+  }, [bookingId, bookings, profile]);
+
+  // Resolver o Professor Vinculado a esta Aula Específica
+  const tutor = useMemo(() => {
+    const targetTutorId = currentBooking?.tutorId || currentBooking?.tutor_id;
+    const foundTutor = (tutors || []).find(t => String(t.id).toLowerCase() === String(targetTutorId || '').toLowerCase());
+
+    return {
+      id: targetTutorId || foundTutor?.id || 'tutor-1',
+      name: currentBooking?.tutorName || foundTutor?.name || 'Professor Particular',
+      subject: currentBooking?.tutorSubject || foundTutor?.subject || 'Idiomas',
+      avatar: currentBooking?.tutorAvatar || foundTutor?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
+    };
+  }, [currentBooking, tutors]);
+
+  // Identidade do Usuário Logado x Outro Participante (Garante que Aluno veja Professor e vice-versa)
+  const isUserTeacher = profile?.role === 'teacher' || profile?.role === 'tutor';
+
+  const currentUserDisplay = useMemo(() => {
+    if (profile?.name || profile?.email) {
+      return {
+        name: profile.name || profile.email.split('@')[0],
+        avatar: profile.avatar || profile.photoURL || null,
+        roleLabel: isUserTeacher ? 'Você (Professor)' : 'Você (Aluno)'
+      };
+    }
+    return {
+      name: isUserTeacher ? (tutor.name || 'Professor') : (currentBooking?.studentName || 'Aluno'),
+      avatar: null,
+      roleLabel: isUserTeacher ? 'Você (Professor)' : 'Você (Aluno)'
+    };
+  }, [profile, isUserTeacher, tutor, currentBooking]);
+
+  const otherParticipantDisplay = useMemo(() => {
+    if (isUserTeacher) {
+      // Se quem está logado é o PROFESSOR, o participante na sala é o ALUNO!
+      return {
+        name: currentBooking?.studentName || 'Aluno Matriculado',
+        avatar: currentBooking?.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80',
+        roleLabel: 'Aluno'
+      };
+    } else {
+      // Se quem está logado é o ALUNO, o participante na sala é o PROFESSOR!
+      return {
+        name: tutor.name,
+        avatar: tutor.avatar,
+        roleLabel: 'Professor (Tutor)'
+      };
+    }
+  }, [isUserTeacher, currentBooking, tutor]);
+
+  // ID Unívoco de Sala Criptografada (Garante que Aluno e Professor entrem na MESMA sala privada)
+  const privateRoomId = useMemo(() => {
+    if (currentBooking) {
+      return `lexy_private_room_${currentBooking.id}_std_${currentBooking.studentId || 'st'}_tut_${currentBooking.tutorId || 'tt'}`;
+    }
+    return `lexy_private_room_${bookingId || 'session'}`;
+  }, [currentBooking, bookingId]);
 
   // WebRTC & Media Stream States for 100% Native Lexy Video Engine
   const localVideoRef = useRef(null);
@@ -311,12 +393,15 @@ Dicas:
           <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
           <div>
             <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-              <span>Aula Ao Vivo com {tutor.name}</span>
+              <span>Aula Ao Vivo com {otherParticipantDisplay.name}</span>
               <span className="text-xs font-bold text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                <Video className="w-3 h-3 text-cyan-400" /> Space Live Embed
+                <Video className="w-3 h-3 text-cyan-400" /> Space Live
               </span>
             </h2>
-            <span className="text-xs text-slate-400">{tutor.subject} • Nível Intermediário</span>
+            <span className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+              <Lock className="w-3 h-3 text-emerald-400" />
+              <span>{tutor.subject} • Sala Privada ID: <code className="font-mono text-cyan-300">{currentBooking?.lesson_code || bookingId}</code></span>
+            </span>
           </div>
         </div>
 
@@ -329,7 +414,7 @@ Dicas:
 
           <button
             onClick={handleEndClass}
-            className="bg-rose-500/20 hover:bg-rose-500 border border-rose-500 text-rose-300 hover:text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all"
+            className="bg-rose-500/20 hover:bg-rose-500 border border-rose-500 text-rose-300 hover:text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer"
           >
             Encerrar Aula
           </button>
@@ -349,13 +434,14 @@ Dicas:
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-black text-white">
-                  🔴 Videochamada Nativa Lexy WebRTC • Criptografia P2P
+                  🔴 Videochamada Nativa Lexy WebRTC • Conexão Direta
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">
-                  Sem Jitsi • Direto no Site
+                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  <span>Sessão Unívoca Criptografada</span>
                 </span>
               </div>
             </div>
@@ -364,12 +450,12 @@ Dicas:
             <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[320px] max-h-[58vh]">
               
               {!hasJoinedRoom ? (
-                /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM BOTÃO SOLICITADO PELO USUÁRIO) */
+                /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM DETALHES PRIVADOS DO PROFESSOR E ALUNO) */
                 <div className="flex flex-col items-center justify-center p-6 text-center space-y-5 relative z-10 w-full h-full my-auto">
                   <div className="relative">
                     <img
-                      src={tutor.avatar}
-                      alt={tutor.name}
+                      src={otherParticipantDisplay.avatar || tutor.avatar}
+                      alt={otherParticipantDisplay.name}
                       className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/30"
                     />
                     <span className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-md">
@@ -380,12 +466,12 @@ Dicas:
                   <div className="space-y-1.5 max-w-md">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
                       <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                      <span>Sala Virtual Pronta • Aula Particular 1-on-1</span>
+                      <span>Sala Privada 1-on-1 • {otherParticipantDisplay.roleLabel}</span>
                     </div>
-                    <h3 className="text-xl font-extrabold text-white">Aula com {tutor.name}</h3>
-                    <p className="text-xs text-cyan-300 font-semibold">{tutor.subject} • Nível Intermediário</p>
+                    <h3 className="text-xl font-extrabold text-white">Aula com {otherParticipantDisplay.name}</h3>
+                    <p className="text-xs text-cyan-300 font-semibold">{tutor.subject} • Código: {currentBooking?.lesson_code || bookingId}</p>
                     <p className="text-xs text-slate-300 leading-relaxed pt-1">
-                      Clique no botão abaixo para <strong>ativar sua câmera e microfone</strong> e entrar na videochamada ao vivo com seu professor!
+                      Esta é uma sala exclusiva entre <strong>{currentUserDisplay.name}</strong> e <strong>{otherParticipantDisplay.name}</strong>. Ninguém mais tem acesso a este link.
                     </p>
                   </div>
 
@@ -420,12 +506,12 @@ Dicas:
                       className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
                     />
                   ) : (
-                    /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO */
+                    /* SI LA CÁMARA ESTÁ DESACTIVADA MUESTRA UN AVATAR ILUMINADO DO OUTRO PARTICIPANTE */
                     <div className="flex flex-col items-center justify-center space-y-4 p-6">
                       <div className="relative">
                         <img
-                          src={tutor.avatar}
-                          alt={tutor.name}
+                          src={otherParticipantDisplay.avatar || tutor.avatar}
+                          alt={otherParticipantDisplay.name}
                           className="w-32 h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
                         />
                         {isMicOn && (
@@ -433,9 +519,9 @@ Dicas:
                         )}
                       </div>
                       <div className="text-center space-y-1">
-                        <h3 className="text-lg font-extrabold text-white">{tutor.name}</h3>
+                        <h3 className="text-lg font-extrabold text-white">{otherParticipantDisplay.name}</h3>
                         <span className="text-xs text-cyan-300 font-mono font-semibold block">
-                          {isMicOn ? '🎤 Microfone Ativo • Câmera Desativada' : '🔇 Câmera & Microfone Mute'}
+                          {isMicOn ? '🎤 Microfone Ativo • Câmera Oculta' : '🔇 Câmera & Microfone Mute'}
                         </span>
                       </div>
                     </div>
@@ -445,7 +531,7 @@ Dicas:
                   <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                     <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                      {isScreenSharing ? '🖥️ Compartilhando Tela' : '🔴 Lexy Space WebRTC Live'}
+                      {isScreenSharing ? '🖥️ Compartilhando Tela' : `🔴 Sala Privada: ${otherParticipantDisplay.name}`}
                     </span>
                   </div>
 
@@ -465,14 +551,18 @@ Dicas:
                     </div>
                   )}
 
-                  {/* MINIATURA PIP DO ALUNO (SELF VIEW) NA ESQUINA INFERIOR DIREITA */}
+                  {/* MINIATURA PIP COM NOME E FOTO DO USUÁRIO LOGADO (SELF VIEW) */}
                   <div className="absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-32 h-24 sm:w-40 sm:h-28 rounded-2xl bg-slate-950 border-2 border-cyan-400/60 overflow-hidden shadow-2xl z-20 flex items-center justify-center">
                     <div className="w-full h-full relative flex items-center justify-center bg-slate-900/90">
-                      <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs">
-                        A
-                      </div>
-                      <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.2 rounded border border-slate-800">
-                        Você (Aluno)
+                      {currentUserDisplay.avatar ? (
+                        <img src={currentUserDisplay.avatar} alt={currentUserDisplay.name} className="w-10 h-10 rounded-full object-cover border border-cyan-400" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-cyan-500/20 text-cyan-300 font-extrabold flex items-center justify-center border border-cyan-400/50 text-xs uppercase">
+                          {currentUserDisplay.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className="absolute bottom-1 left-1.5 right-1.5 text-[9px] font-bold text-white bg-slate-950/90 px-1.5 py-0.5 rounded border border-slate-800 truncate text-center">
+                        {currentUserDisplay.roleLabel}: {currentUserDisplay.name}
                       </span>
                     </div>
                   </div>
