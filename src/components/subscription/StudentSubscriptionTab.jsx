@@ -131,7 +131,7 @@ export default function StudentSubscriptionTab() {
       allSlots: activeSlots,
       bookingType: 'package',
       planHours: totalContractedHours,
-      planName: `Assinatura ${selectedLessonsPerWeek}x/semana (${totalContractedHours} Aulas / 28 Dias)`,
+      planName: `Assinatura ${selectedLessonsPerWeek}x/semana (${totalContractedHours} Aulas / 30 Dias)`,
       totalAmount: totalCycleAmount,
       bypassWallet: true,
       paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
@@ -146,7 +146,7 @@ export default function StudentSubscriptionTab() {
       studentId: profile?.id,
       studentEmail: profile?.email,
       studentMatricula: profile?.matricula_code,
-      desc: `Assinatura de 28 Dias com ${targetTutor.name} (${selectedLessonsPerWeek}x/sem)`,
+      desc: `Assinatura de 30 Dias com ${targetTutor.name} (${selectedLessonsPerWeek}x/sem)`,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       amount: totalCycleAmount,
       status: 'Concluído'
@@ -155,7 +155,7 @@ export default function StudentSubscriptionTab() {
     const updatedHistory = [newTx, ...userHistory];
     localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
 
-    setActionNotice(`🎉 Assinatura ativada com sucesso! Suas ${totalContractedHours} aulas do ciclo de 28 dias com ${targetTutor.name} foram agendadas na aba Início.`);
+    setActionNotice(`🎉 Assinatura ativada com sucesso! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
     setTimeout(() => setActionNotice(''), 8000);
   };
 

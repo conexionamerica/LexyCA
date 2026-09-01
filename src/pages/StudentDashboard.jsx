@@ -193,6 +193,13 @@ export default function StudentDashboard() {
 
   const [myBookingsList, setMyBookingsList] = useState(userBookings);
 
+  const trialBooking = useMemo(() => {
+    return userBookings.find(b => {
+      const bType = String(b.bookingType || b.booking_type || '').toLowerCase();
+      return bType === 'trial' || bType === 'experimental' || String(b.lesson_code || '').includes('EXP');
+    });
+  }, [userBookings]);
+
   useEffect(() => {
     setMyBookingsList(userBookings);
   }, [userBookings]);
@@ -304,6 +311,50 @@ export default function StudentDashboard() {
                 >
                   + Recarregar Créditos Lexy
                 </button>
+              </div>
+            )}
+
+            {/* ANÚNCIO DESTACADO DE INCENTIVO A ASSINATURA DE PACOTE DE AULAS RECORRENTES (APÓS AULA EXPERIMENTAL) */}
+            {trialBooking && (
+              <div className="bg-gradient-to-r from-amber-950/70 via-slate-900 to-cyan-950/70 border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl shadow-amber-950/40 space-y-3 relative overflow-hidden animate-fade-in glow-amber">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                      <Sparkles className="w-6 h-6 text-amber-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider mb-1">
+                        <Zap className="w-3 h-3 fill-amber-300" />
+                        <span>Gostou da sua Aula Experimental? • Assinatura Recorrente</span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-white">
+                        Assine um Plano com {trialBooking.tutorName || assignedTutor?.name} e Aproveite o Desconto!
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                  Se você gostou da sua aula experimental, garanta seu horário fixo e acompanhamento contínuo no idioma! Nossos pacotes de aulas possuem cobrança recorrente <strong className="text-amber-300 font-bold">a cada 30 dias</strong> com renovação automática e descontos exclusivos por aula.
+                </p>
+
+                <div className="pt-1 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    onClick={() => setSearchParams({ tab: 'meu-plano' })}
+                    className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-6 rounded-xl shadow-lg shadow-amber-500/25 border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
+                  >
+                    <Zap className="w-4 h-4 fill-current text-slate-950" />
+                    <span>Ver Pacotes de Aulas Recorrentes (30 Dias) e Assinar</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSearchParams({ tab: 'catalogo' })}
+                    className="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 text-slate-300 font-bold text-xs py-3.5 px-5 rounded-xl border border-slate-700/80 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Search className="w-4 h-4 text-cyan-400" />
+                    <span>Explorar Outros Professores</span>
+                  </button>
+                </div>
               </div>
             )}
 

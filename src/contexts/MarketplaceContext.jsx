@@ -817,7 +817,7 @@ const isFakeMockTutor = (t) => {
         return {
           success: false,
           error: 'trial_already_used',
-          message: 'Você já utilizou sua Aula Experimental única com este professor. Escolha um plano de assinatura de 28 dias para continuar.'
+          message: 'Você já utilizou sua Aula Experimental única com este professor. Escolha um plano de assinatura de 30 dias para continuar.'
         };
       }
     }
@@ -876,7 +876,7 @@ const isFakeMockTutor = (t) => {
 
     if (!isTrialBooking && (bookingType === 'package' || bookingType === 'subscription')) {
       const now = new Date();
-      const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+      const cycleEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const newSub = {
         id: `sub-${Date.now()}`,
@@ -888,7 +888,7 @@ const isFakeMockTutor = (t) => {
         tutorName: tutor.name,
         tutorAvatar: tutor.avatar,
         tutorSubject: tutor.subject,
-        planName: planName || `Plano de Aulas (${totalContractedHours} Horas / 28 Dias)`,
+        planName: planName || `Plano de Aulas (${totalContractedHours} Horas / 30 Dias)`,
         planHours: totalContractedHours,
         hoursRemaining: totalContractedHours,
         monthlyPrice: totalAmount,
@@ -900,7 +900,7 @@ const isFakeMockTutor = (t) => {
       setSubscriptions(prev => [newSub, ...prev]);
     }
 
-    // Gerar todas as aulas do ciclo de 28 dias conforme a frequência contratada
+    // Gerar todas as aulas do ciclo de 30 dias conforme a frequência contratada
     const createdBookings = [];
     const numSlots = baseSlots.length;
     const numWeeks = isTrialBooking ? 1 : Math.ceil(totalContractedHours / numSlots);
