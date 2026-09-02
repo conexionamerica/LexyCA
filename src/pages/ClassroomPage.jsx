@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, Hand, Smile, Maximize2, Minimize2
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, Hand, Smile, Maximize2, Minimize2, LogOut
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -1452,64 +1452,68 @@ Dicas:
                     </div>
                   )}
 
-                  {/* BARRA DE CONTROLES FLUTUANTE PREMIUM (ESTILO GOOGLE MEET / ZOOM GLOSSY) */}
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-1.5 sm:gap-2.5 bg-slate-950/90 backdrop-blur-2xl border border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl shadow-2xl shadow-cyan-950/50">
+                  {/* BARRA DE CONTROLES FLUTUANTE (ESTILO DA IMAGEM SOLICITADA: ÍCONE NO TOPO + TEXTO CENTRALIZADO ABAIXO) */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-5 sm:gap-7 bg-[#0b2229]/95 backdrop-blur-2xl border border-teal-500/30 px-5 sm:px-7 py-3 rounded-2xl shadow-2xl shadow-slate-950/80">
                     
                     {/* BOTÃO MICROFONE */}
                     <button
                       type="button"
                       onClick={toggleMic}
-                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
-                        isMicOn 
-                          ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-400 hover:bg-slate-800 shadow-lg shadow-emerald-500/10' 
-                          : 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/10'
-                      }`}
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                       title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
                     >
-                      {isMicOn ? <Mic className="w-4 h-4 text-emerald-400" /> : <MicOff className="w-4 h-4 text-rose-400" />}
-                      <span className="hidden sm:inline">{isMicOn ? 'Mic Ativo' : 'Mutado'}</span>
+                      {isMicOn ? (
+                        <Mic className="w-5 h-5 text-emerald-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <MicOff className="w-5 h-5 text-rose-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      )}
+                      <span className={`text-[11px] font-medium leading-tight ${isMicOn ? 'text-slate-200' : 'text-rose-400'}`}>
+                        Mic<br />{isMicOn ? 'Ativo' : 'Mutado'}
+                      </span>
                     </button>
 
                     {/* BOTÃO CÂMERA */}
                     <button
                       type="button"
                       onClick={toggleVideo}
-                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
-                        isVideoOn 
-                          ? 'bg-slate-900/90 border-cyan-500/50 text-cyan-400 hover:bg-slate-800 shadow-lg shadow-cyan-500/10' 
-                          : 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/10'
-                      }`}
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                       title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
                     >
-                      {isVideoOn ? <Video className="w-4 h-4 text-cyan-400" /> : <VideoOff className="w-4 h-4 text-rose-400" />}
-                      <span className="hidden sm:inline">{isVideoOn ? 'Câmera Ativa' : 'Desativada'}</span>
+                      {isVideoOn ? (
+                        <Video className="w-5 h-5 text-emerald-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <VideoOff className="w-5 h-5 text-rose-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      )}
+                      <span className={`text-[11px] font-medium leading-tight ${isVideoOn ? 'text-slate-200' : 'text-rose-400'}`}>
+                        Câmera<br />{isVideoOn ? 'Ativa' : 'Desativada'}
+                      </span>
                     </button>
 
                     {/* BOTÃO COMPARTILHAR TELA */}
                     <button
                       type="button"
                       onClick={toggleScreenShare}
-                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
-                        isScreenSharing
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-lg shadow-amber-500/20'
-                          : 'bg-slate-900/90 border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800'
-                      }`}
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                       title="Compartilhar Tela"
                     >
-                      <Monitor className="w-4 h-4 text-amber-400" />
-                      <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Tela'}</span>
+                      <Monitor className={`w-5 h-5 stroke-[2.2] group-hover:scale-110 transition-transform ${isScreenSharing ? 'text-amber-400' : 'text-emerald-400'}`} />
+                      <span className={`text-[11px] font-medium leading-tight ${isScreenSharing ? 'text-amber-300' : 'text-slate-200'}`}>
+                        Compartir<br />Tela
+                      </span>
                     </button>
 
-                    {/* BOTÃO REAÇÕES DE EMOJIS EM TEMPO REAL */}
-                    <div className="relative">
+                    {/* BOTÃO REAÇÕES DE EMOJIS */}
+                    <div className="relative flex flex-col items-center justify-center">
                       <button
                         type="button"
                         onClick={() => setShowEmojiPicker(prev => !prev)}
-                        className="p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/90 text-amber-300 hover:bg-slate-800 hover:border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black"
+                        className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                         title="Enviar Reação"
                       >
-                        <Smile className="w-4 h-4 text-amber-400" />
-                        <span className="hidden sm:inline">Reações</span>
+                        <Smile className="w-5 h-5 text-amber-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                        <span className="text-[11px] font-medium text-slate-200 leading-tight">
+                          Reações
+                        </span>
                       </button>
 
                       {/* POPOVER DE SELEÇÃO DE EMOJIS */}
@@ -1533,36 +1537,45 @@ Dicas:
                     <button
                       type="button"
                       onClick={toggleHandRaise}
-                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black ${
-                        isHandRaised 
-                          ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-lg shadow-amber-500/20 animate-pulse' 
-                          : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800'
-                      }`}
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                       title="Levantar a Mão para Pedir a Palavra"
                     >
-                      <Hand className={`w-4 h-4 ${isHandRaised ? 'text-amber-300 fill-amber-300' : 'text-slate-400'}`} />
-                      <span className="hidden sm:inline">{isHandRaised ? 'Mão Levantada' : 'Pedir Palavra'}</span>
+                      <Hand className={`w-5 h-5 stroke-[2.2] group-hover:scale-110 transition-transform ${isHandRaised ? 'text-amber-300 fill-amber-300 animate-pulse' : 'text-emerald-400'}`} />
+                      <span className={`text-[11px] font-medium leading-tight ${isHandRaised ? 'text-amber-300 font-bold' : 'text-slate-200'}`}>
+                        Pedir<br />Palavra
+                      </span>
                     </button>
 
                     {/* BOTÃO TELA CHEIA */}
                     <button
                       type="button"
                       onClick={toggleFullscreen}
-                      className="p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/90 text-cyan-300 hover:bg-slate-800 hover:border-cyan-400/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black"
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center"
                       title="Alternar Modo Tela Cheia"
                     >
-                      {isFullscreen ? <Minimize2 className="w-4 h-4 text-cyan-400" /> : <Maximize2 className="w-4 h-4 text-cyan-400" />}
+                      {isFullscreen ? (
+                        <Minimize2 className="w-5 h-5 text-emerald-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <Maximize2 className="w-5 h-5 text-emerald-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      )}
+                      <span className="text-[11px] font-medium text-slate-200 leading-tight">
+                        Tela<br />Cheia
+                      </span>
                     </button>
 
-                    {/* BOTÃO ENCERRAR AULA (DESCONEXÃO INSTANTÂNEA) */}
+                    {/* BOTÃO ENCERRAR AULA (SAIR) */}
                     <button
                       type="button"
                       onClick={handleEndClass}
-                      className="bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-black text-xs px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-rose-950/60 border border-rose-500/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      className="flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer group text-center pl-1"
+                      title="Encerrar Aula e Sair da Sala"
                     >
-                      <X className="w-4 h-4" />
-                      <span className="hidden sm:inline">Sair da Aula</span>
+                      <LogOut className="w-5 h-5 text-rose-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                      <span className="text-[11px] font-medium text-rose-400 group-hover:text-rose-300 leading-tight">
+                        Sair
+                      </span>
                     </button>
+
                   </div>
                 </div>
               )}
