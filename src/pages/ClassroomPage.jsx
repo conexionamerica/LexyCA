@@ -525,11 +525,42 @@ export default function ClassroomPage() {
     };
   }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog]);
 
-  // ── ATRIBUIR remoteStream ao elemento <video> remoto QUANDO O STREAM CHEGAR ──
+  // ── ATRIBUIR remoteStream ao elemento <video> remoto DE FORMA ROBUSTA ──
+  // Callback ref: é chamado SEMPRE que o elemento <video> é montado no DOM
+  const remoteVideoCallback = useCallback((videoEl) => {
+    remoteVideoRef.current = videoEl;
+    if (videoEl && remoteStream) {
+      videoEl.srcObject = remoteStream;
+      videoEl.play().catch(() => {});
+      console.log('[VIDEO] srcObject atribuído via callback ref');
+    }
+  }, [remoteStream]);
+
+  // Safety net: re-assign srcObject whenever remoteStream changes
   useEffect(() => {
-    if (remoteStream && remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      addDebugLog('🖥️ srcObject do vídeo remoto atribuído com sucesso!');
+    if (!remoteStream) return;
+    addDebugLog('🖥️ remoteStream atualizado. Tentando atribuir srcObject...');
+    
+    const tryAssign = () => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.play().catch(() => {});
+        addDebugLog('🖥️ srcObject do vídeo remoto atribuído com sucesso!');
+        return true;
+      }
+      return false;
+    };
+    
+    if (!tryAssign()) {
+      // Retry every 300ms for up to 5 seconds until the video element is available
+      let attempts = 0;
+      const retryInterval = setInterval(() => {
+        attempts++;
+        if (tryAssign() || attempts > 16) {
+          clearInterval(retryInterval);
+        }
+      }, 300);
+      return () => clearInterval(retryInterval);
     }
   }, [remoteStream, addDebugLog]);
 
@@ -1044,9 +1075,10 @@ Dicas:
                   {!isSwapped ? (
                     isRemoteConnected && remoteStream ? (
                       <video
-                        ref={remoteVideoRef}
+                        ref={remoteVideoCallback}
                         autoPlay
                         playsInline
+                        muted={false}
                         className="w-full h-full object-cover rounded-2xl"
                       />
                     ) : remoteVideoFrame ? (
@@ -1167,9 +1199,10 @@ Dicas:
                       /* QUANDO INVERTIDO: EXIBE A MINIATURA DO OUTRO PARTICIPANTE */
                       isRemoteConnected && remoteStream ? (
                         <video
-                          ref={remoteVideoRef}
+                          ref={remoteVideoCallback}
                           autoPlay
                           playsInline
+                          muted={false}
                           className="w-full h-full object-cover"
                         />
                       ) : (
