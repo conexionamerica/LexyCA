@@ -169,6 +169,21 @@ export default function ClassroomPage() {
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isRemoteHandRaised, setIsRemoteHandRaised] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSupportButton, setShowSupportButton] = useState(false);
+
+  // Exibir o botão de suporte "Se não conectar em 5 min" apenas 3 minutos após o usuário entrar na sala de espera
+  useEffect(() => {
+    let timer;
+    if (hasJoinedRoom && !isRemoteConnected) {
+      setShowSupportButton(false);
+      timer = setTimeout(() => {
+        setShowSupportButton(true);
+      }, 3 * 60 * 1000); // 3 minutos
+    } else {
+      setShowSupportButton(false);
+    }
+    return () => clearTimeout(timer);
+  }, [hasJoinedRoom, isRemoteConnected]);
 
   // Efeito Sonoro Chime via Web Audio API (100% nativo, sem arquivos externos)
   const playChimeSound = useCallback((type = 'join') => {
@@ -1290,19 +1305,21 @@ Dicas:
                             </p>
                           </div>
 
-                          {/* Cartelito Pequeño "Se não conectar em 10 min, clique aqui" */}
-                          <div className="pt-3">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                alert('🔔 Notificação enviada ao suporte! Nossa equipe e o professor receberam o alerta para acelerar a conexão.');
-                              }}
-                              className="inline-flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 text-xs font-bold px-4 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95"
-                            >
-                              <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                              <span>Se não conectar em 10 min, clique aqui</span>
-                            </button>
-                          </div>
+                          {/* Cartelito Pequeño "Se não conectar em 5 min, clique aqui" (Exibido apenas 3 min após o usuário entrar na sala) */}
+                          {showSupportButton && (
+                            <div className="pt-3 animate-fade-in-up">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  alert('🔔 Notificação enviada ao suporte! Nossa equipe e o participante receberam o alerta para acelerar a conexão.');
+                                }}
+                                className="inline-flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 text-xs font-bold px-4 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95"
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                                <span>Se não conectar em 5 min, clique aqui</span>
+                              </button>
+                            </div>
+                          )}
 
                         </div>
                       </div>
