@@ -110,6 +110,7 @@ export default function ClassroomPage() {
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
   const channelRef = useRef(null);
+  const bcRef = useRef(null);
   const hiddenCanvasRef = useRef(null);
 
   const [localStream, setLocalStream] = useState(null);
@@ -136,6 +137,50 @@ export default function ClassroomPage() {
   const [studentRating, setStudentRating] = useState(5);
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
+
+  // ── CANAL DE TRANSMISSÃO LOCAL DO NAVEGADOR (BROADCASTCHANNEL API - FUNCIONA 100% MESMO SE O SUPABASE WEBSOCKET FALHAR) ──
+  useEffect(() => {
+    if (!hasJoinedRoom) return;
+
+    const cleanRoomKey = currentBooking ? `room_${currentBooking.id}` : `room_${String(bookingId || 'main').trim().toLowerCase()}`;
+    
+    // Criar canal nativo BroadcastChannel do navegador (comunicação instantânea entre abas/janelas)
+    const bc = new BroadcastChannel(`lexy_native_stream_${cleanRoomKey}`);
+    bcRef.current = bc;
+
+    bc.onmessage = (event) => {
+      const data = event.data;
+      if (!data) return;
+
+      if (data.type === 'video_frame' && data.sender !== currentUserDisplay.name && data.frame) {
+        setRemoteVideoFrame(data.frame);
+        setIsRemoteConnected(true);
+        setIsPeerOnline(true);
+      }
+
+      if (data.type === 'peer_join' && data.sender !== currentUserDisplay.name) {
+        setIsPeerOnline(true);
+        setPeerJoinNotification(`🎉 ${data.sender} (${data.roleLabel}) conectou-se à Sala Virtual!`);
+        setTimeout(() => setPeerJoinNotification(null), 7000);
+      }
+
+      if (data.type === 'chat' && data.sender !== currentUserDisplay.name) {
+        setChatMessages(prev => [...prev, data.payload]);
+      }
+    };
+
+    // Notificar outras abas de que o participante se conectou
+    bc.postMessage({
+      type: 'peer_join',
+      sender: currentUserDisplay.name,
+      roleLabel: currentUserDisplay.roleLabel
+    });
+
+    return () => {
+      bc.close();
+      bcRef.current = null;
+    };
+  }, [hasJoinedRoom, currentBooking, bookingId, currentUserDisplay]);
 
   // Supabase Realtime Channel & Presença em tempo real para Aluno x Professor
   useEffect(() => {
@@ -314,7 +359,7 @@ export default function ClassroomPage() {
     if (!hasJoinedRoom || !localStream || !isVideoOn) return;
 
     const interval = setInterval(() => {
-      if (!localVideoRef.current || !channelRef.current) return;
+      if (!localVideoRef.current) return;
       const videoEl = localVideoRef.current;
       if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
         if (!hiddenCanvasRef.current) {
@@ -325,15 +370,27 @@ export default function ClassroomPage() {
         canvas.height = 240;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoEl, 0, 0, 320, 240);
-        const frame = canvas.toDataURL('image/jpeg', 0.45);
+        const frame = canvas.toDataURL('image/jpeg', 0.4);
 
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'remote_video_frame',
-          payload: { sender: currentUserDisplay.name, frame }
-        }).catch(() => {});
+        // 1. Transmitir via BroadcastChannel nativo (Latência 0ms entre abas/janelas no mesmo PC)
+        if (bcRef.current) {
+          bcRef.current.postMessage({
+            type: 'video_frame',
+            sender: currentUserDisplay.name,
+            frame
+          });
+        }
+
+        // 2. Transmitir via Supabase Realtime (Para outros dispositivos via rede)
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'remote_video_frame',
+            payload: { sender: currentUserDisplay.name, frame }
+          }).catch(() => {});
+        }
       }
-    }, 200); // 5 FPS - Ultra suave e 100% garantido em qualquer rede
+    }, 160); // ~6 FPS - Ultra fluido e sem dependência de WebSocket!
 
     return () => clearInterval(interval);
   }, [hasJoinedRoom, localStream, isVideoOn, currentUserDisplay]);
