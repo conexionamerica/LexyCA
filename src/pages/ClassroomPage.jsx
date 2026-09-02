@@ -308,16 +308,21 @@ export default function ClassroomPage() {
 
     const signalChannel = new BroadcastChannel(`lexy_webrtc_signal_${normalizedRoomKey}`);
 
-    // Enviar ICE Candidates locais
+    // Enviar ICE Candidates locais (Convertidos para JSON simples para evitar DataCloneError)
     pc.onicecandidate = (event) => {
       if (event.candidate) {
+        const candidateJSON = event.candidate.toJSON ? event.candidate.toJSON() : {
+          candidate: event.candidate.candidate,
+          sdpMid: event.candidate.sdpMid,
+          sdpMLineIndex: event.candidate.sdpMLineIndex
+        };
         const candidatePayload = {
           type: 'webrtc-candidate',
-          candidate: event.candidate,
+          candidate: candidateJSON,
           sender: currentUserDisplay.name
         };
-        signalChannel.postMessage(candidatePayload);
         try {
+          signalChannel.postMessage(candidatePayload);
           localStorage.setItem(`webrtc_cand_${normalizedRoomKey}_${Date.now()}`, JSON.stringify(candidatePayload));
         } catch (e) {}
       }
@@ -329,13 +334,17 @@ export default function ClassroomPage() {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         console.log('[WebRTC P2P] 📤 Transmitindo Oferta (Offer) inicial...');
+        const offerJSON = {
+          type: offer.type,
+          sdp: offer.sdp
+        };
         const offerPayload = {
           type: 'webrtc-offer',
-          offer,
+          offer: offerJSON,
           sender: currentUserDisplay.name
         };
-        signalChannel.postMessage(offerPayload);
         try {
+          signalChannel.postMessage(offerPayload);
           localStorage.setItem(`webrtc_offer_${normalizedRoomKey}`, JSON.stringify(offerPayload));
         } catch (e) {}
       } catch (err) {
@@ -360,13 +369,17 @@ export default function ClassroomPage() {
           await pc.setLocalDescription(answer);
 
           console.log('[WebRTC P2P] 📤 Enviando Resposta (Answer)...');
+          const answerJSON = {
+            type: answer.type,
+            sdp: answer.sdp
+          };
           const answerPayload = {
             type: 'webrtc-answer',
-            answer,
+            answer: answerJSON,
             sender: currentUserDisplay.name
           };
-          signalChannel.postMessage(answerPayload);
           try {
+            signalChannel.postMessage(answerPayload);
             localStorage.setItem(`webrtc_answer_${normalizedRoomKey}`, JSON.stringify(answerPayload));
           } catch (e) {}
         } catch (err) {
