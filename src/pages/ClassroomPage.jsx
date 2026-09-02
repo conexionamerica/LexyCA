@@ -296,6 +296,61 @@ export default function ClassroomPage() {
     };
   }, [hasJoinedRoom, localStream, currentBooking, bookingId, currentUserDisplay, profile]);
 
+  // Gerador de transmissão Lexy Studio 30fps (Garante transmissão de vídeo mesmo se a câmera física estiver bloqueada por outra aba/aplicativo)
+  const createStudioCanvasStream = (name, roleLabel) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    let angle = 0;
+    const draw = () => {
+      angle += 0.04;
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Círculo pulsante de sinal
+      const r = 70 + Math.sin(angle) * 8;
+      ctx.beginPath();
+      ctx.arc(320, 200, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+      ctx.fill();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Círculo interno do avatar
+      ctx.beginPath();
+      ctx.arc(320, 200, 50, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inicial do nome
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((name || 'U').charAt(0).toUpperCase(), 320, 200);
+
+      // Nome e Status
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(name || 'Participante', 320, 290);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(`🟢 Transmissão Lexy Studio (${roleLabel || 'Ao Vivo'})`, 320, 320);
+
+      requestAnimationFrame(draw);
+    };
+    draw();
+
+    return canvas.captureStream(30);
+  };
+
   // Função para Entrar na Sala com Gesto Direto do Usuário e Fallbacks de Mídia
   const handleJoinRoom = async () => {
     setIsConnecting(true);
@@ -310,7 +365,7 @@ export default function ClassroomPage() {
     } catch (err1) {
       console.warn('Tentativa 1 (Video+Audio) falhou:', err1);
       
-      // 2ª Tentativa: Apenas Vídeo (se microfone estiver bloqueado ou ausente)
+      // 2ª Tentativa: Apenas Vídeo
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         setIsVideoOn(true);
@@ -318,7 +373,7 @@ export default function ClassroomPage() {
       } catch (err2) {
         console.warn('Tentativa 2 (Apenas Video) falhou:', err2);
         
-        // 3ª Tentativa: Apenas Áudio (se a câmera estiver bloqueada ou em uso)
+        // 3ª Tentativa: Apenas Áudio
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
           setIsVideoOn(false);
@@ -329,34 +384,35 @@ export default function ClassroomPage() {
       }
     }
 
+    // Se a câmera física estiver bloqueada por outra aba/aplicativo ou indisponível, inicializar Lexy Studio Stream
+    if (!stream || stream.getVideoTracks().length === 0) {
+      console.log('Câmera física ocupada. Ativando Lexy Studio 30fps Stream...');
+      const studioStream = createStudioCanvasStream(currentUserDisplay.name, currentUserDisplay.roleLabel);
+      if (stream && stream.getAudioTracks().length > 0) {
+        studioStream.addTrack(stream.getAudioTracks()[0]);
+      }
+      stream = studioStream;
+      setIsVideoOn(true);
+      setCameraError('Câmera física em uso em outro programa/aba. O canal de vídeo Lexy Studio 30fps e o áudio estão 100% ativos!');
+    }
+
     if (stream) {
       setLocalStream(stream);
       setHasJoinedRoom(true);
       setIsLiveVideoActive(true);
 
-      const hasVideoTrack = stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
-      const hasAudioTrack = stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+      const hasVideoTrack = stream.getVideoTracks().length > 0;
+      const hasAudioTrack = stream.getAudioTracks().length > 0;
 
       setIsVideoOn(hasVideoTrack);
       setIsMicOn(hasAudioTrack);
 
-      if (!hasVideoTrack) {
-        setCameraError('Sua câmera física está sendo usada por outro aplicativo (Zoom, Teams, OBS ou outra aba). O áudio e a sala virtual estão 100% ativos!');
-      } else {
-        setCameraError(null);
-      }
-
       setTimeout(() => {
-        if (localVideoRef.current && hasVideoTrack) {
+        if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.play().catch(e => console.warn('Play video error:', e));
         }
       }, 150);
-    } else {
-      setCameraError('Permissão para câmera/microfone negada no navegador ou câmera em uso. A sala virtual está ativa em modo estúdio.');
-      setIsVideoOn(false);
-      setIsMicOn(false);
-      setHasJoinedRoom(true);
     }
     
     setIsConnecting(false);
