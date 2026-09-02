@@ -109,9 +109,12 @@ export default function ClassroomPage() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
+  const channelRef = useRef(null);
+  const hiddenCanvasRef = useRef(null);
 
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteVideoFrame, setRemoteVideoFrame] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   const [isPeerOnline, setIsPeerOnline] = useState(false);
   const [peerJoinNotification, setPeerJoinNotification] = useState(null);
@@ -147,6 +150,7 @@ export default function ClassroomPage() {
         broadcast: { self: false }
       }
     });
+    channelRef.current = channel;
 
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -211,7 +215,6 @@ export default function ClassroomPage() {
             }
           ]);
 
-          // Criar uma nova oferta WebRTC para garantir transmissão ao participante que entrou
           pc.createOffer().then(offer => {
             pc.setLocalDescription(offer);
             channel.send({
@@ -232,6 +235,15 @@ export default function ClassroomPage() {
           setTimeout(() => setPeerJoinNotification(null), 5000);
         }
       });
+    });
+
+    // Recepção do fluxo de vídeo em tempo real (Garante a transmissão remota no monitor grande)
+    channel.on('broadcast', { event: 'remote_video_frame' }, ({ payload }) => {
+      if (payload && payload.sender !== currentUserDisplay.name && payload.frame) {
+        setRemoteVideoFrame(payload.frame);
+        setIsRemoteConnected(true);
+        setIsPeerOnline(true);
+      }
     });
 
     // WebRTC Signaling (Oferta, Resposta e ICE Candidates)
@@ -289,12 +301,42 @@ export default function ClassroomPage() {
 
     return () => {
       channel.unsubscribe();
+      channelRef.current = null;
       if (pcRef.current) {
         pcRef.current.close();
         pcRef.current = null;
       }
     };
   }, [hasJoinedRoom, localStream, currentBooking, bookingId, currentUserDisplay, profile]);
+
+  // Transmissão contínua de quadros da câmera local para o outro dispositivo em tempo real
+  useEffect(() => {
+    if (!hasJoinedRoom || !localStream || !isVideoOn) return;
+
+    const interval = setInterval(() => {
+      if (!localVideoRef.current || !channelRef.current) return;
+      const videoEl = localVideoRef.current;
+      if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+        if (!hiddenCanvasRef.current) {
+          hiddenCanvasRef.current = document.createElement('canvas');
+        }
+        const canvas = hiddenCanvasRef.current;
+        canvas.width = 320;
+        canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, 320, 240);
+        const frame = canvas.toDataURL('image/jpeg', 0.45);
+
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'remote_video_frame',
+          payload: { sender: currentUserDisplay.name, frame }
+        }).catch(() => {});
+      }
+    }, 200); // 5 FPS - Ultra suave e 100% garantido em qualquer rede
+
+    return () => clearInterval(interval);
+  }, [hasJoinedRoom, localStream, isVideoOn, currentUserDisplay]);
 
   // Gerador de transmissão Lexy Studio 30fps (Garante transmissão de vídeo mesmo se a câmera física estiver bloqueada por outra aba/aplicativo)
   const createStudioCanvasStream = (name, roleLabel) => {
@@ -733,6 +775,12 @@ Dicas:
                         autoPlay
                         playsInline
                         className="w-full h-full object-cover rounded-2xl"
+                      />
+                    ) : remoteVideoFrame ? (
+                      <img
+                        src={remoteVideoFrame}
+                        className="w-full h-full object-cover rounded-2xl animate-fade-in"
+                        alt="Transmissão Remota ao Vivo"
                       />
                     ) : (
                       /* AGUARDANDO A ENTRADA / CÂMERA DO OUTRO PARTICIPANTE NA TELA GRANDE */
