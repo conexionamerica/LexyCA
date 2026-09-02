@@ -444,9 +444,7 @@ export default function ClassroomPage() {
       }
     };
 
-    const sessionStartTime = new Date(Date.now() - 5000).toISOString();
-
-    // Função para buscar sinais do outro participante via polling (Ignora sinais antigos de testes passados)
+    // Função para buscar sinais do outro participante via polling
     const pollForSignals = async () => {
       if (isPolling) return;
       isPolling = true;
@@ -458,7 +456,6 @@ export default function ClassroomPage() {
           .eq('room_key', normalizedRoomKey)
           .eq('sender_role', otherRole)
           .gt('id', lastProcessedId)
-          .gte('created_at', sessionStartTime)
           .order('id', { ascending: true })
           .limit(50);
 
@@ -607,19 +604,15 @@ export default function ClassroomPage() {
 
     // Iniciar sessão com Handshake de Presença Idempotente
     const cleanAndStart = async () => {
-      // Iniciar polling ultrarrápido (500ms)
-      pollInterval = setInterval(pollForSignals, 500);
-      addDebugLog('🔄 Polling ultrarrápido iniciado (500ms)');
-
       if (myRole === 'teacher') {
         // ═══ PROFESSOR ═══
-        // Limpar sinais antigos da sala
         try {
           await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
           addDebugLog('🧹 [PROFESSOR] Sala de sinalização limpa');
         } catch (e) {}
-
-        await new Promise(r => setTimeout(r, 300));
+        
+        lastProcessedId = 0;
+        await new Promise(r => setTimeout(r, 200));
 
         // Anunciar presença do professor na sala
         addDebugLog('👨‍🏫 [PROFESSOR] Presente na sala. Aguardando aluno...');
@@ -627,10 +620,42 @@ export default function ClassroomPage() {
 
       } else {
         // ═══ ALUNO ═══
-        // Anunciar presença única do aluno na sala
-        addDebugLog('👋 [ALUNO] Presente na sala. Solicitando conexão...');
+        // Buscar se o professor já enviou o sinal 'teacher_online'
+        try {
+          const { data: teacherSignals } = await supabase
+            .from(SIGNAL_TABLE)
+            .select('*')
+            .eq('room_key', normalizedRoomKey)
+            .eq('sender_role', 'teacher')
+            .eq('signal_type', 'teacher_online')
+            .order('id', { ascending: false })
+            .limit(1);
+
+          if (teacherSignals && teacherSignals[0]) {
+            lastProcessedId = teacherSignals[0].id - 1;
+            addDebugLog('👨‍🏫 [ALUNO] Professor já encontrado na sala!');
+          } else {
+            const { data: maxData } = await supabase
+              .from(SIGNAL_TABLE)
+              .select('id')
+              .eq('room_key', normalizedRoomKey)
+              .order('id', { ascending: false })
+              .limit(1);
+
+            if (maxData && maxData[0]) {
+              lastProcessedId = maxData[0].id;
+            }
+            addDebugLog('👋 [ALUNO] Aguardando entrada do professor...');
+          }
+        } catch (e) {}
+
+        // Anunciar presença do aluno
         await sendSignal('ready', { joinedAt: Date.now() });
       }
+
+      // Iniciar polling ultrarrápido (500ms)
+      pollInterval = setInterval(pollForSignals, 500);
+      addDebugLog('🔄 Polling ultrarrápido iniciado (500ms)');
     };
 
     cleanAndStart();
