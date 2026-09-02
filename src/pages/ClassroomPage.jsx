@@ -434,7 +434,17 @@ export default function ClassroomPage() {
     };
     window.addEventListener('storage', handleWindowStorage);
 
-    // Inscrever no Canal Supabase Realtime e disparar Oferta SOMENTE quando status === 'SUBSCRIBED'
+    // Inscrever no Canal Supabase Realtime com Fallback de Sinalização Híbrida de Alta Resiliência
+    let offerTriggered = false;
+
+    const triggerOfferOnce = (reason) => {
+      if (offerTriggered) return;
+      offerTriggered = true;
+      console.log(`[WebRTC] Disparando Oferta via Sinalização Híbrida (${reason})...`);
+      addDebugLog(`🟢 Sinalização Ativa (${reason}). Transmitindo Oferta inicial...`);
+      createAndSendOffer();
+    };
+
     const channel = supabase.channel(`lexy_webrtc_${normalizedRoomKey}`, {
       config: {
         broadcast: { ack: true, self: false },
@@ -449,25 +459,36 @@ export default function ClassroomPage() {
 
     channel.subscribe(async (status) => {
       console.log(`[Supabase Realtime] Status de inscrição: ${status}`);
-      addDebugLog(`📡 Status de Sinalização Supabase: ${status}`);
+      addDebugLog(`📡 Status Supabase: ${status}`);
 
       if (status === 'SUBSCRIBED') {
-        console.log('[WebRTC] Canal SUBSCRIBED com sucesso! Criando e transmitindo Oferta inicial...');
-        addDebugLog('🟢 Canal SUBSCRIBED com sucesso! Transmitindo Oferta inicial...');
-        
-        await channel.track({
-          user_id: profile?.id || 'anon',
-          name: currentUserDisplay.name,
-          role: profile?.role || 'student',
-          onlineAt: new Date().toISOString()
-        });
-
-        // SOLAMENTE AQUÍ adentro llamamos a la función que crea y transmite la Oferta WebRTC
-        createAndSendOffer();
+        try {
+          await channel.track({
+            user_id: profile?.id || 'anon',
+            name: currentUserDisplay.name,
+            role: profile?.role || 'student',
+            onlineAt: new Date().toISOString()
+          });
+        } catch (e) {}
+        triggerOfferOnce('Supabase Realtime SUBSCRIBED');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.warn(`[Supabase Realtime] Status ${status}. Ativando Sinalização Híbrida via BroadcastChannel & Queue...`);
+        addDebugLog(`⚠️ Supabase Status ${status}. Ativando Sinalização Híbrida...`);
+        triggerOfferOnce('Fallback Híbrido P2P');
       }
     });
 
+    // Fallback de Segurança de 1.5s: Garantir que a Oferta JAMAIS fique travada aguardando o Supabase
+    const fallbackTimer = setTimeout(() => {
+      if (!offerTriggered) {
+        console.log('[WebRTC] Timeout de sinalização atingido (1.5s). Ativando Oferta Híbrida...');
+        addDebugLog('⚡ Iniciando Oferta Híbrida (Timeout 1.5s)...');
+        triggerOfferOnce('Timeout de Segurança 1.5s');
+      }
+    }, 1500);
+
     return () => {
+      clearTimeout(fallbackTimer);
       channel.unsubscribe();
       channelRef.current = null;
       signalChannel.close();
