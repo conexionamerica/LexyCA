@@ -1344,13 +1344,7 @@ Dicas:
                     )
                   )}
 
-                  {/* SUPERPOSICIÓN DE ESTADO SUPERIOR DERECHO */}
-                  <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 z-20">
-                    <span className={`w-2.5 h-2.5 rounded-full ${isPeerOnline || isRemoteConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
-                    <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                      {isScreenSharing ? '🖥️ Compartilhando Tela' : isPeerOnline || isRemoteConnected ? `🟢 ${otherParticipantDisplay.name} Online` : `🟡 Aguardando ${otherParticipantDisplay.roleLabel}`}
-                    </span>
-                  </div>
+
 
                   {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE */}
                   {peerJoinNotification && (
