@@ -482,50 +482,70 @@ export default function ClassroomPage() {
       }
     };
 
-    // Iniciar sessão: limpar TODOS os sinais antigos e iniciar fluxo baseado em papel
+    // Iniciar sessão baseada no papel (funciona independente de quem entra primeiro)
     const cleanAndStart = async () => {
-      // DELETAR TODOS os sinais desta sala (evitar conflitos com sessões anteriores)
-      try {
-        await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
-        addDebugLog('🧹 Sinais antigos da sala removidos');
-      } catch (e) {}
-
-      // Aguardar 500ms para garantir que ambos limparam antes de enviar
-      await new Promise(r => setTimeout(r, 500));
-
       if (myRole === 'teacher') {
-        // PROFESSOR: Criar e enviar oferta, depois aguardar resposta do aluno via polling
+        // ═══ PROFESSOR ═══
+        // 1. Limpar TODOS os sinais antigos desta sala
         try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          await sendSignal('offer', { sdp: offer.sdp });
-          addDebugLog('📤 [PROFESSOR] Oferta enviada. Aguardando resposta do aluno...');
-        } catch (err) {
-          addDebugLog(`⚠️ Erro ao criar oferta: ${err.message}`);
-        }
-      } else {
-        // ALUNO: Não criar oferta. Apenas aguardar a oferta do professor via polling.
-        addDebugLog('⏳ [ALUNO] Aguardando oferta do professor via polling...');
-      }
+          await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
+          addDebugLog('🧹 [PROFESSOR] Sinais antigos removidos');
+        } catch (e) {}
 
-      // Começar polling (ambos os lados buscam sinais do outro)
-      pollInterval = setInterval(pollForSignals, 1500);
-      addDebugLog('🔄 Polling de sinalização iniciado (a cada 1.5s)');
+        // 2. Aguardar 300ms para evitar race condition com limpeza do aluno
+        await new Promise(r => setTimeout(r, 300));
 
-      // Se o professor não receber resposta em 10s, reenviar oferta
-      if (myRole === 'teacher') {
-        setTimeout(async () => {
-          if (pc.signalingState === 'have-local-offer' && !pc.remoteDescription) {
-            addDebugLog('🔁 [PROFESSOR] Reenviando oferta (timeout 10s)...');
-            try {
-              // Recriar oferta fresca
+        // 3. Criar e enviar oferta
+        const sendOffer = async () => {
+          try {
+            // Se já existe uma oferta pendente, fazer rollback primeiro
+            if (pc.signalingState === 'have-local-offer') {
               await pc.setLocalDescription({ type: 'rollback' });
-              const offer = await pc.createOffer();
-              await pc.setLocalDescription(offer);
-              await sendSignal('offer', { sdp: offer.sdp });
-            } catch (e) {}
+            }
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await sendSignal('offer', { sdp: offer.sdp });
+            addDebugLog('📤 [PROFESSOR] Oferta enviada. Aguardando aluno...');
+          } catch (err) {
+            addDebugLog(`⚠️ Erro ao criar oferta: ${err.message}`);
           }
-        }, 10000);
+        };
+
+        await sendOffer();
+
+        // 4. Começar polling para resposta do aluno (a cada 1s)
+        pollInterval = setInterval(pollForSignals, 1000);
+        addDebugLog('🔄 [PROFESSOR] Polling iniciado (a cada 1s)');
+
+        // 5. Reenviar oferta a cada 8s enquanto não receber resposta
+        //    (para quando o aluno ainda não entrou na sala)
+        const resendInterval = setInterval(async () => {
+          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+            clearInterval(resendInterval);
+            return;
+          }
+          if (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable') {
+            addDebugLog('🔁 [PROFESSOR] Reenviando oferta (aluno ainda não respondeu)...');
+            await sendOffer();
+          }
+        }, 8000);
+
+        // Guardar referência para limpeza
+        const originalCleanup = () => {
+          clearInterval(resendInterval);
+        };
+        pc._resendCleanup = originalCleanup;
+
+      } else {
+        // ═══ ALUNO ═══
+        // NÃO deletar sinais (o professor é quem gerencia)
+        // NÃO criar oferta (o professor é quem oferece)
+        // Apenas fazer polling agressivo até encontrar a oferta do professor
+        addDebugLog('⏳ [ALUNO] Esperando oferta do professor...');
+
+        // Polling rápido (1s) para detectar o professor rapidamente
+        pollInterval = setInterval(pollForSignals, 1000);
+        addDebugLog('🔄 [ALUNO] Polling iniciado (a cada 1s)');
       }
     };
 
@@ -534,6 +554,7 @@ export default function ClassroomPage() {
     return () => {
       if (pollInterval) clearInterval(pollInterval);
       if (pcRef.current) {
+        if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
         pcRef.current.close();
         pcRef.current = null;
       }
@@ -1104,7 +1125,7 @@ Dicas:
                       />
                     ) : (
                       /* AGUARDANDO A ENTRADA / CÂMERA DO OUTRO PARTICIPANTE NA TELA GRANDE */
-                      <div className="flex flex-col items-center justify-center space-y-4 p-6 text-center animate-fade-in my-auto">
+                      <div className="flex flex-col items-center justify-center space-y-5 p-6 text-center animate-fade-in my-auto">
                         <div className="relative">
                           <img
                             src={otherParticipantDisplay.avatar || tutor.avatar}
@@ -1112,19 +1133,45 @@ Dicas:
                             className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
                           />
                           <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                          <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs">
-                            ✓
+                          <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs animate-pulse">
+                            ⏳
                           </span>
                         </div>
-                        <div className="space-y-1.5 max-w-sm">
-                          <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-wider inline-flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            <span>Aguardando {otherParticipantDisplay.roleLabel}</span>
+                        <div className="space-y-2 max-w-sm">
+                          <span className="bg-amber-500/10 text-amber-400 text-[10px] font-extrabold px-3 py-1.5 rounded-full border border-amber-500/30 uppercase tracking-wider inline-flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                            <span>Esperando {otherParticipantDisplay.roleLabel}</span>
                           </span>
                           <h3 className="text-lg font-extrabold text-white">{otherParticipantDisplay.name}</h3>
-                          <p className="text-xs text-slate-400 leading-relaxed">
-                            Assim que <strong>{otherParticipantDisplay.name}</strong> entrar na sala virtual, o vídeo transmitirá automaticamente nesta tela principal.
-                          </p>
+                          {!isUserTeacher ? (
+                            <div className="space-y-2">
+                              <p className="text-sm text-cyan-300 font-semibold">
+                                🎓 Tu profesor aún no ha entrado a la sala
+                              </p>
+                              <p className="text-xs text-slate-400 leading-relaxed">
+                                Cuando <strong className="text-white">{otherParticipantDisplay.name}</strong> entre, la videollamada se conectará automáticamente. No necesitas hacer nada.
+                              </p>
+                              <div className="flex items-center justify-center gap-1.5 pt-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '0ms'}} />
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '150ms'}} />
+                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '300ms'}} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-sm text-cyan-300 font-semibold">
+                                👨‍🎓 Tu alumno aún no ha entrado a la sala
+                              </p>
+                              <p className="text-xs text-slate-400 leading-relaxed">
+                                Cuando <strong className="text-white">{otherParticipantDisplay.name}</strong> entre, la videollamada se conectará automáticamente.
+                              </p>
+                              <div className="flex items-center justify-center gap-1.5 pt-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '0ms'}} />
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '150ms'}} />
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '300ms'}} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
