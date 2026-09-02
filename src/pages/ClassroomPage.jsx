@@ -271,11 +271,13 @@ export default function ClassroomPage() {
     };
   }, [hasJoinedRoom, isVideoOn, normalizedRoomKey, isUserTeacher, currentUserDisplay]);
 
-  // ── SINALIZAÇÃO WEBRTC P2P VIA CANAL NATIVO BROADCAST & QUEUE DE EVENTOS (0 ERROS NO CONSOLE) ──
+  // ── SINALIZAÇÃO WEBRTC P2P VIA SUPABASE DATABASE REST API (FUNCIONA ENTRE DISPOSITIVOS DIFERENTES) ──
+  // NOTA CRÍTICA: BroadcastChannel e localStorage SÓ funcionam entre abas do MESMO navegador/dispositivo.
+  // Para comunicar entre dois dispositivos diferentes (celular do aluno + PC do professor),
+  // precisamos de um canal de rede real. Usamos a tabela 'webrtc_signals' do Supabase via REST API.
   useEffect(() => {
     if (!hasJoinedRoom) return;
 
-    // Configuração dos Servidores STUN Públicos do Google (+ Estrutura para TURN futuro)
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -283,216 +285,217 @@ export default function ClassroomPage() {
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' }
-        /* Estrutura pronta para Servidor TURN dedicado no futuro:
-        {
-          urls: 'turn:turn.lexy.app:3478',
-          username: 'lexy_user',
-          credential: 'lexy_password'
-        }
-        */
       ]
     };
 
     const pc = new RTCPeerConnection(rtcConfig);
     pcRef.current = pc;
 
-    addDebugLog(`🚀 Sinalização WebRTC iniciada na sala: ${normalizedRoomKey}`);
+    const myRole = isUserTeacher ? 'teacher' : 'student';
+    const myName = currentUserDisplay.name;
+    addDebugLog(`🚀 WebRTC iniciado. Sala: ${normalizedRoomKey}. Papel: ${myRole}`);
 
-    // Adicionar faixas de áudio e vídeo locais à conexão P2P
+    // Adicionar faixas locais
     if (localStream) {
       localStream.getTracks().forEach(track => {
-        console.log(`[WebRTC P2P] Adicionando faixa local (${track.kind})`);
         pc.addTrack(track, localStream);
       });
-      addDebugLog('📹 Faixas locais de vídeo/áudio carregadas');
+      addDebugLog('📹 Faixas locais (áudio+vídeo) adicionadas');
     }
 
-    // Injetar o fluxo remoto recebido na tela grande principal
+    // Receber fluxo remoto
     pc.ontrack = (event) => {
-      console.log('[WebRTC P2P] 🚀 Transmissão remota recebida com sucesso!', event.streams);
-      addDebugLog('🚀 Fluxo de vídeo remoto recebido com sucesso!');
+      addDebugLog('🚀 VÍDEO REMOTO RECEBIDO COM SUCESSO!');
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
         setIsRemoteConnected(true);
         setIsPeerOnline(true);
+        setPeerJoinNotification(`🎉 Participante conectou-se à chamada!`);
+        setTimeout(() => setPeerJoinNotification(null), 6000);
       }
     };
 
-    const signalChannel = new BroadcastChannel(`lexy_webrtc_signal_${normalizedRoomKey}`);
+    pc.oniceconnectionstatechange = () => {
+      addDebugLog(`🔗 ICE State: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        setIsRemoteConnected(true);
+        setIsPeerOnline(true);
+      }
+    };
 
-    // Enviar ICE Candidates locais (Convertidos para JSON simples para evitar DataCloneError)
+    // ── SINALIZAÇÃO VIA SUPABASE DATABASE REST API (funciona cross-device!) ──
+    const SIGNAL_TABLE = 'webrtc_signals';
+    let iceCandidateQueue = [];
+    let pollInterval = null;
+    let isPolling = false;
+    let lastProcessedId = 0;
+
+    // Função para enviar sinal via Supabase REST API (INSERT na tabela)
+    const sendSignal = async (signalType, payload) => {
+      try {
+        const { error } = await supabase.from(SIGNAL_TABLE).insert({
+          room_key: normalizedRoomKey,
+          sender_role: myRole,
+          sender_name: myName,
+          signal_type: signalType,
+          payload: JSON.stringify(payload),
+          created_at: new Date().toISOString()
+        });
+        if (error) {
+          // Se a tabela não existe, loga e continua
+          if (error.code === '42P01' || error.message?.includes('does not exist')) {
+            addDebugLog('⚠️ Tabela webrtc_signals não existe no Supabase. Criando...');
+            await createSignalTable();
+            // Tentar novamente
+            await supabase.from(SIGNAL_TABLE).insert({
+              room_key: normalizedRoomKey,
+              sender_role: myRole,
+              sender_name: myName,
+              signal_type: signalType,
+              payload: JSON.stringify(payload),
+              created_at: new Date().toISOString()
+            });
+          } else {
+            console.warn('[Signal] Erro ao enviar sinal:', error.message);
+            addDebugLog(`⚠️ Erro envio sinal: ${error.message}`);
+          }
+        }
+      } catch (e) {
+        console.warn('[Signal] Exceção ao enviar:', e);
+      }
+    };
+
+    // Função para criar a tabela de sinalização via RPC ou REST
+    const createSignalTable = async () => {
+      try {
+        await supabase.rpc('create_webrtc_signals_table');
+      } catch (e) {
+        addDebugLog('ℹ️ Criação automática não disponível. Crie a tabela manualmente no Supabase.');
+      }
+    };
+
+    // Função para buscar sinais do outro participante via polling
+    const pollForSignals = async () => {
+      if (isPolling) return;
+      isPolling = true;
+      try {
+        const otherRole = myRole === 'teacher' ? 'student' : 'teacher';
+        const { data, error } = await supabase
+          .from(SIGNAL_TABLE)
+          .select('*')
+          .eq('room_key', normalizedRoomKey)
+          .eq('sender_role', otherRole)
+          .gt('id', lastProcessedId)
+          .order('id', { ascending: true })
+          .limit(50);
+
+        if (error) {
+          // Se a tabela não existe, tentar criá-la silenciosamente
+          if (!error.message?.includes('does not exist')) {
+            console.warn('[Signal Poll] Erro:', error.message);
+          }
+          isPolling = false;
+          return;
+        }
+
+        if (data && data.length > 0) {
+          for (const row of data) {
+            lastProcessedId = row.id;
+            try {
+              const payload = JSON.parse(row.payload);
+              await handleSignalData(row.signal_type, payload);
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      isPolling = false;
+    };
+
+    // Processar sinais recebidos
+    const handleSignalData = async (signalType, payload) => {
+      try {
+        if (signalType === 'offer' && payload.sdp) {
+          addDebugLog(`📥 Oferta recebida! Respondendo...`);
+          setIsPeerOnline(true);
+
+          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: payload.sdp }));
+          
+          // Aplicar candidatos ICE enfileirados
+          for (const c of iceCandidateQueue) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+          }
+          iceCandidateQueue = [];
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          addDebugLog('📤 Enviando Resposta (Answer)...');
+          await sendSignal('answer', { sdp: answer.sdp });
+        }
+
+        if (signalType === 'answer' && payload.sdp) {
+          addDebugLog(`📥 Resposta recebida! Conexão P2P estabelecida!`);
+          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
+          setIsRemoteConnected(true);
+          setIsPeerOnline(true);
+          
+          // Aplicar candidatos ICE enfileirados
+          for (const c of iceCandidateQueue) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+          }
+          iceCandidateQueue = [];
+        }
+
+        if (signalType === 'ice-candidate' && payload.candidate) {
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload));
+          } else {
+            iceCandidateQueue.push(payload);
+          }
+        }
+      } catch (err) {
+        addDebugLog(`⚠️ Erro processando sinal ${signalType}: ${err.message}`);
+      }
+    };
+
+    // Enviar ICE Candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        const candidateJSON = event.candidate.toJSON ? event.candidate.toJSON() : {
+        const c = event.candidate.toJSON ? event.candidate.toJSON() : {
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
           sdpMLineIndex: event.candidate.sdpMLineIndex
         };
-        const candidatePayload = {
-          type: 'webrtc-candidate',
-          candidate: candidateJSON,
-          sender: currentUserDisplay.name
-        };
-        try {
-          signalChannel.postMessage(candidatePayload);
-          localStorage.setItem(`webrtc_cand_${normalizedRoomKey}_${Date.now()}`, JSON.stringify(candidatePayload));
-        } catch (e) {}
+        sendSignal('ice-candidate', c);
       }
     };
 
-    // Criar e Transmitir Oferta (Offer) inicial
-    const createAndSendOffer = async () => {
+    // Limpar sinais antigos desta sala antes de começar
+    const cleanAndStart = async () => {
+      try {
+        // Deletar sinais antigos desta sala (mais de 5 minutos)
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey).lt('created_at', fiveMinAgo);
+      } catch (e) {}
+
+      // Criar e enviar oferta
       try {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        console.log('[WebRTC P2P] 📤 Transmitindo Oferta (Offer) inicial...');
-        addDebugLog('📤 Emitindo Oferta (Offer) inicial de conexão P2P...');
-        const offerJSON = {
-          type: offer.type,
-          sdp: offer.sdp
-        };
-        const offerPayload = {
-          type: 'webrtc-offer',
-          offer: offerJSON,
-          sender: currentUserDisplay.name
-        };
-        try {
-          signalChannel.postMessage(offerPayload);
-          localStorage.setItem(`webrtc_offer_${normalizedRoomKey}`, JSON.stringify(offerPayload));
-        } catch (e) {}
+        addDebugLog('📤 Oferta enviada via Supabase Database REST API');
+        await sendSignal('offer', { sdp: offer.sdp });
       } catch (err) {
-        console.warn('[WebRTC P2P] Erro ao criar Oferta:', err);
-        addDebugLog(`⚠️ Erro ao criar Oferta: ${err.message}`);
+        addDebugLog(`⚠️ Erro ao criar oferta: ${err.message}`);
       }
+
+      // Começar polling
+      pollInterval = setInterval(pollForSignals, 1500);
+      addDebugLog('🔄 Polling de sinalização iniciado (a cada 1.5s)');
     };
 
-    // Processar Mensagens de Sinalização Recebidas (Offer / Answer / Candidate)
-    const handleSignalData = async (data) => {
-      if (!data || data.sender === currentUserDisplay.name) return;
-
-      if (data.type === 'webrtc-offer' && data.offer) {
-        console.log('[WebRTC P2P] 📥 Oferta recebida de:', data.sender);
-        addDebugLog(`📥 Oferta recebida do participante: ${data.sender}`);
-        setIsPeerOnline(true);
-        setIsRemoteConnected(true);
-        setPeerJoinNotification(`🎉 ${data.sender} conectou-se à chamada!`);
-        setTimeout(() => setPeerJoinNotification(null), 6000);
-
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-
-          console.log('[WebRTC P2P] 📤 Enviando Resposta (Answer)...');
-          addDebugLog('📤 Enviando Resposta (Answer) de volta ao participante...');
-          const answerJSON = {
-            type: answer.type,
-            sdp: answer.sdp
-          };
-          const answerPayload = {
-            type: 'webrtc-answer',
-            answer: answerJSON,
-            sender: currentUserDisplay.name
-          };
-          try {
-            signalChannel.postMessage(answerPayload);
-            localStorage.setItem(`webrtc_answer_${normalizedRoomKey}`, JSON.stringify(answerPayload));
-          } catch (e) {}
-        } catch (err) {
-          console.warn('[WebRTC P2P] Erro ao processar Oferta:', err);
-          addDebugLog(`⚠️ Erro ao processar Oferta: ${err.message}`);
-        }
-      }
-
-      if (data.type === 'webrtc-answer' && data.answer) {
-        console.log('[WebRTC P2P] 📥 Resposta (Answer) recebida de:', data.sender);
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-          setIsRemoteConnected(true);
-          setIsPeerOnline(true);
-        } catch (err) {
-          console.warn('[WebRTC P2P] Erro ao aplicar Resposta:', err);
-        }
-      }
-
-      if (data.type === 'webrtc-candidate' && data.candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (err) {}
-      }
-    };
-
-    signalChannel.onmessage = (e) => handleSignalData(e.data);
-
-    const handleWindowStorage = (e) => {
-      if (e.key && e.key.startsWith(`webrtc_`) && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          handleSignalData(parsed);
-        } catch (err) {}
-      }
-    };
-    window.addEventListener('storage', handleWindowStorage);
-
-    // Inscrever no Canal Supabase Realtime com Fallback de Sinalização Híbrida de Alta Resiliência
-    let offerTriggered = false;
-
-    const triggerOfferOnce = (reason) => {
-      if (offerTriggered) return;
-      offerTriggered = true;
-      console.log(`[WebRTC] Disparando Oferta via Sinalização Híbrida (${reason})...`);
-      addDebugLog(`🟢 Sinalização Ativa (${reason}). Transmitindo Oferta inicial...`);
-      createAndSendOffer();
-    };
-
-    const channel = supabase.channel(`lexy_webrtc_${normalizedRoomKey}`, {
-      config: {
-        broadcast: { ack: true, self: false },
-        presence: { key: currentUserDisplay.name }
-      }
-    });
-    channelRef.current = channel;
-
-    channel.on('broadcast', { event: 'webrtc-offer' }, ({ payload }) => handleSignalData(payload));
-    channel.on('broadcast', { event: 'webrtc-answer' }, ({ payload }) => handleSignalData(payload));
-    channel.on('broadcast', { event: 'webrtc-ice-candidate' }, ({ payload }) => handleSignalData(payload));
-
-    channel.subscribe(async (status) => {
-      console.log(`[Supabase Realtime] Status de inscrição: ${status}`);
-      addDebugLog(`📡 Status Supabase: ${status}`);
-
-      if (status === 'SUBSCRIBED') {
-        try {
-          await channel.track({
-            user_id: profile?.id || 'anon',
-            name: currentUserDisplay.name,
-            role: profile?.role || 'student',
-            onlineAt: new Date().toISOString()
-          });
-        } catch (e) {}
-        triggerOfferOnce('Supabase Realtime SUBSCRIBED');
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        console.warn(`[Supabase Realtime] Status ${status}. Ativando Sinalização Híbrida via BroadcastChannel & Queue...`);
-        addDebugLog(`⚠️ Supabase Status ${status}. Ativando Sinalização Híbrida...`);
-        triggerOfferOnce('Fallback Híbrido P2P');
-      }
-    });
-
-    // Fallback de Segurança de 1.5s: Garantir que a Oferta JAMAIS fique travada aguardando o Supabase
-    const fallbackTimer = setTimeout(() => {
-      if (!offerTriggered) {
-        console.log('[WebRTC] Timeout de sinalização atingido (1.5s). Ativando Oferta Híbrida...');
-        addDebugLog('⚡ Iniciando Oferta Híbrida (Timeout 1.5s)...');
-        triggerOfferOnce('Timeout de Segurança 1.5s');
-      }
-    }, 1500);
+    cleanAndStart();
 
     return () => {
-      clearTimeout(fallbackTimer);
-      channel.unsubscribe();
-      channelRef.current = null;
-      signalChannel.close();
-      window.removeEventListener('storage', handleWindowStorage);
+      if (pollInterval) clearInterval(pollInterval);
       if (pcRef.current) {
         pcRef.current.close();
         pcRef.current = null;
