@@ -1248,62 +1248,89 @@ Dicas:
                       />
                     ) : (
                       /* CARTÃO MASCOTE LEXY ESPERANDO CONEXÃO / CARREGANDO VÍDEO DO PARTICIPANTE */
-                      <div className="flex flex-col items-center justify-center space-y-5 p-6 text-center animate-fade-in my-auto max-w-md mx-auto">
-                        <div className="relative">
-                          {/* Mascote Lexy e Avatar do Participante */}
-                          <div className="relative flex items-center justify-center">
+                      <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-hidden my-auto">
+                        
+                        {/* 1. MÁSCARA DE NÉBULA LUMINOSA & ORBES GRADIENTES ANIMADOS NO FUNDO */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                          <div className="absolute -top-16 -left-16 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-600/10 blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+                          <div className="absolute -bottom-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-tl from-emerald-500/25 to-teal-600/10 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-indigo-500/10 blur-3xl" />
+                          <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15" />
+
+                          {/* Círculos Concéntricos Orbitais Tecnológicos ao Redor do Avatar */}
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -mt-8 pointer-events-none">
+                            <div className="w-[300px] h-[300px] sm:w-[380px] sm:h-[380px] rounded-full border border-cyan-500/20 animate-spin" style={{ animationDuration: '25s' }} />
+                            <div className="absolute inset-4 rounded-full border border-dashed border-emerald-500/20 animate-spin" style={{ animationDuration: '35s', animationDirection: 'reverse' }} />
+                          </div>
+                        </div>
+
+                        {/* 2. CONTEÚDO PRINCIPAL EM CAMADA Z-10 */}
+                        <div className="relative z-10 flex flex-col items-center justify-center space-y-4 max-w-md w-full my-auto">
+                          
+                          {/* Avatar com halo de luz e Mascote Lexy Badge */}
+                          <div className="relative group">
+                            <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 opacity-60 blur-md group-hover:opacity-90 transition-opacity animate-pulse" />
                             <img
                               src={otherParticipantDisplay.avatar || tutor.avatar}
                               alt={otherParticipantDisplay.name}
-                              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/30"
+                              className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/50"
                             />
                             {/* Badging Mascote Lexy */}
-                            <div className="absolute -top-3 -right-3 w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-cyan-400 to-emerald-400 p-0.5 shadow-lg animate-bounce">
-                              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-300">
+                            <div className="absolute -top-2 -right-2 w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-cyan-400 to-emerald-400 p-0.5 shadow-lg animate-bounce z-20">
+                              <div className="w-full h-full bg-slate-950 rounded-[12px] flex items-center justify-center text-amber-300">
                                 <Sparkles className="w-5 h-5 fill-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
                               </div>
                             </div>
                           </div>
-                          <div className="absolute -inset-3 rounded-full border-2 border-cyan-400/50 animate-ping opacity-60 pointer-events-none" />
-                        </div>
 
-                        <div className="space-y-3 w-full">
-                          <span className="bg-gradient-to-r from-cyan-500/20 via-emerald-500/20 to-amber-500/20 text-cyan-300 text-[11px] font-extrabold px-3.5 py-1.5 rounded-full border border-cyan-400/40 uppercase tracking-wider inline-flex items-center gap-2 shadow-inner">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            <span>Lexy Space Live • Conectando</span>
-                          </span>
-
-                          <h3 className="text-xl font-extrabold text-white">
-                            {otherParticipantDisplay.name}
-                          </h3>
-
-                          {!isUserTeacher ? (
-                            <div className="space-y-2 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-800 text-left">
-                              <p className="text-xs text-cyan-300 font-bold flex items-center gap-1.5">
-                                🎓 <span>Aguardando o professor iniciar a câmera...</span>
-                              </p>
-                              <p className="text-[11px] text-slate-400 leading-relaxed">
-                                Assim que <strong>{otherParticipantDisplay.name}</strong> entrar ou liberar o canal de vídeo, a transmissão ao vivo em alta definição aparecerá aqui automaticamente.
-                              </p>
+                          <div className="space-y-3 w-full">
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 text-cyan-300 text-xs font-black uppercase tracking-wider shadow-lg shadow-cyan-950/50">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                              <span>Lexy Space Live • Conectando</span>
                             </div>
-                          ) : (
-                            <div className="space-y-2 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-800 text-left">
-                              <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
-                                👨‍🎓 <span>Aguardando o aluno conectar à sala...</span>
-                              </p>
-                              <p className="text-[11px] text-slate-400 leading-relaxed">
-                                O canal da sala privada está transmitindo o sinal. Quando <strong>{otherParticipantDisplay.name}</strong> ingressar, o vídeo iniciará instantaneamente.
-                              </p>
-                            </div>
-                          )}
 
-                          {/* Barra de Progresso Animada Lexy */}
-                          <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800 relative">
-                            <div className="h-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 rounded-full animate-pulse w-full" />
+                            <h3 className="text-2xl font-extrabold text-white tracking-tight">
+                              {otherParticipantDisplay.name}
+                            </h3>
+
+                            {!isUserTeacher ? (
+                              <div className="space-y-2 bg-slate-900/80 backdrop-blur-xl p-4.5 rounded-2xl border border-cyan-500/30 text-left shadow-2xl">
+                                <p className="text-xs text-cyan-300 font-bold flex items-center gap-1.5">
+                                  🎓 <span>Aguardando o professor iniciar a câmera...</span>
+                                </p>
+                                <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                                  Assim que <strong>{otherParticipantDisplay.name}</strong> entrar ou liberar o canal de vídeo, a transmissão ao vivo em alta definição aparecerá aqui automaticamente.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 bg-slate-900/80 backdrop-blur-xl p-4.5 rounded-2xl border border-cyan-500/30 text-left shadow-2xl">
+                                <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
+                                  👨‍🎓 <span>Aguardando o aluno conectar à sala...</span>
+                                </p>
+                                <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                                  O canal da sala privada está transmitindo o sinal. Quando <strong>{otherParticipantDisplay.name}</strong> ingressar, o vídeo iniciará instantaneamente.
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Badges de Garantia de Qualidade Lexy Space */}
+                            <div className="flex items-center justify-center gap-3 pt-0.5 text-[11px] text-slate-300 font-bold">
+                              <span className="flex items-center gap-1 bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-800 backdrop-blur-md shadow-md">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Criptografado 1-on-1
+                              </span>
+                              <span className="flex items-center gap-1 bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-800 backdrop-blur-md shadow-md">
+                                <Zap className="w-3.5 h-3.5 text-amber-400" /> Alta Definição HD
+                              </span>
+                            </div>
+
+                            {/* Barra de Progresso Animada Lexy */}
+                            <div className="w-full bg-slate-900/80 h-2 rounded-full overflow-hidden border border-cyan-500/30 relative shadow-inner">
+                              <div className="h-full bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 rounded-full animate-pulse w-full shadow-[0_0_12px_rgba(45,212,191,0.6)]" />
+                            </div>
+                            <p className="text-[10px] text-slate-400 text-center font-mono">
+                              Sincronizando transmissão criptografada WebRTC... Por favor aguarde.
+                            </p>
                           </div>
-                          <p className="text-[10px] text-slate-400 text-center font-mono">
-                            Sincronizando transmissão criptografada WebRTC... Por favor aguarde.
-                          </p>
                         </div>
                       </div>
                     )
