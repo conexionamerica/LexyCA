@@ -411,32 +411,38 @@ export default function ClassroomPage() {
       isPolling = false;
     };
 
-    // Processar sinais recebidos (Sinalização Híbrida Handshake de Alta Confiabilidade)
+    // Processar sinais recebidos (Handshake de Presença Simétrico - 100% à prova de falhas de ordem)
     const handleSignalData = async (signalType, payload) => {
       try {
-        // Se o professor recebe 'ready' do aluno (o aluno acabou de entrar ou atualizar a página)
-        if (signalType === 'ready' && myRole === 'teacher') {
-          addDebugLog(`🎉 Aluno entrou na sala! Gerando Oferta WebRTC nova e atualizada...`);
+        // 1. Se o PROFESSOR detecta que o Aluno está na sala ('ready' ou 'student_online')
+        if ((signalType === 'ready' || signalType === 'student_online') && myRole === 'teacher') {
+          addDebugLog(`🎉 Aluno detectado na sala! Emitindo Oferta WebRTC nova...`);
           try {
-            // Limpar estado anterior se houver
             if (pc.signalingState === 'have-local-offer') {
               await pc.setLocalDescription({ type: 'rollback' });
             }
             const freshOffer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(freshOffer);
             await sendSignal('offer', { sdp: freshOffer.sdp });
-            addDebugLog('📤 Nova Oferta WebRTC enviada ao aluno com sucesso!');
+            addDebugLog('📤 Oferta WebRTC enviada com sucesso ao aluno!');
           } catch (e) {
-            console.warn('[Handshake] Erro ao criar oferta para aluno:', e);
+            console.warn('[Handshake] Erro ao gerar oferta:', e);
           }
           return;
         }
 
+        // 2. Se o ALUNO detecta que o Professor acabou de entrar ('teacher_online')
+        if (signalType === 'teacher_online' && myRole === 'student') {
+          addDebugLog(`👨‍🏫 Professor detectado na sala! Enviando sinal de prontidão...`);
+          await sendSignal('ready', { timestamp: Date.now() });
+          return;
+        }
+
+        // 3. Processamento de OFERTA pelo ALUNO
         if (signalType === 'offer' && payload.sdp) {
-          // Só o aluno deve processar ofertas (vindas do professor)
-          if (myRole === 'teacher') return;
+          if (myRole === 'teacher') return; // Professor ignora ofertas
           
-          addDebugLog(`📥 Oferta do professor recebida! Processando...`);
+          addDebugLog(`📥 Oferta recebida do professor! Conectando...`);
           setIsPeerOnline(true);
 
           if (pc.signalingState !== 'stable') {
@@ -457,12 +463,12 @@ export default function ClassroomPage() {
           await sendSignal('answer', { sdp: answer.sdp });
         }
 
+        // 4. Processamento de RESPOSTA pelo PROFESSOR
         if (signalType === 'answer' && payload.sdp) {
-          // Só o professor deve processar respostas (vindas do aluno)
-          if (myRole === 'student') return;
+          if (myRole === 'student') return; // Aluno ignora respostas
           if (pc.remoteDescription) return;
 
-          addDebugLog(`📥 Resposta do aluno recebida! Conexão P2P estabelecida!`);
+          addDebugLog(`📥 Resposta do aluno recebida! Conexão P2P ativa!`);
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
           setIsRemoteConnected(true);
           setIsPeerOnline(true);
@@ -473,6 +479,7 @@ export default function ClassroomPage() {
           iceCandidateQueue = [];
         }
 
+        // 5. Processamento de CANDIDATOS ICE
         if (signalType === 'ice-candidate' && payload) {
           const candInit = payload.candidate && typeof payload.candidate === 'object' 
             ? payload.candidate 
@@ -511,33 +518,30 @@ export default function ClassroomPage() {
 
     // Iniciar sessão com Handshake de Presença
     const cleanAndStart = async () => {
-      // Começar polling rápido (500ms) para receber sinais imediatamente
+      // Iniciar polling ultrarrápido (500ms)
       pollInterval = setInterval(pollForSignals, 500);
       addDebugLog('🔄 Polling ultrarrápido iniciado (500ms)');
 
       if (myRole === 'teacher') {
         // ═══ PROFESSOR ═══
-        // Limpar señales antiguas de esta sala
+        // Limpar sinais antigos da sala
         try {
           await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
-          addDebugLog('🧹 [PROFESSOR] Sinais antigos da sala limpos');
+          addDebugLog('🧹 [PROFESSOR] Sala de sinalização limpa');
         } catch (e) {}
 
         await new Promise(r => setTimeout(r, 300));
 
-        // Enviar oferta inicial
-        try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          await sendSignal('offer', { sdp: offer.sdp });
-          addDebugLog('📤 [PROFESSOR] Oferta inicial enviada. Aguardando aluno...');
-        } catch (e) {}
+        // Anunciar presença do professor na sala (não gera oferta em sala vazia!)
+        addDebugLog('👨‍🏫 [PROFESSOR] Presente na sala. Aguardando aluno...');
+        await sendSignal('teacher_online', { joinedAt: Date.now() });
 
       } else {
         // ═══ ALUNO ═══
-        // Emitir sinal 'ready' para avisar o professor que o aluno ingressou na sala
-        addDebugLog('👋 [ALUNO] Enviando sinal de prontidão ao professor...');
+        // Anunciar presença do aluno na sala
+        addDebugLog('👋 [ALUNO] Presente na sala. Solicitando conexão ao professor...');
         await sendSignal('ready', { joinedAt: Date.now() });
+        await sendSignal('student_online', { joinedAt: Date.now() });
       }
     };
 
