@@ -369,12 +369,14 @@ export default function ClassroomPage() {
       addDebugLog('📹 Faixas locais (áudio+vídeo) adicionadas');
     }
 
-    // Receber fluxo remoto
+    // Receber fluxo remoto (Apenas se remoteDescription já tiver sido processada)
     pc.ontrack = (event) => {
-      addDebugLog('🚀 VÍDEO REMOTO RECEBIDO COM SUCESSO!');
-      if (event.streams && event.streams[0]) {
+      addDebugLog('🚀 Faixa de mídia recebida');
+      if (pc.remoteDescription && event.streams && event.streams[0]) {
+        addDebugLog('🚀 VÍDEO REMOTO RECEBIDO COM SUCESSO DO OUTRO PARTICIPANTE!');
         setRemoteStream(event.streams[0]);
         setIsRemoteConnected(true);
+        setIsPeerOnline(true);
         const joinMsg = isUserTeacher 
           ? `⚡ Aluno conectou-se à sala ao vivo!` 
           : `⚡ Professor conectou-se à sala ao vivo!`;
@@ -385,7 +387,7 @@ export default function ClassroomPage() {
 
     pc.oniceconnectionstatechange = () => {
       addDebugLog(`🔗 ICE State: ${pc.iceConnectionState}`);
-      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+      if (pc.remoteDescription && (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed')) {
         setIsRemoteConnected(true);
         setIsPeerOnline(true);
       }
