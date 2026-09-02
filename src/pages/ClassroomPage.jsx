@@ -411,34 +411,23 @@ export default function ClassroomPage() {
       isPolling = false;
     };
 
-    // Processar sinais recebidos (com proteção contra estado inválido)
-    let hasProcessedOffer = false;
-    let hasProcessedAnswer = false;
-
+    // Processar sinais recebidos (fluxo limpo e determinístico)
     const handleSignalData = async (signalType, payload) => {
       try {
-        if (signalType === 'offer' && payload.sdp && !hasProcessedOffer) {
-          // Só processar se estou no estado certo (não sou o offerer, ou sou polite peer)
-          if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') {
+        if (signalType === 'offer' && payload.sdp) {
+          // Só o aluno deve processar ofertas (vindas do professor)
+          if (myRole === 'teacher') return; // Professor ignora ofertas
+          if (pc.signalingState !== 'stable') {
             addDebugLog(`⏭️ Ignorando oferta (estado: ${pc.signalingState})`);
             return;
           }
-          // Se já enviei uma oferta, faço rollback (sou o "polite peer" = student)
-          if (pc.signalingState === 'have-local-offer' && myRole === 'student') {
-            addDebugLog('🔄 Rollback: recebendo oferta do professor...');
-            await pc.setLocalDescription({ type: 'rollback' });
-          } else if (pc.signalingState === 'have-local-offer') {
-            // Teacher ignora ofertas do student (teacher é o impolite peer)
-            addDebugLog('⏭️ Ignorando oferta do aluno (sou o professor/offerer)');
-            return;
-          }
 
-          hasProcessedOffer = true;
-          addDebugLog(`📥 Oferta recebida! Respondendo...`);
+          addDebugLog(`📥 Oferta do professor recebida! Criando resposta...`);
           setIsPeerOnline(true);
 
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: payload.sdp }));
           
+          // Aplicar candidatos ICE que chegaram antes da oferta
           for (const c of iceCandidateQueue) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
           }
@@ -446,17 +435,19 @@ export default function ClassroomPage() {
 
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          addDebugLog('📤 Enviando Resposta (Answer)...');
+          addDebugLog('📤 Resposta (Answer) enviada ao professor!');
           await sendSignal('answer', { sdp: answer.sdp });
         }
 
-        if (signalType === 'answer' && payload.sdp && !hasProcessedAnswer) {
+        if (signalType === 'answer' && payload.sdp) {
+          // Só o professor deve processar respostas (vindas do aluno)
+          if (myRole === 'student') return; // Aluno ignora answers
           if (pc.signalingState !== 'have-local-offer') {
             addDebugLog(`⏭️ Ignorando resposta (estado: ${pc.signalingState})`);
             return;
           }
-          hasProcessedAnswer = true;
-          addDebugLog(`📥 Resposta recebida! Conexão P2P estabelecida!`);
+
+          addDebugLog(`📥 Resposta do aluno recebida! Conexão P2P estabelecida!`);
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
           setIsRemoteConnected(true);
           setIsPeerOnline(true);
@@ -491,27 +482,51 @@ export default function ClassroomPage() {
       }
     };
 
-    // Limpar sinais antigos desta sala antes de começar
+    // Iniciar sessão: limpar TODOS os sinais antigos e iniciar fluxo baseado em papel
     const cleanAndStart = async () => {
+      // DELETAR TODOS os sinais desta sala (evitar conflitos com sessões anteriores)
       try {
-        // Deletar sinais antigos desta sala (mais de 5 minutos)
-        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey).lt('created_at', fiveMinAgo);
+        await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
+        addDebugLog('🧹 Sinais antigos da sala removidos');
       } catch (e) {}
 
-      // Criar e enviar oferta
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        addDebugLog('📤 Oferta enviada via Supabase Database REST API');
-        await sendSignal('offer', { sdp: offer.sdp });
-      } catch (err) {
-        addDebugLog(`⚠️ Erro ao criar oferta: ${err.message}`);
+      // Aguardar 500ms para garantir que ambos limparam antes de enviar
+      await new Promise(r => setTimeout(r, 500));
+
+      if (myRole === 'teacher') {
+        // PROFESSOR: Criar e enviar oferta, depois aguardar resposta do aluno via polling
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await sendSignal('offer', { sdp: offer.sdp });
+          addDebugLog('📤 [PROFESSOR] Oferta enviada. Aguardando resposta do aluno...');
+        } catch (err) {
+          addDebugLog(`⚠️ Erro ao criar oferta: ${err.message}`);
+        }
+      } else {
+        // ALUNO: Não criar oferta. Apenas aguardar a oferta do professor via polling.
+        addDebugLog('⏳ [ALUNO] Aguardando oferta do professor via polling...');
       }
 
-      // Começar polling
+      // Começar polling (ambos os lados buscam sinais do outro)
       pollInterval = setInterval(pollForSignals, 1500);
       addDebugLog('🔄 Polling de sinalização iniciado (a cada 1.5s)');
+
+      // Se o professor não receber resposta em 10s, reenviar oferta
+      if (myRole === 'teacher') {
+        setTimeout(async () => {
+          if (pc.signalingState === 'have-local-offer' && !pc.remoteDescription) {
+            addDebugLog('🔁 [PROFESSOR] Reenviando oferta (timeout 10s)...');
+            try {
+              // Recriar oferta fresca
+              await pc.setLocalDescription({ type: 'rollback' });
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await sendSignal('offer', { sdp: offer.sdp });
+            } catch (e) {}
+          }
+        }, 10000);
+      }
     };
 
     cleanAndStart();
