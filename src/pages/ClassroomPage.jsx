@@ -444,7 +444,9 @@ export default function ClassroomPage() {
       }
     };
 
-    // Função para buscar sinais do outro participante via polling
+    const sessionStartTime = new Date(Date.now() - 5000).toISOString();
+
+    // Função para buscar sinais do outro participante via polling (Ignora sinais antigos de testes passados)
     const pollForSignals = async () => {
       if (isPolling) return;
       isPolling = true;
@@ -456,6 +458,7 @@ export default function ClassroomPage() {
           .eq('room_key', normalizedRoomKey)
           .eq('sender_role', otherRole)
           .gt('id', lastProcessedId)
+          .gte('created_at', sessionStartTime)
           .order('id', { ascending: true })
           .limit(50);
 
