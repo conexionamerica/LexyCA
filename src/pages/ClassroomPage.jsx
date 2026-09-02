@@ -97,16 +97,33 @@ export default function ClassroomPage() {
     }
   }, [isUserTeacher, currentBooking, tutor]);
 
-  // ID Unívoco e Normalizado de Sala (Garante 100% que Aluno e Professor entrem na MESMA chave de sala)
+  // ID Unívoco e Normalizado de Sala Vinculada (Garante 100% que QUALQUER aula agendada entre o Aluno X e o Professor C caia na MESMA sala privada compartilhada)
   const normalizedRoomKey = useMemo(() => {
-    if (currentBooking) {
-      const bCode = String(currentBooking.lesson_code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const bId = String(currentBooking.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      return `lexy_room_${bCode || bId}`;
+    // Extrair identificador único do aluno (por ID, e-mail ou nome)
+    const studentIdentifier = String(
+      currentBooking?.studentId || currentBooking?.student_id || 
+      currentBooking?.studentEmail || currentBooking?.student_email || 
+      currentBooking?.studentName || 'aluno'
+    ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Extrair identificador único do professor (por ID, e-mail ou nome)
+    const tutorIdentifier = String(
+      currentBooking?.tutorId || currentBooking?.tutor_id || 
+      currentBooking?.tutorEmail || currentBooking?.tutor_email || 
+      currentBooking?.tutorName || tutor?.name || 'professor'
+    ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Se identificamos o par Aluno + Professor, a chave de sala é SEMPRE ÚNICA E COMPARTILHADA para o par!
+    if (studentIdentifier && tutorIdentifier && studentIdentifier !== 'aluno') {
+      const sortedPair = [studentIdentifier, tutorIdentifier].sort().join('_with_');
+      console.log(`[Lexy Room Sync] Sala vinculada pelo par Aluno x Professor: lexy_pair_${sortedPair}`);
+      return `lexy_pair_${sortedPair}`;
     }
-    const cleanParam = String(bookingId || 'main').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Fallback por código ou parâmetro de URL
+    const cleanParam = String(bookingId || 'main').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     return `lexy_room_${cleanParam}`;
-  }, [currentBooking, bookingId]);
+  }, [currentBooking, bookingId, tutor]);
 
   // WebRTC Media Stream States (Local & Remote Streams)
   const localVideoRef = useRef(null);
