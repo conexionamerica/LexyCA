@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
@@ -293,6 +293,9 @@ export default function ClassroomPage() {
       ]
     };
 
+    const pc = new RTCPeerConnection(rtcConfig);
+    pcRef.current = pc;
+
     addDebugLog(`🚀 Sinalização WebRTC iniciada na sala: ${normalizedRoomKey}`);
 
     // Adicionar faixas de áudio e vídeo locais à conexão P2P
@@ -431,20 +434,42 @@ export default function ClassroomPage() {
     };
     window.addEventListener('storage', handleWindowStorage);
 
-    // Checar se já existe uma Oferta ou Resposta pendente no armazenamento
-    try {
-      const existingOffer = localStorage.getItem(`webrtc_offer_${normalizedRoomKey}`);
-      if (existingOffer) {
-        const parsed = JSON.parse(existingOffer);
-        if (parsed.sender !== currentUserDisplay.name) {
-          handleSignalData(parsed);
-        }
+    // Inscrever no Canal Supabase Realtime e disparar Oferta SOMENTE quando status === 'SUBSCRIBED'
+    const channel = supabase.channel(`lexy_webrtc_${normalizedRoomKey}`, {
+      config: {
+        broadcast: { ack: true, self: false },
+        presence: { key: currentUserDisplay.name }
       }
-    } catch (e) {}
+    });
+    channelRef.current = channel;
 
-    createAndSendOffer();
+    channel.on('broadcast', { event: 'webrtc-offer' }, ({ payload }) => handleSignalData(payload));
+    channel.on('broadcast', { event: 'webrtc-answer' }, ({ payload }) => handleSignalData(payload));
+    channel.on('broadcast', { event: 'webrtc-ice-candidate' }, ({ payload }) => handleSignalData(payload));
+
+    channel.subscribe(async (status) => {
+      console.log(`[Supabase Realtime] Status de inscrição: ${status}`);
+      addDebugLog(`📡 Status de Sinalização Supabase: ${status}`);
+
+      if (status === 'SUBSCRIBED') {
+        console.log('[WebRTC] Canal SUBSCRIBED com sucesso! Criando e transmitindo Oferta inicial...');
+        addDebugLog('🟢 Canal SUBSCRIBED com sucesso! Transmitindo Oferta inicial...');
+        
+        await channel.track({
+          user_id: profile?.id || 'anon',
+          name: currentUserDisplay.name,
+          role: profile?.role || 'student',
+          onlineAt: new Date().toISOString()
+        });
+
+        // SOLAMENTE AQUÍ adentro llamamos a la función que crea y transmite la Oferta WebRTC
+        createAndSendOffer();
+      }
+    });
 
     return () => {
+      channel.unsubscribe();
+      channelRef.current = null;
       signalChannel.close();
       window.removeEventListener('storage', handleWindowStorage);
       if (pcRef.current) {
