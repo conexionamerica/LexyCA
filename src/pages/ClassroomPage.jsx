@@ -342,7 +342,7 @@ export default function ClassroomPage() {
   // Para comunicar entre dois dispositivos diferentes (celular do aluno + PC do professor),
   // precisamos de um canal de rede real. Usamos a tabela 'webrtc_signals' do Supabase via REST API.
   useEffect(() => {
-    if (!hasJoinedRoom) return;
+    if (!hasJoinedRoom || !localStream) return;
 
     const rtcConfig = {
       iceServers: [
@@ -361,22 +361,38 @@ export default function ClassroomPage() {
     const myName = currentUserDisplay.name;
     addDebugLog(`🚀 WebRTC iniciado. Sala: ${normalizedRoomKey}. Papel: ${myRole}`);
 
-    // Adicionar faixas locais
+    // Adicionar faixas locais (áudio e vídeo)
     if (localStream) {
       localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
+        try {
+          pc.addTrack(track, localStream);
+          addDebugLog(`📹 Faixa local adicionada: ${track.kind} (${track.label})`);
+        } catch (e) {
+          console.warn('Erro ao adicionar faixa local:', e);
+        }
       });
-      addDebugLog('📹 Faixas locais (áudio+vídeo) adicionadas');
     }
 
     // Receber fluxo remoto (Apenas se remoteDescription já tiver sido processada)
     pc.ontrack = (event) => {
-      addDebugLog('🚀 Faixa de mídia recebida');
-      if (pc.remoteDescription && event.streams && event.streams[0]) {
-        addDebugLog('🚀 VÍDEO REMOTO RECEBIDO COM SUCESSO DO OUTRO PARTICIPANTE!');
-        setRemoteStream(event.streams[0]);
-        setIsRemoteConnected(true);
-        setIsPeerOnline(true);
+      // Prevenir loopback do próprio microfone/câmera local
+      if (localStream && localStream.getTracks().some(t => t.id === event.track.id)) {
+        console.warn('⚠️ Faixa local ignorada no ontrack para evitar eco/loopback');
+        return;
+      }
+
+      addDebugLog(`🚀 Faixa de mídia remota recebida: ${event.track.kind}`);
+      if (pc.remoteDescription) {
+        let streamToUse = (event.streams && event.streams[0]) ? event.streams[0] : null;
+        if (!streamToUse && event.track) {
+          streamToUse = new MediaStream([event.track]);
+        }
+        if (streamToUse) {
+          addDebugLog('🚀 FLUXO REMOTO (ÁUDIO+VÍDEO) CONECTADO DO OUTRO PARTICIPANTE!');
+          setRemoteStream(streamToUse);
+          setIsRemoteConnected(true);
+          setIsPeerOnline(true);
+        }
       }
     };
 
