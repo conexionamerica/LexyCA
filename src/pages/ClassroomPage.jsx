@@ -411,16 +411,34 @@ export default function ClassroomPage() {
       isPolling = false;
     };
 
-    // Processar sinais recebidos
+    // Processar sinais recebidos (com proteção contra estado inválido)
+    let hasProcessedOffer = false;
+    let hasProcessedAnswer = false;
+
     const handleSignalData = async (signalType, payload) => {
       try {
-        if (signalType === 'offer' && payload.sdp) {
+        if (signalType === 'offer' && payload.sdp && !hasProcessedOffer) {
+          // Só processar se estou no estado certo (não sou o offerer, ou sou polite peer)
+          if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-offer') {
+            addDebugLog(`⏭️ Ignorando oferta (estado: ${pc.signalingState})`);
+            return;
+          }
+          // Se já enviei uma oferta, faço rollback (sou o "polite peer" = student)
+          if (pc.signalingState === 'have-local-offer' && myRole === 'student') {
+            addDebugLog('🔄 Rollback: recebendo oferta do professor...');
+            await pc.setLocalDescription({ type: 'rollback' });
+          } else if (pc.signalingState === 'have-local-offer') {
+            // Teacher ignora ofertas do student (teacher é o impolite peer)
+            addDebugLog('⏭️ Ignorando oferta do aluno (sou o professor/offerer)');
+            return;
+          }
+
+          hasProcessedOffer = true;
           addDebugLog(`📥 Oferta recebida! Respondendo...`);
           setIsPeerOnline(true);
 
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: payload.sdp }));
           
-          // Aplicar candidatos ICE enfileirados
           for (const c of iceCandidateQueue) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
           }
@@ -432,13 +450,17 @@ export default function ClassroomPage() {
           await sendSignal('answer', { sdp: answer.sdp });
         }
 
-        if (signalType === 'answer' && payload.sdp) {
+        if (signalType === 'answer' && payload.sdp && !hasProcessedAnswer) {
+          if (pc.signalingState !== 'have-local-offer') {
+            addDebugLog(`⏭️ Ignorando resposta (estado: ${pc.signalingState})`);
+            return;
+          }
+          hasProcessedAnswer = true;
           addDebugLog(`📥 Resposta recebida! Conexão P2P estabelecida!`);
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
           setIsRemoteConnected(true);
           setIsPeerOnline(true);
           
-          // Aplicar candidatos ICE enfileirados
           for (const c of iceCandidateQueue) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
           }
@@ -501,7 +523,15 @@ export default function ClassroomPage() {
         pcRef.current = null;
       }
     };
-  }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay]);
+  }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog]);
+
+  // ── ATRIBUIR remoteStream ao elemento <video> remoto QUANDO O STREAM CHEGAR ──
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      addDebugLog('🖥️ srcObject do vídeo remoto atribuído com sucesso!');
+    }
+  }, [remoteStream, addDebugLog]);
 
   // Transmissão contínua de quadros da câmera local para o outro dispositivo em tempo real
   useEffect(() => {
