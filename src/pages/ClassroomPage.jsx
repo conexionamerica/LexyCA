@@ -1264,15 +1264,21 @@ Dicas:
                         {/* CONTEÚDO PRINCIPAL: MASCOTE LEXY + MENSAGEM SIMPLES */}
                         <div className="relative z-10 flex flex-col items-center justify-center space-y-4 max-w-sm w-full my-auto">
                           
-                          {/* Mascote Lexy Ilustração / Avatar com Sparkles */}
+                          {/* Avatar do Usuário (Foto do Perfil ou Inicial do Nome) */}
                           <div className="relative group">
                             <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 opacity-70 blur-lg group-hover:opacity-100 transition-opacity animate-pulse" />
-                            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-950 border-4 border-cyan-400 flex items-center justify-center shadow-2xl shadow-cyan-500/50">
-                              <Sparkles className="w-14 h-14 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-slate-900 shadow-lg animate-bounce">
-                              Lexy Bot 🤖
-                            </div>
+                            
+                            {(otherParticipantDisplay.avatar || tutor.avatar) ? (
+                              <img
+                                src={otherParticipantDisplay.avatar || tutor.avatar}
+                                alt={otherParticipantDisplay.name}
+                                className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/50"
+                              />
+                            ) : (
+                              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-950 border-4 border-cyan-400 flex items-center justify-center text-cyan-300 font-black text-3xl sm:text-4xl shadow-2xl shadow-cyan-500/50 uppercase">
+                                {otherParticipantDisplay.name ? otherParticipantDisplay.name.charAt(0) : 'U'}
+                              </div>
+                            )}
                           </div>
 
                           {/* Texto Direto de Espera */}
