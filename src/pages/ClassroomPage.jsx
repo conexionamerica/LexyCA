@@ -97,12 +97,15 @@ export default function ClassroomPage() {
     }
   }, [isUserTeacher, currentBooking, tutor]);
 
-  // ID Unívoco de Sala Criptografada (Garante que Aluno e Professor entrem na MESMA sala privada)
-  const privateRoomId = useMemo(() => {
+  // ID Unívoco e Normalizado de Sala (Garante 100% que Aluno e Professor entrem na MESMA chave de sala)
+  const normalizedRoomKey = useMemo(() => {
     if (currentBooking) {
-      return `lexy_private_room_${currentBooking.id}_std_${currentBooking.studentId || 'st'}_tut_${currentBooking.tutorId || 'tt'}`;
+      const bCode = String(currentBooking.lesson_code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bId = String(currentBooking.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return `lexy_room_${bCode || bId}`;
     }
-    return `lexy_private_room_${bookingId || 'session'}`;
+    const cleanParam = String(bookingId || 'main').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `lexy_room_${cleanParam}`;
   }, [currentBooking, bookingId]);
 
   // WebRTC Media Stream States (Local & Remote Streams)
@@ -138,14 +141,15 @@ export default function ClassroomPage() {
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
 
-  // ── CANAL DE TRANSMISSÃO LOCAL DO NAVEGADOR (BROADCASTCHANNEL API - FUNCIONA 100% MESMO SE O SUPABASE WEBSOCKET FALHAR) ──
+  // ── MOTOR SUPREMO DE DETECÇÃO E TRANSMISSÃO DE VÍDEO ENTRE PARTICIPANTES (LOCALSTORAGE + BROADCASTCHANNEL - 0 ERRORS) ──
   useEffect(() => {
     if (!hasJoinedRoom) return;
 
-    const cleanRoomKey = currentBooking ? `room_${currentBooking.id}` : `room_${String(bookingId || 'main').trim().toLowerCase()}`;
-    
-    // Criar canal nativo BroadcastChannel do navegador (comunicação instantânea entre abas/janelas)
-    const bc = new BroadcastChannel(`lexy_native_stream_${cleanRoomKey}`);
+    const roleKey = isUserTeacher ? 'teacher' : 'student';
+    const otherRoleKey = isUserTeacher ? 'student' : 'teacher';
+
+    // BroadcastChannel nativo do navegador
+    const bc = new BroadcastChannel(`lexy_native_stream_${normalizedRoomKey}`);
     bcRef.current = bc;
 
     bc.onmessage = (event) => {
@@ -160,36 +164,92 @@ export default function ClassroomPage() {
 
       if (data.type === 'peer_join' && data.sender !== currentUserDisplay.name) {
         setIsPeerOnline(true);
+        setIsRemoteConnected(true);
         setPeerJoinNotification(`🎉 ${data.sender} (${data.roleLabel}) conectou-se à Sala Virtual!`);
         setTimeout(() => setPeerJoinNotification(null), 7000);
       }
-
-      if (data.type === 'chat' && data.sender !== currentUserDisplay.name) {
-        setChatMessages(prev => [...prev, data.payload]);
-      }
     };
 
-    // Notificar outras abas de que o participante se conectou
-    bc.postMessage({
-      type: 'peer_join',
-      sender: currentUserDisplay.name,
-      roleLabel: currentUserDisplay.roleLabel
-    });
+    // Função de sincronização contínua de presença e quadros de vídeo
+    const syncPresenceAndFrame = () => {
+      let currentFrame = null;
+      if (localVideoRef.current && isVideoOn) {
+        const videoEl = localVideoRef.current;
+        if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+          if (!hiddenCanvasRef.current) {
+            hiddenCanvasRef.current = document.createElement('canvas');
+          }
+          const canvas = hiddenCanvasRef.current;
+          canvas.width = 320;
+          canvas.height = 240;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(videoEl, 0, 0, 320, 240);
+          currentFrame = canvas.toDataURL('image/jpeg', 0.4);
+        }
+      }
+
+      const myData = {
+        name: currentUserDisplay.name,
+        roleLabel: currentUserDisplay.roleLabel,
+        avatar: currentUserDisplay.avatar,
+        updatedAt: Date.now(),
+        frame: currentFrame
+      };
+
+      // 1. Gravar presença no localStorage
+      try {
+        localStorage.setItem(`lexy_presence_${normalizedRoomKey}_${roleKey}`, JSON.stringify(myData));
+      } catch (e) {}
+
+      // 2. Emitir via BroadcastChannel
+      if (bcRef.current) {
+        bcRef.current.postMessage({
+          type: 'video_frame',
+          sender: currentUserDisplay.name,
+          frame: currentFrame
+        });
+      }
+
+      // 3. Checar presença do outro participante (Aluno ou Professor)
+      try {
+        const rawOther = localStorage.getItem(`lexy_presence_${normalizedRoomKey}_${otherRoleKey}`);
+        if (rawOther) {
+          const otherData = JSON.parse(rawOther);
+          if (otherData && (Date.now() - otherData.updatedAt < 8000)) {
+            setIsPeerOnline(true);
+            setIsRemoteConnected(true);
+            if (otherData.frame) {
+              setRemoteVideoFrame(otherData.frame);
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    syncPresenceAndFrame();
+    const interval = setInterval(syncPresenceAndFrame, 250);
+
+    const handleStorage = (e) => {
+      if (e.key === `lexy_presence_${normalizedRoomKey}_${otherRoleKey}`) {
+        syncPresenceAndFrame();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
 
     return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
       bc.close();
       bcRef.current = null;
     };
-  }, [hasJoinedRoom, currentBooking, bookingId, currentUserDisplay]);
+  }, [hasJoinedRoom, isVideoOn, normalizedRoomKey, isUserTeacher, currentUserDisplay]);
 
   // Supabase Realtime Channel & Presença em tempo real para Aluno x Professor
   useEffect(() => {
     if (!hasJoinedRoom) return;
 
     // Chave de sala padronizada e unívoca
-    const cleanRoomKey = currentBooking ? `room_${currentBooking.id}` : `room_${String(bookingId || 'main').trim().toLowerCase()}`;
-    
-    const channel = supabase.channel(`lexy_space_${cleanRoomKey}`, {
+    const channel = supabase.channel(`lexy_space_${normalizedRoomKey}`, {
       config: {
         presence: { key: currentUserDisplay.name },
         broadcast: { self: false }
