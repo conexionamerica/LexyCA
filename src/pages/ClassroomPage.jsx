@@ -1188,9 +1188,6 @@ Dicas:
                         <span>Bem-vindo ao Lexy Space</span>
                       </div>
                       <h3 className="text-2xl font-extrabold text-white tracking-tight">Aula com {otherParticipantDisplay.name}</h3>
-                      <p className="text-xs font-bold text-cyan-300 bg-cyan-950/60 px-3 py-1 rounded-lg border border-cyan-500/30 inline-block">
-                        {tutor.subject} • Código: {currentBooking?.lesson_code || bookingId}
-                      </p>
                       <p className="text-sm text-slate-200 leading-relaxed pt-1 font-medium">
                         Clique no botão abaixo para iniciar. Desejamos uma ótima aula!
                       </p>
@@ -1223,7 +1220,7 @@ Dicas:
                         style={{ animationDuration: '3s' }}
                       >
                         <Video className="w-5 h-5 fill-slate-950 text-slate-950 group-hover:scale-110 transition-transform" />
-                        <span className="tracking-wide">{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
+                        <span className="tracking-wide">{isConnecting ? 'Conectando Câmera...' : 'Entrar na Sala Virtual'}</span>
                       </button>
                     </div>
 
