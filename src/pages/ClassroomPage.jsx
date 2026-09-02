@@ -671,8 +671,10 @@ export default function ClassroomPage() {
     remoteVideoRef.current = videoEl;
     if (videoEl && remoteStream) {
       videoEl.srcObject = remoteStream;
+      videoEl.muted = false;
+      videoEl.volume = 1.0;
       videoEl.play().catch(() => {});
-      console.log('[VIDEO] srcObject atribuído via callback ref');
+      console.log('[VIDEO] srcObject e áudio HD atribuídos via callback ref');
     }
   }, [remoteStream]);
 
@@ -684,8 +686,10 @@ export default function ClassroomPage() {
     const tryAssign = () => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.volume = 1.0;
         remoteVideoRef.current.play().catch(() => {});
-        addDebugLog('🖥️ srcObject do vídeo remoto atribuído com sucesso!');
+        addDebugLog('🖥️ srcObject e áudio do vídeo remoto atribuídos com sucesso!');
         return true;
       }
       return false;
@@ -800,36 +804,52 @@ export default function ClassroomPage() {
     return canvas.captureStream(30);
   };
 
-  // Função para Entrar na Sala com Gesto Direto do Usuário e Fallbacks de Mídia
+  // Função para Entrar na Sala com Gesto Direto do Usuário e Captura HD de Áudio e Vídeo
   const handleJoinRoom = async () => {
     setIsConnecting(true);
     setCameraError(null);
     let stream = null;
 
-    // 1ª Tentativa: Vídeo + Áudio padrão flexível
+    const audioConstraints = {
+      echoCancellation: { ideal: true },
+      noiseSuppression: { ideal: true },
+      autoGainControl: { ideal: true }
+    };
+
+    // 1ª Tentativa: Vídeo HD + Áudio HD com cancelamento de eco
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: audioConstraints
+      });
       setIsVideoOn(true);
       setIsMicOn(true);
     } catch (err1) {
-      console.warn('Tentativa 1 (Video+Audio) falhou:', err1);
-      
-      // 2ª Tentativa: Apenas Vídeo
+      console.warn('Tentativa 1 (HD Video+Audio) falhou. Tentando flexível...', err1);
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: audioConstraints });
         setIsVideoOn(true);
-        setIsMicOn(false);
+        setIsMicOn(true);
       } catch (err2) {
-        console.warn('Tentativa 2 (Apenas Video) falhou:', err2);
-        
-        // 3ª Tentativa: Apenas Áudio
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-          setIsVideoOn(false);
+        console.warn('Tentativa 2 (Video padrão) falhou:', err2);
+      }
+    }
+
+    // TENTATIVA DEDICADA DE ÁUDIO (Garante que o áudio seja capturado mesmo se o vídeo falhar)
+    if (!stream || stream.getAudioTracks().length === 0) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+        if (audioStream && audioStream.getAudioTracks().length > 0) {
+          if (!stream) {
+            stream = audioStream;
+          } else {
+            stream.addTrack(audioStream.getAudioTracks()[0]);
+          }
           setIsMicOn(true);
-        } catch (err3) {
-          console.warn('Tentativa 3 (Apenas Audio) falhou:', err3);
+          console.log('🎤 Áudio HD capturado com sucesso via canal dedicado!');
         }
+      } catch (errAudio) {
+        console.warn('⚠️ Microfone não pôde ser acessado:', errAudio);
       }
     }
 
@@ -842,7 +862,7 @@ export default function ClassroomPage() {
       }
       stream = studioStream;
       setIsVideoOn(true);
-      setCameraError('Câmera física em uso em outro programa/aba. O canal de vídeo Lexy Studio 30fps e o áudio estão 100% ativos!');
+      setCameraError('Câmera física em uso em outro programa/aba. Áudio nativo HD e vídeo Lexy Studio 30fps 100% ativos!');
     }
 
     if (stream) {
@@ -1276,6 +1296,22 @@ Dicas:
                   {/* ── TELA PRINCIPAL (GRANDE): TRANSMISSÃO DO OUTRO PARTICIPANTE (PROFESSOR OU ALUNO) ── */}
                   {!isSwapped ? (
                     <div className="relative w-full h-full flex flex-col items-center justify-center">
+                      {/* PLAYER DEDICADO DE ÁUDIO REMOTO (GARANTE ÁUDIO NATIVO CRISTALINO SEM BLOQUEIOS DE AUTOPLAY) */}
+                      {isRemoteConnected && remoteStream && (
+                        <audio
+                          ref={(audioEl) => {
+                            if (audioEl && remoteStream) {
+                              audioEl.srcObject = remoteStream;
+                              audioEl.muted = false;
+                              audioEl.volume = 1.0;
+                              audioEl.play().catch(e => console.warn('Play audio error:', e));
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                        />
+                      )}
+
                       {/* VÍDEO REMOTO DA CÂMERA DO OUTRO PARTICIPANTE (EXIBIDO APENAS QUANDO PIXELS REAIS ESTIVEREM ATIVOS) */}
                       {isRemoteConnected && remoteStream && (
                         <video
