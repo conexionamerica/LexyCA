@@ -373,6 +373,9 @@ export default function ClassroomPage() {
       });
     }
 
+    // Acumulador de fluxo de mídia remoto para combinar áudio e vídeo
+    const remoteMediaStream = new MediaStream();
+
     // Receber fluxo remoto (Apenas se remoteDescription já tiver sido processada)
     pc.ontrack = (event) => {
       // Prevenir loopback do próprio microfone/câmera local
@@ -381,18 +384,36 @@ export default function ClassroomPage() {
         return;
       }
 
-      addDebugLog(`🚀 Faixa de mídia remota recebida: ${event.track.kind}`);
+      addDebugLog(`🚀 Faixa de mídia remota recebida: ${event.track.kind} (${event.track.label || 'Faixa'})`);
+      
+      // Garantir que a faixa de áudio recebida esteja explicitamente ativada
+      if (event.track.kind === 'audio') {
+        event.track.enabled = true;
+      }
+
       if (pc.remoteDescription) {
-        let streamToUse = (event.streams && event.streams[0]) ? event.streams[0] : null;
-        if (!streamToUse && event.track) {
-          streamToUse = new MediaStream([event.track]);
+        // Se vier no event.streams[0], extrair todas as faixas (áudio e vídeo)
+        if (event.streams && event.streams[0]) {
+          event.streams[0].getTracks().forEach(track => {
+            if (localStream && localStream.getTracks().some(t => t.id === track.id)) return;
+            track.enabled = true;
+            if (!remoteMediaStream.getTracks().some(t => t.id === track.id)) {
+              remoteMediaStream.addTrack(track);
+            }
+          });
+        } else if (event.track) {
+          if (!remoteMediaStream.getTracks().some(t => t.id === event.track.id)) {
+            remoteMediaStream.addTrack(event.track);
+          }
         }
-        if (streamToUse) {
-          addDebugLog('🚀 FLUXO REMOTO (ÁUDIO+VÍDEO) CONECTADO DO OUTRO PARTICIPANTE!');
-          setRemoteStream(streamToUse);
-          setIsRemoteConnected(true);
-          setIsPeerOnline(true);
-        }
+
+        // Criar um novo objeto MediaStream para forçar a atualização dos players <video> e <audio>
+        const unifiedStream = new MediaStream(remoteMediaStream.getTracks());
+        addDebugLog(`🚀 FLUXO REMOTO ATUALIZADO: ${unifiedStream.getAudioTracks().length} Áudio | ${unifiedStream.getVideoTracks().length} Vídeo`);
+        
+        setRemoteStream(unifiedStream);
+        setIsRemoteConnected(true);
+        setIsPeerOnline(true);
       }
     };
 
@@ -503,6 +524,16 @@ export default function ClassroomPage() {
           if (pc.remoteDescription || pc.signalingState === 'have-local-offer' || (Date.now() - lastOfferTimestamp < 6000)) {
             return;
           }
+          if (localStream) {
+            localStream.getTracks().forEach(t => {
+              t.enabled = true;
+              const senders = pc.getSenders();
+              if (!senders.some(s => s.track && s.track.id === t.id)) {
+                try { pc.addTrack(t, localStream); } catch(e) {}
+              }
+            });
+          }
+
           lastOfferTimestamp = Date.now();
           addDebugLog(`🎉 Aluno detectado na sala! Emitindo Oferta WebRTC...`);
           try {
@@ -529,6 +560,16 @@ export default function ClassroomPage() {
           
           addDebugLog(`📥 Oferta recebida do professor! Conectando...`);
           setIsPeerOnline(true);
+
+          if (localStream) {
+            localStream.getTracks().forEach(t => {
+              t.enabled = true;
+              const senders = pc.getSenders();
+              if (!senders.some(s => s.track && s.track.id === t.id)) {
+                try { pc.addTrack(t, localStream); } catch(e) {}
+              }
+            });
+          }
 
           if (pc.signalingState !== 'stable') {
             try { await pc.setLocalDescription({ type: 'rollback' }); } catch(e) {}
