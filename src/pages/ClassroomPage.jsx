@@ -375,8 +375,10 @@ export default function ClassroomPage() {
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
         setIsRemoteConnected(true);
-        setIsPeerOnline(true);
-        setPeerJoinNotification(`🎉 Participante conectou-se à chamada!`);
+        const joinMsg = isUserTeacher 
+          ? `⚡ Aluno conectou-se à sala ao vivo!` 
+          : `⚡ Professor conectou-se à sala ao vivo!`;
+        setPeerJoinNotification(joinMsg);
         setTimeout(() => setPeerJoinNotification(null), 6000);
       }
     };
@@ -1346,12 +1348,19 @@ Dicas:
 
 
 
-                  {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE */}
+                  {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE (ESTILO CYBER GLASSMORTIC) */}
                   {peerJoinNotification && (
-                    <div className="absolute top-14 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl shadow-2xl z-50 flex items-center gap-2.5 animate-bounce border border-emerald-300">
-                      <Sparkles className="w-4 h-4 fill-slate-950 text-slate-950 animate-pulse" />
-                      <span>{peerJoinNotification}</span>
-                      <button onClick={() => setPeerJoinNotification(null)} className="ml-2 bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 px-2 py-0.5 rounded-lg text-[10px] font-extrabold cursor-pointer">
+                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-2xl border border-cyan-400/60 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.5)] z-50 flex items-center gap-3 animate-fade-in-up">
+                      <div className="flex items-center gap-1.5 bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-400/40 text-emerald-300 text-[10px] uppercase font-black tracking-wider">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>Ao Vivo</span>
+                      </div>
+                      <span className="text-slate-100 font-bold tracking-wide">{peerJoinNotification}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPeerJoinNotification(null)}
+                        className="ml-1 w-6 h-6 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold transition-all cursor-pointer border border-slate-700"
+                      >
                         ✕
                       </button>
                     </div>
