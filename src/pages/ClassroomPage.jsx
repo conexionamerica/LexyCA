@@ -139,6 +139,7 @@ export default function ClassroomPage() {
   const [remoteStream, setRemoteStream] = useState(null);
   const [remoteVideoFrame, setRemoteVideoFrame] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
+  const [isRemoteVideoActive, setIsRemoteVideoActive] = useState(false);
   const [isPeerOnline, setIsPeerOnline] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false); // Inverter vista grande x vista pequena
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -1086,6 +1087,7 @@ Dicas:
     setLocalStream(null);
     setRemoteStream(null);
     setIsRemoteConnected(false);
+    setIsRemoteVideoActive(false);
     setIsPeerOnline(false);
     setHasJoinedRoom(false);
     setIsLiveVideoActive(false);
@@ -1273,83 +1275,91 @@ Dicas:
                   
                   {/* ── TELA PRINCIPAL (GRANDE): TRANSMISSÃO DO OUTRO PARTICIPANTE (PROFESSOR OU ALUNO) ── */}
                   {!isSwapped ? (
-                    isRemoteConnected && remoteStream ? (
-                      <video
-                        ref={remoteVideoCallback}
-                        autoPlay
-                        playsInline
-                        muted={false}
-                        className="w-full h-full object-cover rounded-2xl"
-                      />
-                    ) : remoteVideoFrame ? (
-                      <img
-                        src={remoteVideoFrame}
-                        className="w-full h-full object-cover rounded-2xl animate-fade-in"
-                        alt="Transmissão Remota ao Vivo"
-                      />
-                    ) : (
-                      /* CARTÃO MASCOTE LEXY ESPERANDO CONEXÃO (DESIGN SIMPLIFICADO E DIRETO) */
-                      <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-hidden my-auto">
-                        
-                        {/* NÉBULA LUMINOSA NO FUNDO */}
-                        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                          <div className="absolute -top-16 -left-16 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/10 blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
-                          <div className="absolute -bottom-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-tl from-emerald-500/20 to-teal-600/10 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-                          <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15" />
-                          
-                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -mt-6 pointer-events-none">
-                            <div className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full border border-cyan-500/20 animate-spin" style={{ animationDuration: '25s' }} />
-                          </div>
-                        </div>
+                    <div className="relative w-full h-full flex flex-col items-center justify-center">
+                      {/* VÍDEO REMOTO DA CÂMERA DO OUTRO PARTICIPANTE (EXIBIDO APENAS QUANDO PIXELS REAIS ESTIVEREM ATIVOS) */}
+                      {isRemoteConnected && remoteStream && (
+                        <video
+                          ref={remoteVideoCallback}
+                          autoPlay
+                          playsInline
+                          muted={false}
+                          onLoadedMetadata={(e) => {
+                            if (e.target.videoWidth > 0) setIsRemoteVideoActive(true);
+                          }}
+                          onPlaying={(e) => {
+                            if (e.target.videoWidth > 0) setIsRemoteVideoActive(true);
+                          }}
+                          onTimeUpdate={(e) => {
+                            if (e.target.videoWidth > 0 && !isRemoteVideoActive) setIsRemoteVideoActive(true);
+                          }}
+                          className={`w-full h-full object-cover rounded-2xl transition-opacity duration-500 ${isRemoteVideoActive ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 pointer-events-none z-0'}`}
+                        />
+                      )}
 
-                        {/* CONTEÚDO PRINCIPAL: MASCOTE LEXY + MENSAGEM SIMPLES */}
-                        <div className="relative z-10 flex flex-col items-center justify-center space-y-4 max-w-sm w-full my-auto">
+                      {/* TELA DE ESPERA PERMANENTE: MANTÉM O AVATAR E MENSAGEM ATÉ A IMAGEM DO OUTRO PARTICIPANTE REALMENTE APARECER */}
+                      {(!isRemoteConnected || !remoteStream || !isRemoteVideoActive) && (
+                        <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-hidden my-auto z-0">
                           
-                          {/* Avatar do Usuário (Foto do Perfil ou Inicial do Nome) */}
-                          <div className="relative group">
-                            <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 opacity-70 blur-lg group-hover:opacity-100 transition-opacity animate-pulse" />
+                          {/* NÉBULA LUMINOSA NO FUNDO */}
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                            <div className="absolute -top-16 -left-16 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-600/10 blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+                            <div className="absolute -bottom-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-tl from-emerald-500/20 to-teal-600/10 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+                            <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15" />
                             
-                            {(otherParticipantDisplay.avatar || tutor.avatar) ? (
-                              <img
-                                src={otherParticipantDisplay.avatar || tutor.avatar}
-                                alt={otherParticipantDisplay.name}
-                                className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/50"
-                              />
-                            ) : (
-                              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-950 border-4 border-cyan-400 flex items-center justify-center text-cyan-300 font-black text-3xl sm:text-4xl shadow-2xl shadow-cyan-500/50 uppercase">
-                                {otherParticipantDisplay.name ? otherParticipantDisplay.name.charAt(0) : 'U'}
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -mt-6 pointer-events-none">
+                              <div className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full border border-cyan-500/20 animate-spin" style={{ animationDuration: '25s' }} />
+                            </div>
+                          </div>
+
+                          {/* CONTEÚDO PRINCIPAL: AVATAR DO USUÁRIO + MENSAGEM SIMPLES */}
+                          <div className="relative z-10 flex flex-col items-center justify-center space-y-4 max-w-sm w-full my-auto">
+                            
+                            {/* Avatar do Usuário (Foto do Perfil ou Inicial do Nome) */}
+                            <div className="relative group">
+                              <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 opacity-70 blur-lg group-hover:opacity-100 transition-opacity animate-pulse" />
+                              
+                              {(otherParticipantDisplay.avatar || tutor.avatar) ? (
+                                <img
+                                  src={otherParticipantDisplay.avatar || tutor.avatar}
+                                  alt={otherParticipantDisplay.name}
+                                  className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/50"
+                                />
+                              ) : (
+                                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-950 border-4 border-cyan-400 flex items-center justify-center text-cyan-300 font-black text-3xl sm:text-4xl shadow-2xl shadow-cyan-500/50 uppercase">
+                                  {otherParticipantDisplay.name ? otherParticipantDisplay.name.charAt(0) : 'U'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Texto Direto de Espera */}
+                            <div className="space-y-1.5 pt-2">
+                              <p className="text-base sm:text-lg font-extrabold text-white leading-snug">
+                                {!isUserTeacher 
+                                  ? 'Aguardando seu professor conectar, por favor aguarde...' 
+                                  : 'Aguardando seu aluno conectar, por favor aguarde...'}
+                              </p>
+                            </div>
+
+                            {/* Cartelito Pequeño "Se não conectar em 5 min, clique aqui" (Exibido apenas 3 min após o usuário entrar na sala) */}
+                            {showSupportButton && (
+                              <div className="pt-3 animate-fade-in-up">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    alert('🔔 Notificação enviada ao suporte! Nossa equipe e o participante receberam o alerta para acelerar a conexão.');
+                                  }}
+                                  className="inline-flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 text-xs font-bold px-4 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95"
+                                >
+                                  <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                                  <span>Se não conectar em 5 min, clique aqui</span>
+                                </button>
                               </div>
                             )}
+
                           </div>
-
-                          {/* Texto Direto de Espera */}
-                          <div className="space-y-1.5 pt-2">
-                            <p className="text-base sm:text-lg font-extrabold text-white leading-snug">
-                              {!isUserTeacher 
-                                ? 'Aguardando seu professor conectar, por favor aguarde...' 
-                                : 'Aguardando seu aluno conectar, por favor aguarde...'}
-                            </p>
-                          </div>
-
-                          {/* Cartelito Pequeño "Se não conectar em 5 min, clique aqui" (Exibido apenas 3 min após o usuário entrar na sala) */}
-                          {showSupportButton && (
-                            <div className="pt-3 animate-fade-in-up">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  alert('🔔 Notificação enviada ao suporte! Nossa equipe e o participante receberam o alerta para acelerar a conexão.');
-                                }}
-                                className="inline-flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 text-xs font-bold px-4 py-2 rounded-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95"
-                              >
-                                <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                                <span>Se não conectar em 5 min, clique aqui</span>
-                              </button>
-                            </div>
-                          )}
-
                         </div>
-                      </div>
-                    )
+                      )}
+                    </div>
                   ) : (
                     /* MODO INVERTIDO (SUA CÂMERA NA TELA GRANDE) */
                     isVideoOn ? (
