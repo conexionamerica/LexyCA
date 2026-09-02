@@ -1065,6 +1065,7 @@ Dicas:
     setIsPeerOnline(false);
     setHasJoinedRoom(false);
     setIsLiveVideoActive(false);
+    setPeerJoinNotification(null);
   };
 
   const handleEndClass = () => {
@@ -1348,8 +1349,8 @@ Dicas:
 
 
 
-                  {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE (ESTILO CYBER GLASSMORTIC) */}
-                  {peerJoinNotification && (
+                  {/* BANNER FLUTUANTE DE NOTIFICAÇÃO DE ENTRADA DO PARTICIPANTE (EXIBIDO APENAS COM VÍDEO REMOTO ATIVO) */}
+                  {peerJoinNotification && isRemoteConnected && remoteStream && (
                     <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-2xl border border-cyan-400/60 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.5)] z-50 flex items-center gap-3 animate-fade-in-up">
                       <div className="flex items-center gap-1.5 bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-400/40 text-emerald-300 text-[10px] uppercase font-black tracking-wider">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
