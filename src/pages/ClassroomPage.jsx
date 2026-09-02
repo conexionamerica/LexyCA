@@ -1143,49 +1143,90 @@ Dicas:
             <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[380px] h-full">
               
               {!hasJoinedRoom ? (
-                /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM DETALHES PRIVADOS DO PROFESSOR E ALUNO) */
-                <div className="flex flex-col items-center justify-center p-6 text-center space-y-5 relative z-10 w-full h-full my-auto">
-                  <div className="relative">
-                    <img
-                      src={otherParticipantDisplay.avatar || tutor.avatar}
-                      alt={otherParticipantDisplay.name}
-                      className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/30"
-                    />
-                    <span className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-md">
-                      ✓
-                    </span>
+                /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM DESIGN DE NÉBULA E ESFERAS LUMINOSAS ASTRONÔMICAS) */
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-hidden my-auto">
+                  
+                  {/* 1. MÁSCARA DE NÉBULA LUMINOSA & ORBES GRADIENTES ANIMADOS NO FUNDO */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    {/* Orbe Ciano no canto superior esquerdo */}
+                    <div className="absolute -top-16 -left-16 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-600/10 blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+                    {/* Orbe Esmeralda no canto inferior direito */}
+                    <div className="absolute -bottom-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-tl from-emerald-500/25 to-teal-600/10 blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+                    {/* Orbe Âmbar no centro */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-indigo-500/10 blur-3xl" />
+                    
+                    {/* Padronagem de Grade Cibernética Neon Suave */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15" />
+
+                    {/* Círculos Concéntricos Orbitais Tecnológicos ao Redor do Avatar */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -mt-10 pointer-events-none">
+                      <div className="w-[320px] h-[320px] sm:w-[420px] sm:h-[420px] rounded-full border border-cyan-500/20 animate-spin" style={{ animationDuration: '25s' }} />
+                      <div className="absolute inset-4 rounded-full border border-dashed border-emerald-500/20 animate-spin" style={{ animationDuration: '35s', animationDirection: 'reverse' }} />
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 max-w-md">
-                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider shadow-inner">
-                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                      <span>Bem-vindo ao Lexy Space</span>
+                  {/* 2. CONTEÚDO PRINCIPAL (AVATAR, TEXTOS E BOTÃO) EM CAMADA Z-10 PRIVILEGIADA */}
+                  <div className="relative z-10 flex flex-col items-center justify-center space-y-4 max-w-lg w-full">
+                    
+                    {/* Avatar com halo de luz e pulsador neón */}
+                    <div className="relative group">
+                      <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 opacity-60 blur-md group-hover:opacity-90 transition-opacity animate-pulse" />
+                      <img
+                        src={otherParticipantDisplay.avatar || tutor.avatar}
+                        alt={otherParticipantDisplay.name}
+                        className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/50"
+                      />
+                      <span className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-emerald-400 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-xl z-20">
+                        ✓
+                      </span>
                     </div>
-                    <h3 className="text-xl font-extrabold text-white">Aula com {otherParticipantDisplay.name}</h3>
-                    <p className="text-xs text-cyan-300 font-semibold">{tutor.subject} • Código: {currentBooking?.lesson_code || bookingId}</p>
-                    <p className="text-sm text-slate-200 leading-relaxed pt-1.5 font-medium">
-                      Clique no botão abaixo para iniciar. Desejamos uma ótima aula!
-                    </p>
-                  </div>
 
-                  {cameraError && (
-                    <div className="bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs p-3 rounded-xl max-w-sm flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>{cameraError}</span>
+                    {/* Textos de Boas-vindas com Tipografia Premium */}
+                    <div className="space-y-2 max-w-md">
+                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wider shadow-xl shadow-cyan-950/50">
+                        <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                        <span>Bem-vindo ao Lexy Space</span>
+                      </div>
+                      <h3 className="text-2xl font-extrabold text-white tracking-tight">Aula com {otherParticipantDisplay.name}</h3>
+                      <p className="text-xs font-bold text-cyan-300 bg-cyan-950/60 px-3 py-1 rounded-lg border border-cyan-500/30 inline-block">
+                        {tutor.subject} • Código: {currentBooking?.lesson_code || bookingId}
+                      </p>
+                      <p className="text-sm text-slate-200 leading-relaxed pt-1 font-medium">
+                        Clique no botão abaixo para iniciar. Desejamos uma ótima aula!
+                      </p>
                     </div>
-                  )}
 
-                  <div className="pt-3 w-full max-w-xs">
-                    <button
-                      type="button"
-                      onClick={handleJoinRoom}
-                      disabled={isConnecting}
-                      className="w-full bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 hover:from-teal-300 hover:to-emerald-300 text-slate-950 font-black text-sm py-4 px-6 rounded-2xl shadow-[0_0_30px_rgba(45,212,191,0.5)] border border-cyan-200/60 flex items-center justify-center gap-2.5 transition-all duration-300 cursor-pointer transform hover:scale-[1.04] active:scale-95 disabled:opacity-50 relative overflow-hidden group animate-pulse"
-                      style={{ animationDuration: '3s' }}
-                    >
-                      <Video className="w-5 h-5 fill-slate-950 text-slate-950 group-hover:scale-110 transition-transform" />
-                      <span className="tracking-wide">{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
-                    </button>
+                    {/* Badges de Garantia de Qualidade Lexy Space */}
+                    <div className="flex items-center justify-center gap-3 pt-0.5 text-[11px] text-slate-300 font-bold">
+                      <span className="flex items-center gap-1 bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-800 backdrop-blur-md shadow-md">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Criptografado 1-on-1
+                      </span>
+                      <span className="flex items-center gap-1 bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-800 backdrop-blur-md shadow-md">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" /> Alta Definição HD
+                      </span>
+                    </div>
+
+                    {cameraError && (
+                      <div className="bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs p-3 rounded-xl max-w-sm flex items-center gap-2 shadow-xl">
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span>{cameraError}</span>
+                      </div>
+                    )}
+
+                    {/* Botão de Entrar na Sala com Efeito Neón */}
+                    <div className="pt-2 w-full max-w-xs">
+                      <button
+                        type="button"
+                        onClick={handleJoinRoom}
+                        disabled={isConnecting}
+                        className="w-full bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 hover:from-teal-300 hover:to-emerald-300 text-slate-950 font-black text-sm py-4 px-6 rounded-2xl shadow-[0_0_35px_rgba(45,212,191,0.55)] border border-cyan-200/60 flex items-center justify-center gap-2.5 transition-all duration-300 cursor-pointer transform hover:scale-[1.04] active:scale-95 disabled:opacity-50 relative overflow-hidden group animate-pulse"
+                        style={{ animationDuration: '3s' }}
+                      >
+                        <Video className="w-5 h-5 fill-slate-950 text-slate-950 group-hover:scale-110 transition-transform" />
+                        <span className="tracking-wide">{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               ) : (
