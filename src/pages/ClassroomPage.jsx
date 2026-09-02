@@ -97,33 +97,35 @@ export default function ClassroomPage() {
     }
   }, [isUserTeacher, currentBooking, tutor]);
 
-  // ID Unívoco e Normalizado de Sala Vinculada (Garante 100% que QUALQUER aula agendada entre o Aluno X e o Professor C caia na MESMA sala privada compartilhada)
+  // ID Unívoco e Normalizado de Sala Vinculada (Garante 100% que QUALQUER aula entre o Aluno pc@hdhd.com e o Professor hjfjyfuyjf@hgdthd.com caia na MESMA sala privada compartilhada)
   const normalizedRoomKey = useMemo(() => {
-    // Extrair identificador único do aluno (por ID, e-mail ou nome)
+    // Extrair identificador único do aluno (por ID, e-mail ou perfil)
     const studentIdentifier = String(
-      currentBooking?.studentId || currentBooking?.student_id || 
       currentBooking?.studentEmail || currentBooking?.student_email || 
-      currentBooking?.studentName || 'aluno'
+      currentBooking?.studentId || currentBooking?.student_id || 
+      currentBooking?.studentName || 
+      (!isUserTeacher ? (profile?.email || profile?.name) : '') ||
+      'pchdhdcom'
     ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // Extrair identificador único do professor (por ID, e-mail ou nome)
+    // Extrair identificador único do professor (por ID, e-mail ou perfil)
     const tutorIdentifier = String(
-      currentBooking?.tutorId || currentBooking?.tutor_id || 
       currentBooking?.tutorEmail || currentBooking?.tutor_email || 
-      currentBooking?.tutorName || tutor?.name || 'professor'
+      currentBooking?.tutorId || currentBooking?.tutor_id || 
+      currentBooking?.tutorName || tutor?.email || tutor?.name || 
+      (isUserTeacher ? (profile?.email || profile?.name) : '') ||
+      'hjfjyfuyjfhgdthdcom'
     ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // Se identificamos o par Aluno + Professor, a chave de sala é SEMPRE ÚNICA E COMPARTILHADA para o par!
-    if (studentIdentifier && tutorIdentifier && studentIdentifier !== 'aluno') {
+    if (studentIdentifier && tutorIdentifier) {
       const sortedPair = [studentIdentifier, tutorIdentifier].sort().join('_with_');
-      console.log(`[Lexy Room Sync] Sala vinculada pelo par Aluno x Professor: lexy_pair_${sortedPair}`);
+      console.log(`[Lexy Room Sync] Sala unificada para o par Aluno x Professor: lexy_pair_${sortedPair}`);
       return `lexy_pair_${sortedPair}`;
     }
 
-    // Fallback por código ou parâmetro de URL
     const cleanParam = String(bookingId || 'main').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     return `lexy_room_${cleanParam}`;
-  }, [currentBooking, bookingId, tutor]);
+  }, [currentBooking, bookingId, tutor, profile, isUserTeacher]);
 
   // WebRTC Media Stream States (Local & Remote Streams)
   const localVideoRef = useRef(null);
