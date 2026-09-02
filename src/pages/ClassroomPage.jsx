@@ -1157,14 +1157,14 @@ Dicas:
                   </div>
 
                   <div className="space-y-1.5 max-w-md">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                      <span>Sala Privada 1-on-1 • {otherParticipantDisplay.roleLabel}</span>
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black uppercase tracking-wider shadow-inner">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <span>Bem-vindo ao Lexy Space</span>
                     </div>
                     <h3 className="text-xl font-extrabold text-white">Aula com {otherParticipantDisplay.name}</h3>
                     <p className="text-xs text-cyan-300 font-semibold">{tutor.subject} • Código: {currentBooking?.lesson_code || bookingId}</p>
-                    <p className="text-xs text-slate-300 leading-relaxed pt-1">
-                      Esta é uma sala exclusiva entre <strong>{currentUserDisplay.name}</strong> e <strong>{otherParticipantDisplay.name}</strong>. Ninguém mais tem acesso a este link.
+                    <p className="text-sm text-slate-200 leading-relaxed pt-1.5 font-medium">
+                      Clique no botão abaixo para iniciar. Desejamos uma ótima aula!
                     </p>
                   </div>
 
@@ -1175,15 +1175,16 @@ Dicas:
                     </div>
                   )}
 
-                  <div className="pt-2 w-full max-w-xs">
+                  <div className="pt-3 w-full max-w-xs">
                     <button
                       type="button"
                       onClick={handleJoinRoom}
                       disabled={isConnecting}
-                      className="w-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-sm py-4 px-6 rounded-2xl shadow-xl shadow-emerald-500/30 border border-emerald-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                      className="w-full bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 hover:from-teal-300 hover:to-emerald-300 text-slate-950 font-black text-sm py-4 px-6 rounded-2xl shadow-[0_0_30px_rgba(45,212,191,0.5)] border border-cyan-200/60 flex items-center justify-center gap-2.5 transition-all duration-300 cursor-pointer transform hover:scale-[1.04] active:scale-95 disabled:opacity-50 relative overflow-hidden group animate-pulse"
+                      style={{ animationDuration: '3s' }}
                     >
-                      <Video className="w-5 h-5 fill-slate-950 text-slate-950" />
-                      <span>{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
+                      <Video className="w-5 h-5 fill-slate-950 text-slate-950 group-hover:scale-110 transition-transform" />
+                      <span className="tracking-wide">{isConnecting ? 'Conectando Câmera...' : '🚀 Entrar na Sala Virtual'}</span>
                     </button>
                   </div>
                 </div>
