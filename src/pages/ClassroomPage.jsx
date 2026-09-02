@@ -411,16 +411,20 @@ export default function ClassroomPage() {
       isPolling = false;
     };
 
-    // Processar sinais recebidos (Handshake de Presença Simétrico - 100% à prova de falhas de ordem)
+    let lastOfferTimestamp = 0;
+
+    // Processar sinais recebidos (Handshake de Presença Idempotente - 100% à prova de falhas de ordem)
     const handleSignalData = async (signalType, payload) => {
       try {
-        // 1. Se o PROFESSOR detecta que o Aluno está na sala ('ready' ou 'student_online')
-        if ((signalType === 'ready' || signalType === 'student_online') && myRole === 'teacher') {
-          addDebugLog(`🎉 Aluno detectado na sala! Emitindo Oferta WebRTC nova...`);
+        // 1. Se o PROFESSOR detecta o sinal 'ready' do Aluno
+        if (signalType === 'ready' && myRole === 'teacher') {
+          // Evitar gerar ofertas duplicadas se a conexão já estiver ativa ou oferta criada recentemente (<6s)
+          if (pc.remoteDescription || pc.signalingState === 'have-local-offer' || (Date.now() - lastOfferTimestamp < 6000)) {
+            return;
+          }
+          lastOfferTimestamp = Date.now();
+          addDebugLog(`🎉 Aluno detectado na sala! Emitindo Oferta WebRTC...`);
           try {
-            if (pc.signalingState === 'have-local-offer') {
-              await pc.setLocalDescription({ type: 'rollback' });
-            }
             const freshOffer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(freshOffer);
             await sendSignal('offer', { sdp: freshOffer.sdp });
@@ -431,9 +435,9 @@ export default function ClassroomPage() {
           return;
         }
 
-        // 2. Se o ALUNO detecta que o Professor acabou de entrar ('teacher_online')
+        // 2. Se o ALUNO detecta que o Professor está na sala ('teacher_online')
         if (signalType === 'teacher_online' && myRole === 'student') {
-          addDebugLog(`👨‍🏫 Professor detectado na sala! Enviando sinal de prontidão...`);
+          addDebugLog(`👨‍🏫 Professor presente na sala! Solicitando conexão...`);
           await sendSignal('ready', { timestamp: Date.now() });
           return;
         }
@@ -516,7 +520,7 @@ export default function ClassroomPage() {
       }
     };
 
-    // Iniciar sessão com Handshake de Presença
+    // Iniciar sessão com Handshake de Presença Idempotente
     const cleanAndStart = async () => {
       // Iniciar polling ultrarrápido (500ms)
       pollInterval = setInterval(pollForSignals, 500);
@@ -532,16 +536,15 @@ export default function ClassroomPage() {
 
         await new Promise(r => setTimeout(r, 300));
 
-        // Anunciar presença do professor na sala (não gera oferta em sala vazia!)
+        // Anunciar presença do professor na sala
         addDebugLog('👨‍🏫 [PROFESSOR] Presente na sala. Aguardando aluno...');
         await sendSignal('teacher_online', { joinedAt: Date.now() });
 
       } else {
         // ═══ ALUNO ═══
-        // Anunciar presença do aluno na sala
-        addDebugLog('👋 [ALUNO] Presente na sala. Solicitando conexão ao professor...');
+        // Anunciar presença única do aluno na sala
+        addDebugLog('👋 [ALUNO] Presente na sala. Solicitando conexão...');
         await sendSignal('ready', { joinedAt: Date.now() });
-        await sendSignal('student_online', { joinedAt: Date.now() });
       }
     };
 
