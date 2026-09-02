@@ -417,8 +417,9 @@ export default function ClassroomPage() {
         if (signalType === 'offer' && payload.sdp) {
           // Só o aluno deve processar ofertas (vindas do professor)
           if (myRole === 'teacher') return; // Professor ignora ofertas
-          if (pc.signalingState !== 'stable') {
-            addDebugLog(`⏭️ Ignorando oferta (estado: ${pc.signalingState})`);
+          
+          // Se o aluno já recebeu e definiu a oferta remota do professor, ignorar ofertas subsequentes para evitar erro de m-lines
+          if (pc.remoteDescription || pc.signalingState !== 'stable') {
             return;
           }
 
@@ -442,8 +443,7 @@ export default function ClassroomPage() {
         if (signalType === 'answer' && payload.sdp) {
           // Só o professor deve processar respostas (vindas do aluno)
           if (myRole === 'student') return; // Aluno ignora answers
-          if (pc.signalingState !== 'have-local-offer') {
-            addDebugLog(`⏭️ Ignorando resposta (estado: ${pc.signalingState})`);
+          if (pc.remoteDescription || pc.signalingState !== 'have-local-offer') {
             return;
           }
 
@@ -458,15 +458,29 @@ export default function ClassroomPage() {
           iceCandidateQueue = [];
         }
 
-        if (signalType === 'ice-candidate' && payload.candidate) {
-          if (pc.remoteDescription) {
-            await pc.addIceCandidate(new RTCIceCandidate(payload));
-          } else {
-            iceCandidateQueue.push(payload);
+        if (signalType === 'ice-candidate' && payload) {
+          const candInit = payload.candidate && typeof payload.candidate === 'object' 
+            ? payload.candidate 
+            : {
+                candidate: payload.candidate,
+                sdpMid: payload.sdpMid,
+                sdpMLineIndex: payload.sdpMLineIndex
+              };
+
+          if (candInit && candInit.candidate) {
+            if (pc.remoteDescription && pc.signalingState !== 'closed') {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(candInit));
+              } catch (err) {
+                // Candidato ICE duplicado ou de sessão anterior, ignorar silenciosamente
+              }
+            } else {
+              iceCandidateQueue.push(candInit);
+            }
           }
         }
       } catch (err) {
-        addDebugLog(`⚠️ Erro processando sinal ${signalType}: ${err.message}`);
+        // Ignorar erros secundários de sinalização antiga
       }
     };
 
@@ -498,7 +512,9 @@ export default function ClassroomPage() {
         // 3. Criar e enviar oferta
         const sendOffer = async () => {
           try {
-            // Se já existe uma oferta pendente, fazer rollback primeiro
+            if (pc.remoteDescription || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+              return;
+            }
             if (pc.signalingState === 'have-local-offer') {
               await pc.setLocalDescription({ type: 'rollback' });
             }
@@ -517,14 +533,14 @@ export default function ClassroomPage() {
         pollInterval = setInterval(pollForSignals, 500);
         addDebugLog('🔄 [PROFESSOR] Polling ultrarrápido iniciado (500ms)');
 
-        // 5. Reenviar oferta a cada 4s enquanto não receber resposta
+        // 5. Reenviar oferta a cada 4s enquanto o aluno ainda não tiver respondido (remoteDescription não definida)
         const resendInterval = setInterval(async () => {
-          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          if (pc.remoteDescription || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed' || pc.iceConnectionState === 'checking') {
             clearInterval(resendInterval);
             return;
           }
-          if (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable') {
-            addDebugLog('🔁 [PROFESSOR] Reenviando oferta ultra-sincronizada...');
+          if (!pc.remoteDescription && (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable')) {
+            addDebugLog('🔁 [PROFESSOR] Reenviando oferta...');
             await sendOffer();
           }
         }, 4000);
