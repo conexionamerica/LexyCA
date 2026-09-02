@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, Hand, Smile, Maximize2, Minimize2
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -162,6 +162,57 @@ export default function ClassroomPage() {
 
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebugPanel, setShowDebugPanel] = useState(true);
+
+  // ── REAÇÕES FLUTUANTES, MAO LEVANTADA E MODO TELA CHEIA ──
+  const [floatingEmojis, setFloatingEmojis] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const [isRemoteHandRaised, setIsRemoteHandRaised] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Efeito Sonoro Chime via Web Audio API (100% nativo, sem arquivos externos)
+  const playChimeSound = useCallback((type = 'join') => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      const now = ctx.currentTime;
+      if (type === 'join') {
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      } else if (type === 'raise') {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Helper para disparar partículas de emoji flutuante na tela
+  const triggerFloatingEmoji = useCallback((emojiSymbol) => {
+    const newEmoji = {
+      id: `emoji-${Date.now()}-${Math.random()}`,
+      symbol: emojiSymbol,
+      left: Math.floor(Math.random() * 60) + 20
+    };
+    setFloatingEmojis(prev => [...prev.slice(-15), newEmoji]);
+    setTimeout(() => {
+      setFloatingEmojis(prev => prev.filter(e => e.id !== newEmoji.id));
+    }, 3200);
+  }, []);
 
   const addDebugLog = useCallback((msg) => {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -476,11 +527,23 @@ export default function ClassroomPage() {
           await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
           setIsRemoteConnected(true);
           setIsPeerOnline(true);
+          playChimeSound('join');
           
           for (const c of iceCandidateQueue) {
             try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
           }
           iceCandidateQueue = [];
+        }
+
+        // 5. Processamento de REAÇÕES DE EMOJI E MÃO LEVANTADA
+        if (signalType === 'reaction' && payload?.emoji) {
+          triggerFloatingEmoji(payload.emoji);
+          return;
+        }
+        if (signalType === 'raise_hand') {
+          setIsRemoteHandRaised(payload?.raised || false);
+          if (payload?.raised) playChimeSound('raise');
+          return;
         }
 
         // 5. Processamento de CANDIDATOS ICE
@@ -913,6 +976,56 @@ Dicas:
     }, 2000);
   };
 
+  const sendReaction = (emojiSymbol) => {
+    triggerFloatingEmoji(emojiSymbol);
+    setShowEmojiPicker(false);
+    playChimeSound('join');
+    
+    try {
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      const myName = currentUserDisplay.name;
+      supabase.from('webrtc_signals').insert({
+        room_key: normalizedRoomKey,
+        sender_role: myRole,
+        sender_name: myName,
+        signal_type: 'reaction',
+        payload: JSON.stringify({ emoji: emojiSymbol }),
+        created_at: new Date().toISOString()
+      }).then(() => {}).catch(() => {});
+    } catch (e) {}
+  };
+
+  const toggleHandRaise = () => {
+    const nextState = !isHandRaised;
+    setIsHandRaised(nextState);
+    if (nextState) playChimeSound('raise');
+
+    try {
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      const myName = currentUserDisplay.name;
+      supabase.from('webrtc_signals').insert({
+        room_key: normalizedRoomKey,
+        sender_role: myRole,
+        sender_name: myName,
+        signal_type: 'raise_hand',
+        payload: JSON.stringify({ raised: nextState }),
+        created_at: new Date().toISOString()
+      }).then(() => {}).catch(() => {});
+    } catch (e) {}
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
+      }
+    }
+  };
+
   const exitRoomAndCleanup = () => {
     // 1. Interromper imediatamente todas as faixas locais de câmera e microfone
     if (localStream) {
@@ -1318,16 +1431,38 @@ Dicas:
                     </div>
                   </div>
 
-                  {/* BARRA DE CONTROLES FLUTUANTE (ESTILO GOOGLE MEET / ZOOM) */}
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-2 sm:gap-3 bg-slate-950/95 backdrop-blur-xl border border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl shadow-2xl">
+                  {/* ── CAMADA DE EMOJIS FLUTUANTES NO VÍDEO ── */}
+                  <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+                    {floatingEmojis.map((e) => (
+                      <div
+                        key={e.id}
+                        style={{ left: `${e.left}%` }}
+                        className="absolute bottom-20 text-4xl sm:text-5xl animate-float-emoji filter drop-shadow-xl select-none"
+                      >
+                        {e.symbol}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── BADGE DE MÃO LEVANTADA (RAISE HAND) ── */}
+                  {(isHandRaised || isRemoteHandRaised) && (
+                    <div className="absolute top-14 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs px-4 py-2 rounded-2xl shadow-2xl z-40 flex items-center gap-2 animate-bounce border border-amber-300">
+                      <Hand className="w-4 h-4 fill-slate-950 text-slate-950" />
+                      <span>{isHandRaised ? '✋ Você levantou a mão' : `✋ ${otherParticipantDisplay.name} pediu a palavra!`}</span>
+                    </div>
+                  )}
+
+                  {/* BARRA DE CONTROLES FLUTUANTE PREMIUM (ESTILO GOOGLE MEET / ZOOM GLOSSY) */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-1.5 sm:gap-2.5 bg-slate-950/90 backdrop-blur-2xl border border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl shadow-2xl shadow-cyan-950/50">
+                    
                     {/* BOTÃO MICROFONE */}
                     <button
                       type="button"
                       onClick={toggleMic}
                       className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
                         isMicOn 
-                          ? 'bg-slate-900 border-emerald-500/50 text-emerald-400 hover:bg-slate-800' 
-                          : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                          ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-400 hover:bg-slate-800 shadow-lg shadow-emerald-500/10' 
+                          : 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/10'
                       }`}
                       title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
                     >
@@ -1341,8 +1476,8 @@ Dicas:
                       onClick={toggleVideo}
                       className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
                         isVideoOn 
-                          ? 'bg-slate-900 border-cyan-500/50 text-cyan-400 hover:bg-slate-800' 
-                          : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                          ? 'bg-slate-900/90 border-cyan-500/50 text-cyan-400 hover:bg-slate-800 shadow-lg shadow-cyan-500/10' 
+                          : 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-lg shadow-rose-500/10'
                       }`}
                       title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
                     >
@@ -1356,46 +1491,74 @@ Dicas:
                       onClick={toggleScreenShare}
                       className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
                         isScreenSharing
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-lg shadow-amber-500/20'
+                          : 'bg-slate-900/90 border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800'
                       }`}
                       title="Compartilhar Tela"
                     >
                       <Monitor className="w-4 h-4 text-amber-400" />
-                      <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Compartilhar Tela'}</span>
+                      <span className="hidden sm:inline">{isScreenSharing ? 'Compartilhando' : 'Tela'}</span>
                     </button>
 
-                    {/* BOTÃO TESTE DE CONEXÃO REMOTA (SIMULAÇÃO 2 PARTICIPANTES AO VIVO) */}
+                    {/* BOTÃO REAÇÕES DE EMOJIS EM TEMPO REAL */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        className="p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/90 text-amber-300 hover:bg-slate-800 hover:border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black"
+                        title="Enviar Reação"
+                      >
+                        <Smile className="w-4 h-4 text-amber-400" />
+                        <span className="hidden sm:inline">Reações</span>
+                      </button>
+
+                      {/* POPOVER DE SELEÇÃO DE EMOJIS */}
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-2xl border border-amber-400/40 p-2 rounded-2xl shadow-2xl flex items-center gap-1.5 animate-fade-in-up z-50">
+                          {['👏', '❤️', '💡', '🎉', '🔥', '✋'].map((emo) => (
+                            <button
+                              key={emo}
+                              type="button"
+                              onClick={() => sendReaction(emo)}
+                              className="text-2xl hover:scale-135 transition-transform p-2 rounded-xl hover:bg-slate-800 cursor-pointer"
+                            >
+                              {emo}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BOTÃO LEVANTAR A MÃO */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsRemoteConnected(prev => !prev);
-                        if (!isRemoteConnected) {
-                          setRemoteStream(localStream);
-                          setPeerJoinNotification(`🎉 ${otherParticipantDisplay.name} (${otherParticipantDisplay.roleLabel}) conectou-se à chamada!`);
-                          setTimeout(() => setPeerJoinNotification(null), 5000);
-                        } else {
-                          setRemoteStream(null);
-                          setPeerJoinNotification(`⚠️ ${otherParticipantDisplay.name} desconectou da chamada.`);
-                          setTimeout(() => setPeerJoinNotification(null), 5000);
-                        }
-                      }}
-                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2 text-xs font-black ${
-                        isRemoteConnected 
-                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' 
-                          : 'bg-slate-900 border-cyan-500/40 text-cyan-300 hover:bg-slate-800'
+                      onClick={toggleHandRaise}
+                      className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black ${
+                        isHandRaised 
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-lg shadow-amber-500/20 animate-pulse' 
+                          : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:bg-slate-800'
                       }`}
-                      title="Testar entrada e simular transmissão ao vivo do outro participante"
+                      title="Levantar a Mão para Pedir a Palavra"
                     >
-                      <RefreshCw className={`w-4 h-4 text-cyan-400 ${isRemoteConnected ? 'animate-spin' : ''}`} />
-                      <span className="hidden sm:inline">{isRemoteConnected ? 'Conectado (Ao Vivo)' : 'Simular Entrada'}</span>
+                      <Hand className={`w-4 h-4 ${isHandRaised ? 'text-amber-300 fill-amber-300' : 'text-slate-400'}`} />
+                      <span className="hidden sm:inline">{isHandRaised ? 'Mão Levantada' : 'Pedir Palavra'}</span>
                     </button>
 
-                    {/* BOTÃO ENCERRAR AULA */}
+                    {/* BOTÃO TELA CHEIA */}
+                    <button
+                      type="button"
+                      onClick={toggleFullscreen}
+                      className="p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/90 text-cyan-300 hover:bg-slate-800 hover:border-cyan-400/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-black"
+                      title="Alternar Modo Tela Cheia"
+                    >
+                      {isFullscreen ? <Minimize2 className="w-4 h-4 text-cyan-400" /> : <Maximize2 className="w-4 h-4 text-cyan-400" />}
+                    </button>
+
+                    {/* BOTÃO ENCERRAR AULA (DESCONEXÃO INSTANTÂNEA) */}
                     <button
                       type="button"
                       onClick={handleEndClass}
-                      className="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5"
+                      className="bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-black text-xs px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-rose-950/60 border border-rose-500/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <X className="w-4 h-4" />
                       <span className="hidden sm:inline">Sair da Aula</span>
