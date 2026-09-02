@@ -1137,64 +1137,10 @@ Dicas:
         {/* ── COLUMNA IZQUIERDA: VÍDEO TRANSMISSÃO DENTRO DO PRÓPRIO CUADRO DO SITE (7 columnas) ── */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           
-          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-2.5 sm:p-3">
+          <div className="relative flex-1 rounded-3xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden shadow-2xl flex flex-col justify-between p-2 sm:p-2.5">
             
-            {/* Header del Cuadro de Transmisión Nativa WebRTC */}
-            <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-xs font-black text-white">
-                  🔴 Videochamada Nativa Lexy WebRTC • Conexão Direta
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  <span>Sessão Unívoca Criptografada</span>
-                </span>
-              </div>
-            </div>
-
-            {/* PAINEL VISÍVEL DE DIAGNÓSTICO E STATUS WEBRTC */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-2 mb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isPeerOnline || isRemoteConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
-                  <span className="font-extrabold text-cyan-300">
-                    Sinalização WebRTC: <strong className="text-white">{isPeerOnline || isRemoteConnected ? '🟢 CONECTADO E TRANSMITINDO' : `🟡 Aguardando Entrada de ${otherParticipantDisplay.name}`}</strong>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowDebugPanel(!showDebugPanel)}
-                  className="text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 px-2.5 py-1 rounded-lg font-bold border border-slate-700 cursor-pointer flex items-center gap-1"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>{showDebugPanel ? '▲ Ocultar Diagnóstico' : '▼ Exibir Diagnóstico'}</span>
-                </button>
-              </div>
-
-              {showDebugPanel && (
-                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1.5 max-h-32 overflow-y-auto">
-                  <div className="text-cyan-400 font-bold">🔑 Chave Unificada da Sala: <span className="text-white">{normalizedRoomKey}</span></div>
-                  <div className="text-slate-400">👤 Seu Perfil: <span className="text-slate-200">{currentUserDisplay.name} ({profile?.email || 'aluno'})</span></div>
-                  <div className="text-slate-400">👥 Participante Esperado: <span className="text-slate-200">{otherParticipantDisplay.name}</span></div>
-                  <div className="border-t border-slate-800 pt-1 text-emerald-400 space-y-0.5">
-                    {debugLogs.length === 0 ? (
-                      <div className="text-slate-500 italic">Clique em "Entrar na Sala Virtual" para iniciar os logs de conexão...</div>
-                    ) : (
-                      debugLogs.map((log, i) => (
-                        <div key={i} className="text-emerald-400">{log}</div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* CUADRO DE VIDEOCHAMADA NATIVA WEBRTC LEXY SPACE */}
-            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[320px] max-h-[58vh]">
+            <div className="flex-1 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden group min-h-[380px] h-full">
               
               {!hasJoinedRoom ? (
                 /* SAGUÃO DE ENTRADA (LOBBY PRE-CALL COM DETALHES PRIVADOS DO PROFESSOR E ALUNO) */
