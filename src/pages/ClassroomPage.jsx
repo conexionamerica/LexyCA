@@ -160,6 +160,14 @@ export default function ClassroomPage() {
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
 
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
+
+  const addDebugLog = useCallback((msg) => {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setDebugLogs(prev => [`[${time}] ${msg}`, ...prev.slice(0, 19)]);
+  }, []);
+
   // ── MOTOR SUPREMO DE DETECÇÃO E TRANSMISSÃO DE VÍDEO ENTRE PARTICIPANTES (LOCALSTORAGE + BROADCASTCHANNEL - 0 ERRORS) ──
   useEffect(() => {
     if (!hasJoinedRoom) return;
@@ -285,8 +293,7 @@ export default function ClassroomPage() {
       ]
     };
 
-    const pc = new RTCPeerConnection(rtcConfig);
-    pcRef.current = pc;
+    addDebugLog(`🚀 Sinalização WebRTC iniciada na sala: ${normalizedRoomKey}`);
 
     // Adicionar faixas de áudio e vídeo locais à conexão P2P
     if (localStream) {
@@ -294,11 +301,13 @@ export default function ClassroomPage() {
         console.log(`[WebRTC P2P] Adicionando faixa local (${track.kind})`);
         pc.addTrack(track, localStream);
       });
+      addDebugLog('📹 Faixas locais de vídeo/áudio carregadas');
     }
 
     // Injetar o fluxo remoto recebido na tela grande principal
     pc.ontrack = (event) => {
       console.log('[WebRTC P2P] 🚀 Transmissão remota recebida com sucesso!', event.streams);
+      addDebugLog('🚀 Fluxo de vídeo remoto recebido com sucesso!');
       if (event.streams && event.streams[0]) {
         setRemoteStream(event.streams[0]);
         setIsRemoteConnected(true);
@@ -334,6 +343,7 @@ export default function ClassroomPage() {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         console.log('[WebRTC P2P] 📤 Transmitindo Oferta (Offer) inicial...');
+        addDebugLog('📤 Emitindo Oferta (Offer) inicial de conexão P2P...');
         const offerJSON = {
           type: offer.type,
           sdp: offer.sdp
@@ -349,6 +359,7 @@ export default function ClassroomPage() {
         } catch (e) {}
       } catch (err) {
         console.warn('[WebRTC P2P] Erro ao criar Oferta:', err);
+        addDebugLog(`⚠️ Erro ao criar Oferta: ${err.message}`);
       }
     };
 
@@ -358,6 +369,7 @@ export default function ClassroomPage() {
 
       if (data.type === 'webrtc-offer' && data.offer) {
         console.log('[WebRTC P2P] 📥 Oferta recebida de:', data.sender);
+        addDebugLog(`📥 Oferta recebida do participante: ${data.sender}`);
         setIsPeerOnline(true);
         setIsRemoteConnected(true);
         setPeerJoinNotification(`🎉 ${data.sender} conectou-se à chamada!`);
@@ -369,6 +381,7 @@ export default function ClassroomPage() {
           await pc.setLocalDescription(answer);
 
           console.log('[WebRTC P2P] 📤 Enviando Resposta (Answer)...');
+          addDebugLog('📤 Enviando Resposta (Answer) de volta ao participante...');
           const answerJSON = {
             type: answer.type,
             sdp: answer.sdp
@@ -384,6 +397,7 @@ export default function ClassroomPage() {
           } catch (e) {}
         } catch (err) {
           console.warn('[WebRTC P2P] Erro ao processar Oferta:', err);
+          addDebugLog(`⚠️ Erro ao processar Oferta: ${err.message}`);
         }
       }
 
@@ -856,6 +870,43 @@ Dicas:
                   <span>Sessão Unívoca Criptografada</span>
                 </span>
               </div>
+            </div>
+
+            {/* PAINEL VISÍVEL DE DIAGNÓSTICO E STATUS WEBRTC */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-2 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isPeerOnline || isRemoteConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
+                  <span className="font-extrabold text-cyan-300">
+                    Sinalização WebRTC: <strong className="text-white">{isPeerOnline || isRemoteConnected ? '🟢 CONECTADO E TRANSMITINDO' : `🟡 Aguardando Entrada de ${otherParticipantDisplay.name}`}</strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDebugPanel(!showDebugPanel)}
+                  className="text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 px-2.5 py-1 rounded-lg font-bold border border-slate-700 cursor-pointer flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>{showDebugPanel ? '▲ Ocultar Diagnóstico' : '▼ Exibir Diagnóstico'}</span>
+                </button>
+              </div>
+
+              {showDebugPanel && (
+                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-[10px] space-y-1.5 max-h-32 overflow-y-auto">
+                  <div className="text-cyan-400 font-bold">🔑 Chave Unificada da Sala: <span className="text-white">{normalizedRoomKey}</span></div>
+                  <div className="text-slate-400">👤 Seu Perfil: <span className="text-slate-200">{currentUserDisplay.name} ({profile?.email || 'aluno'})</span></div>
+                  <div className="text-slate-400">👥 Participante Esperado: <span className="text-slate-200">{otherParticipantDisplay.name}</span></div>
+                  <div className="border-t border-slate-800 pt-1 text-emerald-400 space-y-0.5">
+                    {debugLogs.length === 0 ? (
+                      <div className="text-slate-500 italic">Clique em "Entrar na Sala Virtual" para iniciar os logs de conexão...</div>
+                    ) : (
+                      debugLogs.map((log, i) => (
+                        <div key={i} className="text-emerald-400">{log}</div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* CUADRO DE VIDEOCHAMADA NATIVA WEBRTC LEXY SPACE */}
