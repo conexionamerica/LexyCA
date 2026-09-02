@@ -513,22 +513,21 @@ export default function ClassroomPage() {
 
         await sendOffer();
 
-        // 4. Começar polling para resposta do aluno (a cada 1s)
-        pollInterval = setInterval(pollForSignals, 1000);
-        addDebugLog('🔄 [PROFESSOR] Polling iniciado (a cada 1s)');
+        // 4. Começar polling rápido para resposta do aluno (a cada 500ms para conexão ultra-rápida)
+        pollInterval = setInterval(pollForSignals, 500);
+        addDebugLog('🔄 [PROFESSOR] Polling ultrarrápido iniciado (500ms)');
 
-        // 5. Reenviar oferta a cada 8s enquanto não receber resposta
-        //    (para quando o aluno ainda não entrou na sala)
+        // 5. Reenviar oferta a cada 4s enquanto não receber resposta
         const resendInterval = setInterval(async () => {
           if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
             clearInterval(resendInterval);
             return;
           }
           if (pc.signalingState === 'have-local-offer' || pc.signalingState === 'stable') {
-            addDebugLog('🔁 [PROFESSOR] Reenviando oferta (aluno ainda não respondeu)...');
+            addDebugLog('🔁 [PROFESSOR] Reenviando oferta ultra-sincronizada...');
             await sendOffer();
           }
-        }, 8000);
+        }, 4000);
 
         // Guardar referência para limpeza
         const originalCleanup = () => {
@@ -538,14 +537,11 @@ export default function ClassroomPage() {
 
       } else {
         // ═══ ALUNO ═══
-        // NÃO deletar sinais (o professor é quem gerencia)
-        // NÃO criar oferta (o professor é quem oferece)
-        // Apenas fazer polling agressivo até encontrar a oferta do professor
-        addDebugLog('⏳ [ALUNO] Esperando oferta do professor...');
+        addDebugLog('⏳ [ALUNO] Esperando oferta do professor via Polling Ultrarrápido...');
 
-        // Polling rápido (1s) para detectar o professor rapidamente
-        pollInterval = setInterval(pollForSignals, 1000);
-        addDebugLog('🔄 [ALUNO] Polling iniciado (a cada 1s)');
+        // Polling ultrarrápido (500ms) para detectar o professor instantaneamente
+        pollInterval = setInterval(pollForSignals, 500);
+        addDebugLog('🔄 [ALUNO] Polling ultrarrápido iniciado (500ms)');
       }
     };
 
@@ -914,16 +910,42 @@ Dicas:
     }, 2000);
   };
 
+  const exitRoomAndCleanup = () => {
+    // 1. Interromper imediatamente todas as faixas locais de câmera e microfone
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+    }
+    // 2. Fechar conexão PeerConnection WebRTC
+    if (pcRef.current) {
+      try {
+        if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
+        pcRef.current.close();
+      } catch (e) {}
+      pcRef.current = null;
+    }
+    // 3. Resetar estados de transmissão da sala
+    setLocalStream(null);
+    setRemoteStream(null);
+    setIsRemoteConnected(false);
+    setIsPeerOnline(false);
+    setHasJoinedRoom(false);
+    setIsLiveVideoActive(false);
+  };
+
   const handleEndClass = () => {
     if (elapsedTime < 40 * 60) {
       setShowEarlyLeaveWarning(true);
     } else {
+      exitRoomAndCleanup();
       setShowEndModal(true);
     }
   };
 
   const confirmEarlyLeave = () => {
     setShowEarlyLeaveWarning(false);
+    exitRoomAndCleanup();
     setShowEndModal(true);
   };
 
@@ -1124,54 +1146,63 @@ Dicas:
                         alt="Transmissão Remota ao Vivo"
                       />
                     ) : (
-                      /* AGUARDANDO A ENTRADA / CÂMERA DO OUTRO PARTICIPANTE NA TELA GRANDE */
-                      <div className="flex flex-col items-center justify-center space-y-5 p-6 text-center animate-fade-in my-auto">
+                      /* CARTÃO MASCOTE LEXY ESPERANDO CONEXÃO / CARREGANDO VÍDEO DO PARTICIPANTE */
+                      <div className="flex flex-col items-center justify-center space-y-5 p-6 text-center animate-fade-in my-auto max-w-md mx-auto">
                         <div className="relative">
-                          <img
-                            src={otherParticipantDisplay.avatar || tutor.avatar}
-                            alt={otherParticipantDisplay.name}
-                            className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/20"
-                          />
-                          <div className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                          <span className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs animate-pulse">
-                            ⏳
-                          </span>
-                        </div>
-                        <div className="space-y-2 max-w-sm">
-                          <span className="bg-amber-500/10 text-amber-400 text-[10px] font-extrabold px-3 py-1.5 rounded-full border border-amber-500/30 uppercase tracking-wider inline-flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                            <span>Esperando {otherParticipantDisplay.roleLabel}</span>
-                          </span>
-                          <h3 className="text-lg font-extrabold text-white">{otherParticipantDisplay.name}</h3>
-                          {!isUserTeacher ? (
-                            <div className="space-y-2">
-                              <p className="text-sm text-cyan-300 font-semibold">
-                                🎓 Tu profesor aún no ha entrado a la sala
-                              </p>
-                              <p className="text-xs text-slate-400 leading-relaxed">
-                                Cuando <strong className="text-white">{otherParticipantDisplay.name}</strong> entre, la videollamada se conectará automáticamente. No necesitas hacer nada.
-                              </p>
-                              <div className="flex items-center justify-center gap-1.5 pt-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '0ms'}} />
-                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '150ms'}} />
-                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce" style={{animationDelay: '300ms'}} />
+                          {/* Mascote Lexy e Avatar do Participante */}
+                          <div className="relative flex items-center justify-center">
+                            <img
+                              src={otherParticipantDisplay.avatar || tutor.avatar}
+                              alt={otherParticipantDisplay.name}
+                              className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-cyan-400 shadow-2xl shadow-cyan-500/30"
+                            />
+                            {/* Badging Mascote Lexy */}
+                            <div className="absolute -top-3 -right-3 w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-cyan-400 to-emerald-400 p-0.5 shadow-lg animate-bounce">
+                              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-300">
+                                <Sparkles className="w-5 h-5 fill-amber-300 animate-spin" style={{ animationDuration: '4s' }} />
                               </div>
+                            </div>
+                          </div>
+                          <div className="absolute -inset-3 rounded-full border-2 border-cyan-400/50 animate-ping opacity-60 pointer-events-none" />
+                        </div>
+
+                        <div className="space-y-3 w-full">
+                          <span className="bg-gradient-to-r from-cyan-500/20 via-emerald-500/20 to-amber-500/20 text-cyan-300 text-[11px] font-extrabold px-3.5 py-1.5 rounded-full border border-cyan-400/40 uppercase tracking-wider inline-flex items-center gap-2 shadow-inner">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                            <span>Lexy Space Live • Conectando</span>
+                          </span>
+
+                          <h3 className="text-xl font-extrabold text-white">
+                            {otherParticipantDisplay.name}
+                          </h3>
+
+                          {!isUserTeacher ? (
+                            <div className="space-y-2 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-800 text-left">
+                              <p className="text-xs text-cyan-300 font-bold flex items-center gap-1.5">
+                                🎓 <span>Aguardando o professor iniciar a câmera...</span>
+                              </p>
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                Assim que <strong>{otherParticipantDisplay.name}</strong> entrar ou liberar o canal de vídeo, a transmissão ao vivo em alta definição aparecerá aqui automaticamente.
+                              </p>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              <p className="text-sm text-cyan-300 font-semibold">
-                                👨‍🎓 Tu alumno aún no ha entrado a la sala
+                            <div className="space-y-2 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-800 text-left">
+                              <p className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
+                                👨‍🎓 <span>Aguardando o aluno conectar à sala...</span>
                               </p>
-                              <p className="text-xs text-slate-400 leading-relaxed">
-                                Cuando <strong className="text-white">{otherParticipantDisplay.name}</strong> entre, la videollamada se conectará automáticamente.
+                              <p className="text-[11px] text-slate-400 leading-relaxed">
+                                O canal da sala privada está transmitindo o sinal. Quando <strong>{otherParticipantDisplay.name}</strong> ingressar, o vídeo iniciará instantaneamente.
                               </p>
-                              <div className="flex items-center justify-center gap-1.5 pt-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '0ms'}} />
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '150ms'}} />
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{animationDelay: '300ms'}} />
-                              </div>
                             </div>
                           )}
+
+                          {/* Barra de Progresso Animada Lexy */}
+                          <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800 relative">
+                            <div className="h-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 rounded-full animate-pulse w-full" />
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-center font-mono">
+                            Sincronizando transmissão criptografada WebRTC... Por favor aguarde.
+                          </p>
                         </div>
                       </div>
                     )
