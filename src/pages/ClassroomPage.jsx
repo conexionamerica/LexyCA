@@ -280,6 +280,17 @@ export default function ClassroomPage() {
   const bgCanvasRef = useRef(document.createElement('canvas'));
   const personCanvasRef = useRef(document.createElement('canvas'));
 
+  // Purga e limpeza imediata de scripts legados MediaPipe em cache no navegador do usuário
+  useEffect(() => {
+    try {
+      if (window.SelfieSegmentation) {
+        delete window.SelfieSegmentation;
+      }
+      const legacyScripts = document.querySelectorAll('script[src*="selfie_segmentation"]');
+      legacyScripts.forEach(s => s.remove());
+    } catch(e) {}
+  }, []);
+
   // Callback ref para atribuição imediata e segura do elemento de vídeo local
   const localVideoCallback = useCallback((videoEl) => {
     localVideoRef.current = videoEl;
