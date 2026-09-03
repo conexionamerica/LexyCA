@@ -1800,27 +1800,6 @@ Dicas:
                       </div>
                     </div>
 
-                    {/* BOTÃO FILTRO ANTI-RUÍDO DSP */}
-                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
-                      <button
-                        type="button"
-                        onClick={() => setIsNoiseFilterActive(prev => !prev)}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
-                          isNoiseFilterActive
-                            ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                            : 'bg-slate-900/40 border border-slate-700 text-slate-400 hover:border-slate-500'
-                        }`}
-                        title={isNoiseFilterActive ? "Cancelamento Ativo de Ruído HD Ligado" : "Ligar Cancelamento de Ruído"}
-                      >
-                        <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
-                      </button>
-                      <div className="h-7 sm:h-8 flex items-center justify-center">
-                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isNoiseFilterActive ? 'text-emerald-300' : 'text-slate-400'}`}>
-                          Anti-Ruído<br />{isNoiseFilterActive ? 'Ativo' : 'Off'}
-                        </span>
-                      </div>
-                    </div>
-
                     {/* BOTÃO COMPARTILHAR TELA */}
                     <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
