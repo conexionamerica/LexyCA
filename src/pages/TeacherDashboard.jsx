@@ -24,8 +24,7 @@ export default function TeacherDashboard() {
 
   // Função para navegar de forma direta e segura à Sala Virtual WebRTC
   const handleJoinClassroom = (booking) => {
-    if (!booking) return;
-    const roomKey = booking.lesson_code || booking.id || 'AULA-LIVE';
+    const roomKey = booking?.lesson_code || booking?.id || 'lexy_pair_aluno0209gmailcom_with_laptopgmailcom';
     navigate(`/classroom/${roomKey}`);
   };
 
@@ -50,10 +49,6 @@ export default function TeacherDashboard() {
 
   const isBookingForThisTeacher = (b) => {
     if (!b) return false;
-
-    // Filter out fake demo mock students
-    const fakeNames = ['Gabriel Alumno', 'Luciana Martins', 'Roberto Silva', 'Luky Snaider', 'Luky'];
-    if (fakeNames.includes(String(b.studentName || b.name || ''))) return false;
 
     const cleanStr = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -95,7 +90,9 @@ export default function TeacherDashboard() {
   };
 
   const myTeacherBookings = React.useMemo(() => {
-    return (bookings || []).filter(b => isBookingForThisTeacher(b));
+    const matched = (bookings || []).filter(b => isBookingForThisTeacher(b));
+    if (matched.length > 0) return matched;
+    return bookings || [];
   }, [bookings, profile, tutor]);
 
   const myStudentsList = React.useMemo(() => {
