@@ -170,6 +170,108 @@ export default function ClassroomPage() {
   const [isRemoteHandRaised, setIsRemoteHandRaised] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSupportButton, setShowSupportButton] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRemoteSpeaking, setIsRemoteSpeaking] = useState(false);
+
+  // Detector de Áudio do Microfone Local (Ativa borda azul brilhante ao falar)
+  useEffect(() => {
+    if (!localStream || !isMicOn) {
+      setIsSpeaking(false);
+      return;
+    }
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack || !audioTrack.enabled) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    let audioCtx = null;
+    let analyser = null;
+    let microphone = null;
+    let animId = null;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      microphone = audioCtx.createMediaStreamSource(new MediaStream([audioTrack]));
+      microphone.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkSpeaking = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        setIsSpeaking(average > 10);
+        animId = requestAnimationFrame(checkSpeaking);
+      };
+
+      checkSpeaking();
+    } catch (e) {}
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(() => {});
+      }
+    };
+  }, [localStream, isMicOn]);
+
+  // Detector de Áudio do Participante Remoto (Ativa borda azul brilhante quando o outro fala)
+  useEffect(() => {
+    if (!remoteStream || !isRemoteConnected) {
+      setIsRemoteSpeaking(false);
+      return;
+    }
+    const audioTrack = remoteStream.getAudioTracks()[0];
+    if (!audioTrack || !audioTrack.enabled) {
+      setIsRemoteSpeaking(false);
+      return;
+    }
+
+    let audioCtx = null;
+    let analyser = null;
+    let microphone = null;
+    let animId = null;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioCtx();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      microphone = audioCtx.createMediaStreamSource(new MediaStream([audioTrack]));
+      microphone.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkRemoteSpeaking = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        setIsRemoteSpeaking(average > 10);
+        animId = requestAnimationFrame(checkRemoteSpeaking);
+      };
+
+      checkRemoteSpeaking();
+    } catch (e) {}
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(() => {});
+      }
+    };
+  }, [remoteStream, isRemoteConnected]);
 
   // Exibir o botão de suporte "Se não conectar em 5 min" apenas 3 minutos após o usuário entrar na sala de espera
   useEffect(() => {
@@ -1496,7 +1598,11 @@ Dicas:
                   {/* ── MINIATURA PIP QUADRO PEQUENO (SUA CÂMERA LOCAL "VOCÊ") ── */}
                   <div
                     onClick={() => setIsSwapped(prev => !prev)}
-                    className="absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-32 h-24 sm:w-44 sm:h-32 rounded-2xl bg-slate-950 border-2 border-cyan-400/80 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-200 hover:border-cyan-300"
+                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl bg-slate-950 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
+                      (!isSwapped ? isSpeaking : isRemoteSpeaking)
+                        ? 'border-4 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.9)] ring-4 ring-cyan-400/50 animate-pulse'
+                        : 'border-2 border-cyan-500/40 hover:border-cyan-300'
+                    }`}
                     title="Clique para inverter telas principal x miniatura 🔄"
                   >
                     {!isSwapped ? (
