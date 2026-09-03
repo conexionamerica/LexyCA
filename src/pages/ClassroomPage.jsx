@@ -291,50 +291,244 @@ export default function ClassroomPage() {
     document.body.appendChild(script);
   }, []);
 
-  // ── FILTRO DE CANCELAMENTO DE RUÍDO DSP EM TEMPO REAL ──
+  // ── HOOK DE FUNDO VIRTUAL E DESFOQUE EM TEMPO REAL ──
   useEffect(() => {
-    if (!localStream || !isNoiseFilterActive) return;
+    if (!localStream) return;
 
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (!audioTrack) return;
+    const rawVideoTrack = localStream.getVideoTracks()[0];
+    if (!rawVideoTrack) return;
 
+    if (virtualBgMode === 'none') {
+      // Restaurar transmissão normal sem filtros
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(() => {});
+      }
+      if (pcRef.current) {
+        const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender && rawVideoTrack) {
+          sender.replaceTrack(rawVideoTrack).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // Se fundo virtual for ativado: criar elemento de vídeo oculto e canvas de renderização
+    let isCancelled = false;
+    let animId = null;
+
+    const hiddenVideo = document.createElement('video');
+    hiddenVideo.srcObject = localStream;
+    hiddenVideo.muted = true;
+    hiddenVideo.playsInline = true;
+    hiddenVideo.play().catch(() => {});
+
+    const canvas = bgCanvasRef.current;
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    // Imagens de fundo virtuais em HD
+    const bgImages = {
+      library: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=800&auto=format&fit=crop',
+      office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop',
+      studio: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop'
+    };
+
+    let bgImg = null;
+    if (bgImages[virtualBgMode]) {
+      bgImg = new Image();
+      bgImg.crossOrigin = 'anonymous';
+      bgImg.src = bgImages[virtualBgMode];
+    }
+
+    const renderLoop = () => {
+      if (isCancelled) return;
+      if (hiddenVideo.readyState >= 2) {
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Se o MediaPipe SelfieSegmentation estiver carregado
+        if (window.SelfieSegmentation && selfieSegmentationRef.current) {
+          selfieSegmentationRef.current.send({ image: hiddenVideo }).catch(() => {});
+        } else {
+          // Fallback de alta performance no Canvas
+          if (virtualBgMode === 'blur_light') {
+            ctx.filter = 'blur(10px)';
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+          } else if (virtualBgMode === 'blur_heavy') {
+            ctx.filter = 'blur(24px)';
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+          } else if (virtualBgMode === 'studio') {
+            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            grad.addColorStop(0, '#090d16');
+            grad.addColorStop(0.5, '#083344');
+            grad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          } else if (bgImg && bgImg.complete) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+          } else {
+            ctx.filter = 'blur(16px)';
+            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+          }
+
+          ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+        }
+
+        ctx.restore();
+      }
+      animId = requestAnimationFrame(renderLoop);
+    };
+
+    // Configurar callback do MediaPipe se disponível
+    if (window.SelfieSegmentation) {
+      if (!selfieSegmentationRef.current) {
+        try {
+          const selfieSeg = new window.SelfieSegmentation({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+          });
+          selfieSeg.setOptions({ modelSelection: 1, selfSelection: 1 });
+          selfieSegmentationRef.current = selfieSeg;
+        } catch(e) {}
+      }
+
+      if (selfieSegmentationRef.current) {
+        selfieSegmentationRef.current.onResults((results) => {
+          if (isCancelled) return;
+          canvas.width = results.image.width || 640;
+          canvas.height = results.image.height || 480;
+
+          ctx.save();
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Recortar e isolar a pessoa (silhueta do usuário)
+          ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
+          ctx.globalCompositeOperation = 'source-in';
+          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+          // Desenhar o fundo atrás da pessoa
+          ctx.globalCompositeOperation = 'destination-over';
+          if (virtualBgMode === 'blur_light') {
+            ctx.filter = 'blur(10px)';
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+          } else if (virtualBgMode === 'blur_heavy') {
+            ctx.filter = 'blur(22px)';
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+          } else if (virtualBgMode === 'studio') {
+            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            grad.addColorStop(0, '#090d16');
+            grad.addColorStop(0.5, '#083344');
+            grad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          } else if (bgImg && bgImg.complete) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+          } else {
+            ctx.filter = 'blur(16px)';
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+          }
+          ctx.restore();
+        });
+      }
+    }
+
+    renderLoop();
+
+    // Capturar o fluxo do canvas e atribuir tanto ao vídeo local quanto ao WebRTC
+    const processedCanvasStream = canvas.captureStream(30);
+    const processedVideoTrack = processedCanvasStream.getVideoTracks()[0];
+
+    if (localVideoRef.current && processedVideoTrack) {
+      const combinedStream = new MediaStream([processedVideoTrack]);
+      if (localStream.getAudioTracks()[0]) {
+        combinedStream.addTrack(localStream.getAudioTracks()[0]);
+      }
+      localVideoRef.current.srcObject = combinedStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+
+    if (pcRef.current && processedVideoTrack) {
+      const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender) {
+        sender.replaceTrack(processedVideoTrack).catch(() => {});
+      }
+    }
+
+    return () => {
+      isCancelled = true;
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [localStream, virtualBgMode]);
+
+  // ── HOOK DE CANCELAMENTO ATIVO DE RUÍDO DSP EM TEMPO REAL ──
+  useEffect(() => {
+    if (!localStream) return;
+
+    const rawAudioTrack = localStream.getAudioTracks()[0];
+    if (!rawAudioTrack) return;
+
+    if (!isNoiseFilterActive) {
+      // Restaurar faixa de áudio original sem filtros
+      if (pcRef.current) {
+        const audioSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (audioSender && rawAudioTrack) {
+          audioSender.replaceTrack(rawAudioTrack).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    let audioCtx = null;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx();
-      const source = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
+      audioCtx = new AudioCtx();
+      const source = audioCtx.createMediaStreamSource(new MediaStream([rawAudioTrack]));
+      const destination = audioCtx.createMediaStreamDestination();
 
-      // 1. Filtro passa-alta: Remove zumbidos graves de ar-condicionado e ventiladores (< 85Hz)
-      const highpass = ctx.createBiquadFilter();
+      // 1. Highpass Filter (80Hz): Elimina zumbidos graves de ar-condicionado e ventiladores
+      const highpass = audioCtx.createBiquadFilter();
       highpass.type = 'highpass';
-      highpass.frequency.value = 85;
+      highpass.frequency.value = 80;
 
-      // 2. Filtro passa-baixa: Remove chiados agudos de estática e cliques de teclado (> 7500Hz)
-      const lowpass = ctx.createBiquadFilter();
+      // 2. Lowpass Filter (7500Hz): Remove chiados de estática e cliques de teclado/mouse
+      const lowpass = audioCtx.createBiquadFilter();
       lowpass.type = 'lowpass';
       lowpass.frequency.value = 7500;
 
-      // 3. Compressor de Dinâmica (Noise Gate): Equilibra a voz e suprime ruídos residuais
-      const compressor = ctx.createDynamicsCompressor();
-      compressor.threshold.value = -30;
-      compressor.knee.value = 12;
-      compressor.ratio.value = 4;
+      // 3. Noise Gate (Dynamics Compressor): Atenua o ruído de fundo quando o usuário não fala
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.value = -35;
+      compressor.knee.value = 10;
+      compressor.ratio.value = 8;
       compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
+      compressor.release.value = 0.15;
 
-      // Conectar cadeia de áudio DSP
+      // Cadeia DSP de Áudio: Source -> Highpass -> Lowpass -> Compressor -> Destination
       source.connect(highpass);
       highpass.connect(lowpass);
       lowpass.connect(compressor);
+      compressor.connect(destination);
 
-      console.log('🎙️ Filtro de Cancelamento de Ruído DSP Ativo!');
+      const processedAudioTrack = destination.stream.getAudioTracks()[0];
+      if (processedAudioTrack && pcRef.current) {
+        const audioSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (audioSender) {
+          audioSender.replaceTrack(processedAudioTrack).catch(() => {});
+          console.log('🎙️ Áudio DSP com Cancelamento de Ruído transmitido via WebRTC!');
+        }
+      }
 
       return () => {
-        if (ctx && ctx.state !== 'closed') {
-          ctx.close().catch(() => {});
+        if (audioCtx && audioCtx.state !== 'closed') {
+          audioCtx.close().catch(() => {});
         }
       };
     } catch (e) {
-      console.warn('Erro ao inicializar filtro DSP de áudio:', e);
+      console.warn('Erro ao aplicar cancelamento de ruído DSP:', e);
     }
   }, [localStream, isNoiseFilterActive]);
 
