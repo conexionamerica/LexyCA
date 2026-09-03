@@ -429,12 +429,45 @@ export default function ClassroomPage() {
         if (selfieSegmentationRef.current) {
           selfieSegmentationRef.current.send({ image: hiddenVideo }).catch(() => {});
         } else {
-          // Fallback suave caso o script do MediaPipe ainda esteja baixando
+          // Máscara Radial de Foco Central: Rosto e corpo 100% NÍTIDOS no centro + Fundo da sala desfocado
+          const w = canvas.width = 640;
+          const h = canvas.height = 480;
+
           ctx.save();
-          ctx.filter = virtualBgMode === 'blur_heavy' ? 'blur(18px)' : 'blur(10px)';
-          ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, w, h);
+
+          // 1. Desenhar o fundo totalmente desfocado (porta, estante, sala)
+          ctx.filter = virtualBgMode === 'blur_heavy' ? 'blur(26px)' : 'blur(14px)';
+          ctx.drawImage(hiddenVideo, 0, 0, w, h);
           ctx.filter = 'none';
-          ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+
+          // 2. Isolar o centro da câmera (Rosto do Usuário 100% Nítido)
+          pCtx.save();
+          pCtx.clearRect(0, 0, w, h);
+
+          const cx = w / 2;
+          const cy = h / 2 - 10;
+          const rx = w * 0.38;
+          const ry = h * 0.48;
+
+          const grad = pCtx.createRadialGradient(cx, cy, 30, cx, cy, Math.max(rx, ry));
+          grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+          grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.95)');
+          grad.addColorStop(0.85, 'rgba(0, 0, 0, 0.3)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+          pCtx.fillStyle = grad;
+          pCtx.beginPath();
+          pCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          pCtx.fill();
+
+          pCtx.globalCompositeOperation = 'source-in';
+          pCtx.drawImage(hiddenVideo, 0, 0, w, h);
+          pCtx.restore();
+
+          // 3. Sobrepor o rosto nítido por cima do fundo desfocado
+          ctx.drawImage(pCanvas, 0, 0, w, h);
+
           ctx.restore();
         }
       }
