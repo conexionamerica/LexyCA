@@ -527,6 +527,72 @@ export default function ClassroomPage() {
     };
   }, [hasJoinedRoom, isVideoOn, normalizedRoomKey, isUserTeacher, currentUserDisplay]);
 
+  // ── FUNÇÃO MANUAL/AUTOMÁTICA PARA FORÇAR RECONEXÃO ICE RESTART ──
+  const triggerIceRestart = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc) return;
+
+    try {
+      addDebugLog('⚡ Executando WebRTC ICE Restart para restabelecer chamada...');
+      setIsReconnecting(true);
+
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      if (myRole === 'teacher') {
+        const freshOffer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(freshOffer);
+        await supabase.from('webrtc_signals').insert({
+          room_key: normalizedRoomKey,
+          sender_role: 'teacher',
+          sender_name: currentUserDisplay.name,
+          signal_type: 'offer',
+          payload: JSON.stringify({ sdp: freshOffer.sdp, isIceRestart: true }),
+          created_at: new Date().toISOString()
+        });
+      } else {
+        await supabase.from('webrtc_signals').insert({
+          room_key: normalizedRoomKey,
+          sender_role: 'student',
+          sender_name: currentUserDisplay.name,
+          signal_type: 'ready',
+          payload: JSON.stringify({ timestamp: Date.now(), isIceRestart: true }),
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      console.warn('Erro durante ICE Restart:', err);
+    }
+  }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
+
+  // ── MONITOR GLOBAL DE REDE DO NAVEGADOR (ONLINE / OFFLINE) ──
+  useEffect(() => {
+    const handleWindowOnline = () => {
+      setIsNetworkOnline(true);
+      addDebugLog('🌐 Conexão à internet restabelecida no dispositivo! Iniciando reconexão...');
+      setIsReconnecting(true);
+      setReconnectReason('Sinal de internet restaurado — Reconectando aula ao vivo...');
+      triggerIceRestart();
+    };
+
+    const handleWindowOffline = () => {
+      setIsNetworkOnline(false);
+      setIsReconnecting(true);
+      setReconnectReason('Sua conexão com a internet caiu. Aguardando sinal...');
+      addDebugLog('⚠️ Conexão com a internet perdida (offline)');
+    };
+
+    window.addEventListener('online', handleWindowOnline);
+    window.addEventListener('offline', handleWindowOffline);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      handleWindowOffline();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleWindowOnline);
+      window.removeEventListener('offline', handleWindowOffline);
+    };
+  }, [triggerIceRestart, addDebugLog]);
+
   // ── SINALIZAÇÃO WEBRTC P2P VIA SUPABASE DATABASE REST API (FUNCIONA ENTRE DISPOSITIVOS DIFERENTES) ──
   // NOTA CRÍTICA: BroadcastChannel e localStorage SÓ funcionam entre abas do MESMO navegador/dispositivo.
   // Para comunicar entre dois dispositivos diferentes (celular do aluno + PC do professor),
@@ -656,6 +722,9 @@ export default function ClassroomPage() {
     const SIGNAL_TABLE = 'webrtc_signals';
     let iceCandidateQueue = [];
     let pollInterval = null;
+    let heartbeatInterval = null;
+    let peerCheckInterval = null;
+    let lastPeerSignalTime = 0;
     let isPolling = false;
     let lastProcessedId = 0;
 
@@ -745,6 +814,17 @@ export default function ClassroomPage() {
     // Processar sinais recebidos (Handshake de Presença Idempotente - 100% à prova de falhas de ordem)
     const handleSignalData = async (signalType, payload) => {
       try {
+        lastPeerSignalTime = Date.now();
+        setIsPeerOnline(true);
+        if (isReconnecting && isNetworkOnline) {
+          setIsReconnecting(false);
+          setReconnectReason('');
+        }
+
+        if (signalType === 'heartbeat') {
+          return;
+        }
+
         // 1. Se o PROFESSOR detecta o sinal 'ready' do Aluno
         if (signalType === 'ready' && myRole === 'teacher') {
           // Evitar gerar ofertas duplicadas se a conexão já estiver ativa ou oferta criada recentemente (<6s)
@@ -934,15 +1014,34 @@ export default function ClassroomPage() {
 
       // Iniciar polling ultrarrápido (500ms)
       pollInterval = setInterval(pollForSignals, 500);
-      addDebugLog('🔄 Polling ultrarrápido iniciado (500ms)');
+
+      // Iniciar emissão periódica de Heartbeat (a cada 2s)
+      heartbeatInterval = setInterval(() => {
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          sendSignal('heartbeat', { ping: Date.now() });
+        }
+      }, 2000);
+
+      // Monitor de perda de sinal do participante remoto (Timeout > 7s)
+      peerCheckInterval = setInterval(() => {
+        if (lastPeerSignalTime > 0 && (Date.now() - lastPeerSignalTime > 7500)) {
+          addDebugLog(`⚠️ Sinal do participante interrompido (>7.5s)`);
+          setIsReconnecting(true);
+          setReconnectReason(`⚠️ Sinal de internet de ${otherParticipantDisplay.name} interrompido. Aguardando reconexão...`);
+          setIsPeerOnline(false);
+          setIsRemoteConnected(false);
+        }
+      }, 2500);
+
+      addDebugLog('🔄 Polling ultrarrápido (500ms) e Heartbeat (2s) ativos');
     };
 
     cleanAndStart();
 
     return () => {
-      window.removeEventListener('online', handleWindowOnline);
-      window.removeEventListener('offline', handleWindowOffline);
       if (pollInterval) clearInterval(pollInterval);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (peerCheckInterval) clearInterval(peerCheckInterval);
       if (pcRef.current) {
         if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
         pcRef.current.close();
@@ -950,43 +1049,6 @@ export default function ClassroomPage() {
       }
     };
   }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog]);
-
-  // Função manual para forçar reconexão ICE Restart
-  const triggerIceRestart = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc) return;
-
-    try {
-      addDebugLog('⚡ Executando WebRTC ICE Restart para restabelecer chamada...');
-      setIsReconnecting(true);
-
-      const myRole = isUserTeacher ? 'teacher' : 'student';
-      if (myRole === 'teacher') {
-        const freshOffer = await pc.createOffer({ iceRestart: true });
-        await pc.setLocalDescription(freshOffer);
-        await supabase.from('webrtc_signals').insert({
-          room_key: normalizedRoomKey,
-          sender_role: 'teacher',
-          sender_name: currentUserDisplay.name,
-          signal_type: 'offer',
-          payload: JSON.stringify({ sdp: freshOffer.sdp, isIceRestart: true }),
-          created_at: new Date().toISOString()
-        });
-      } else {
-        await supabase.from('webrtc_signals').insert({
-          room_key: normalizedRoomKey,
-          sender_role: 'student',
-          sender_name: currentUserDisplay.name,
-          signal_type: 'ready',
-          payload: JSON.stringify({ timestamp: Date.now(), isIceRestart: true }),
-          created_at: new Date().toISOString()
-        });
-      }
-    } catch (err) {
-      console.warn('Erro durante ICE Restart:', err);
-    }
-  }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
-
   // Safety net: re-assign srcObject whenever remoteStream changes
   useEffect(() => {
     if (!remoteStream) return;
