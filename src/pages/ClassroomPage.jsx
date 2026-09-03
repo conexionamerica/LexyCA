@@ -291,6 +291,44 @@ export default function ClassroomPage() {
     } catch(e) {}
   }, []);
 
+  // Função para retornar estilos de filtro de fundo GPU em tempo real
+  const getVirtualBgStyles = useCallback(() => {
+    switch (virtualBgMode) {
+      case 'blur_light':
+        return {
+          videoFilter: 'blur(10px) contrast(1.05) brightness(1.02)',
+          containerBg: 'bg-cyan-950/80 shadow-[0_0_30px_rgba(6,182,212,0.4)]'
+        };
+      case 'blur_heavy':
+        return {
+          videoFilter: 'blur(25px) contrast(1.1) brightness(1.05)',
+          containerBg: 'bg-slate-950/90 shadow-[0_0_30px_rgba(15,23,42,0.6)]'
+        };
+      case 'studio':
+        return {
+          videoFilter: 'blur(14px) contrast(1.2) saturate(1.3) brightness(1.08)',
+          containerBg: 'bg-gradient-to-br from-slate-950 via-cyan-950 to-sky-900 shadow-[0_0_35px_rgba(6,182,212,0.6)]'
+        };
+      case 'office':
+        return {
+          videoFilter: 'blur(16px) sepia(0.2) contrast(1.15) brightness(0.95)',
+          containerBg: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 shadow-[0_0_30px_rgba(51,65,85,0.5)]'
+        };
+      case 'library':
+        return {
+          videoFilter: 'blur(18px) sepia(0.35) contrast(1.25) brightness(0.9)',
+          containerBg: 'bg-gradient-to-br from-stone-950 via-amber-950 to-stone-900 shadow-[0_0_30px_rgba(245,158,11,0.4)]'
+        };
+      default:
+        return {
+          videoFilter: 'none',
+          containerBg: 'bg-slate-950'
+        };
+    }
+  }, [virtualBgMode]);
+
+  const currentBgTheme = getVirtualBgStyles();
+
   // Callback ref para atribuição imediata e segura do elemento de vídeo local
   const localVideoCallback = useCallback((videoEl) => {
     localVideoRef.current = videoEl;
@@ -1652,6 +1690,7 @@ Dicas:
                         autoPlay
                         playsInline
                         muted
+                        style={{ filter: currentBgTheme.videoFilter }}
                         className="w-full h-full object-cover rounded-2xl transform scale-x-[-1] transition-all duration-300"
                       />
                     ) : (
@@ -1686,7 +1725,7 @@ Dicas:
                   {/* ── MINIATURA PIP QUADRO PEQUENO (SUA CÂMERA LOCAL "VOCÊ") ── */}
                   <div
                     onClick={() => setIsSwapped(prev => !prev)}
-                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl bg-slate-950 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
+                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl ${currentBgTheme.containerBg} overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
                       (!isSwapped ? isSpeaking : isRemoteSpeaking)
                         ? 'border-4 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.9)] ring-4 ring-cyan-400/50 animate-pulse'
                         : 'border-2 border-cyan-500/40 hover:border-cyan-300'
@@ -1700,6 +1739,7 @@ Dicas:
                           autoPlay
                           playsInline
                           muted
+                          style={{ filter: currentBgTheme.videoFilter }}
                           className="w-full h-full object-cover transform scale-x-[-1] transition-all duration-300"
                         />
                       ) : (
