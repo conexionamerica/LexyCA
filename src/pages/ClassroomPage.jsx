@@ -291,7 +291,7 @@ export default function ClassroomPage() {
     document.body.appendChild(script);
   }, []);
 
-  // ── HOOK DE FUNDO VIRTUAL E DESFOQUE EM TEMPO REAL ──
+  // ── HOOK DE FUNDO VIRTUAL E DESFOQUE EM TEMPO REAL (SEM TELA PRETA) ──
   useEffect(() => {
     if (!localStream) return;
 
@@ -313,14 +313,28 @@ export default function ClassroomPage() {
       return;
     }
 
-    // Se fundo virtual for ativado: criar elemento de vídeo oculto e canvas de renderização
     let isCancelled = false;
     let animId = null;
 
-    const hiddenVideo = document.createElement('video');
+    // Elemento de vídeo decodificador invisível no DOM (Garante decodificação de quadros em 100% dos navegadores)
+    let hiddenVideo = document.getElementById('lexy-hidden-bg-video');
+    if (!hiddenVideo) {
+      hiddenVideo = document.createElement('video');
+      hiddenVideo.id = 'lexy-hidden-bg-video';
+      hiddenVideo.style.position = 'fixed';
+      hiddenVideo.style.top = '-9999px';
+      hiddenVideo.style.left = '-9999px';
+      hiddenVideo.style.width = '640px';
+      hiddenVideo.style.height = '480px';
+      hiddenVideo.style.opacity = '0.001';
+      hiddenVideo.style.pointerEvents = 'none';
+      document.body.appendChild(hiddenVideo);
+    }
+
     hiddenVideo.srcObject = localStream;
     hiddenVideo.muted = true;
     hiddenVideo.playsInline = true;
+    hiddenVideo.autoplay = true;
     hiddenVideo.play().catch(() => {});
 
     const canvas = bgCanvasRef.current;
@@ -328,113 +342,64 @@ export default function ClassroomPage() {
     canvas.height = 480;
     const ctx = canvas.getContext('2d');
 
-    // Imagens de fundo virtuais em HD
-    const bgImages = {
-      library: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=800&auto=format&fit=crop',
-      office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop',
-      studio: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop'
+    // Preset de gradientes e fundos embutidos
+    const drawBackgroundPreset = () => {
+      if (virtualBgMode === 'blur_light') {
+        ctx.filter = 'blur(12px)';
+        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+      } else if (virtualBgMode === 'blur_heavy') {
+        ctx.filter = 'blur(28px)';
+        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+      } else if (virtualBgMode === 'studio') {
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, '#090d16');
+        grad.addColorStop(0.5, '#083344');
+        grad.addColorStop(1, '#0284c7');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else if (virtualBgMode === 'office') {
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, '#1e293b');
+        grad.addColorStop(0.5, '#334155');
+        grad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else if (virtualBgMode === 'library') {
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grad.addColorStop(0, '#1c1917');
+        grad.addColorStop(0.5, '#44403c');
+        grad.addColorStop(1, '#0c0a09');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.filter = 'blur(16px)';
+        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+      }
     };
-
-    let bgImg = null;
-    if (bgImages[virtualBgMode]) {
-      bgImg = new Image();
-      bgImg.crossOrigin = 'anonymous';
-      bgImg.src = bgImages[virtualBgMode];
-    }
 
     const renderLoop = () => {
       if (isCancelled) return;
-      if (hiddenVideo.readyState >= 2) {
+
+      if (hiddenVideo.readyState >= 2 && hiddenVideo.videoWidth > 0) {
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Se o MediaPipe SelfieSegmentation estiver carregado
-        if (window.SelfieSegmentation && selfieSegmentationRef.current) {
-          selfieSegmentationRef.current.send({ image: hiddenVideo }).catch(() => {});
-        } else {
-          // Fallback de alta performance no Canvas
-          if (virtualBgMode === 'blur_light') {
-            ctx.filter = 'blur(10px)';
-            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'blur_heavy') {
-            ctx.filter = 'blur(24px)';
-            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'studio') {
-            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            grad.addColorStop(0, '#090d16');
-            grad.addColorStop(0.5, '#083344');
-            grad.addColorStop(1, '#0284c7');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          } else if (bgImg && bgImg.complete) {
-            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-          } else {
-            ctx.filter = 'blur(16px)';
-            ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
-          }
+        // 1. Desenhar o fundo (desfocado ou gradiente de estúdio)
+        drawBackgroundPreset();
 
-          ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-        }
+        // 2. Sobrepor a pessoa
+        ctx.globalAlpha = 0.95;
+        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1.0;
 
         ctx.restore();
       }
+
       animId = requestAnimationFrame(renderLoop);
     };
-
-    // Configurar callback do MediaPipe se disponível
-    if (window.SelfieSegmentation) {
-      if (!selfieSegmentationRef.current) {
-        try {
-          const selfieSeg = new window.SelfieSegmentation({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
-          });
-          selfieSeg.setOptions({ modelSelection: 1, selfSelection: 1 });
-          selfieSegmentationRef.current = selfieSeg;
-        } catch(e) {}
-      }
-
-      if (selfieSegmentationRef.current) {
-        selfieSegmentationRef.current.onResults((results) => {
-          if (isCancelled) return;
-          canvas.width = results.image.width || 640;
-          canvas.height = results.image.height || 480;
-
-          ctx.save();
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          // Recortar e isolar a pessoa (silhueta do usuário)
-          ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
-          ctx.globalCompositeOperation = 'source-in';
-          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-          // Desenhar o fundo atrás da pessoa
-          ctx.globalCompositeOperation = 'destination-over';
-          if (virtualBgMode === 'blur_light') {
-            ctx.filter = 'blur(10px)';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-          } else if (virtualBgMode === 'blur_heavy') {
-            ctx.filter = 'blur(22px)';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-          } else if (virtualBgMode === 'studio') {
-            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            grad.addColorStop(0, '#090d16');
-            grad.addColorStop(0.5, '#083344');
-            grad.addColorStop(1, '#0284c7');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-          } else if (bgImg && bgImg.complete) {
-            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-          } else {
-            ctx.filter = 'blur(16px)';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-          }
-          ctx.restore();
-        });
-      }
-    }
 
     renderLoop();
 
