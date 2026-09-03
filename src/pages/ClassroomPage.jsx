@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, Hand, Smile, Maximize2, Minimize2, LogOut
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, RotateCw, Hand, Smile, Maximize2, Minimize2, LogOut
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -172,6 +172,11 @@ export default function ClassroomPage() {
   const [showSupportButton, setShowSupportButton] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRemoteSpeaking, setIsRemoteSpeaking] = useState(false);
+
+  // ── ESTADOS DE RECONEXÃO AUTOMÁTICA E MONITOR DE REDE ──
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectReason, setReconnectReason] = useState('');
+  const [isNetworkOnline, setIsNetworkOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   // Detector de Áudio do Microfone Local (Ativa borda azul brilhante ao falar)
   useEffect(() => {
@@ -590,16 +595,53 @@ export default function ClassroomPage() {
         setRemoteStream(unifiedStream);
         setIsRemoteConnected(true);
         setIsPeerOnline(true);
+        setIsReconnecting(false);
+        setReconnectReason('');
       }
     };
 
-    pc.oniceconnectionstatechange = () => {
-      addDebugLog(`🔗 ICE State: ${pc.iceConnectionState}`);
-      if (pc.remoteDescription && (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed')) {
+    // ── MONITORAÇÃO DE ESTADO DA CONEXÃO ICE & RECONEXÃO AUTOMÁTICA ──
+    const handleConnectionStateChange = () => {
+      const iceState = pc.iceConnectionState;
+      const connState = pc.connectionState;
+      addDebugLog(`🔗 ICE State: ${iceState} | Conn State: ${connState}`);
+
+      if (iceState === 'connected' || iceState === 'completed' || connState === 'connected') {
         setIsRemoteConnected(true);
         setIsPeerOnline(true);
+        setIsReconnecting(false);
+        setReconnectReason('');
+      } else if (iceState === 'disconnected' || iceState === 'failed' || connState === 'disconnected' || connState === 'failed') {
+        setIsReconnecting(true);
+        setReconnectReason('Sinal de rede instável — Tentando reconectar áudio e vídeo...');
+        triggerIceRestart();
+      } else if (iceState === 'checking' || connState === 'connecting') {
+        setIsReconnecting(true);
+        setReconnectReason('Sincronizando sinal de rede e reconectando participante...');
       }
     };
+
+    pc.oniceconnectionstatechange = handleConnectionStateChange;
+    pc.onconnectionstatechange = handleConnectionStateChange;
+
+    // ── ESCUCHADORES DE REDE DA JANELA (ONLINE / OFFLINE) ──
+    const handleWindowOnline = () => {
+      setIsNetworkOnline(true);
+      addDebugLog('🌐 Conexão à internet restabelecida! Iniciando reconexão...');
+      setIsReconnecting(true);
+      setReconnectReason('Sinal de internet restaurado — Reconectando aula...');
+      triggerIceRestart();
+    };
+
+    const handleWindowOffline = () => {
+      setIsNetworkOnline(false);
+      setIsReconnecting(true);
+      setReconnectReason('Sua conexão com a internet caiu. Aguardando sinal...');
+      addDebugLog('⚠️ Conexão com a internet perdida (offline)');
+    };
+
+    window.addEventListener('online', handleWindowOnline);
+    window.addEventListener('offline', handleWindowOffline);
 
     // ── SINALIZAÇÃO VIA SUPABASE DATABASE REST API (funciona cross-device!) ──
     const SIGNAL_TABLE = 'webrtc_signals';
@@ -889,6 +931,8 @@ export default function ClassroomPage() {
     cleanAndStart();
 
     return () => {
+      window.removeEventListener('online', handleWindowOnline);
+      window.removeEventListener('offline', handleWindowOffline);
       if (pollInterval) clearInterval(pollInterval);
       if (pcRef.current) {
         if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
@@ -897,6 +941,42 @@ export default function ClassroomPage() {
       }
     };
   }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog]);
+
+  // Função manual para forçar reconexão ICE Restart
+  const triggerIceRestart = useCallback(async () => {
+    const pc = pcRef.current;
+    if (!pc) return;
+
+    try {
+      addDebugLog('⚡ Executando WebRTC ICE Restart para restabelecer chamada...');
+      setIsReconnecting(true);
+
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      if (myRole === 'teacher') {
+        const freshOffer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(freshOffer);
+        await supabase.from('webrtc_signals').insert({
+          room_key: normalizedRoomKey,
+          sender_role: 'teacher',
+          sender_name: currentUserDisplay.name,
+          signal_type: 'offer',
+          payload: JSON.stringify({ sdp: freshOffer.sdp, isIceRestart: true }),
+          created_at: new Date().toISOString()
+        });
+      } else {
+        await supabase.from('webrtc_signals').insert({
+          room_key: normalizedRoomKey,
+          sender_role: 'student',
+          sender_name: currentUserDisplay.name,
+          signal_type: 'ready',
+          payload: JSON.stringify({ timestamp: Date.now(), isIceRestart: true }),
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      console.warn('Erro durante ICE Restart:', err);
+    }
+  }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
 
   // ── ATRIBUIR remoteStream ao elemento <video> remoto DE FORMA ROBUSTA ──
   // Callback ref: é chamado SEMPRE que o elemento <video> é montado no DOM
@@ -1744,6 +1824,54 @@ Dicas:
                     <div className="absolute top-14 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs px-4 py-2 rounded-2xl shadow-2xl z-40 flex items-center gap-2 animate-bounce border border-amber-300">
                       <Hand className="w-4 h-4 fill-slate-950 text-slate-950" />
                       <span>{isHandRaised ? '✋ Você levantou a mão' : `✋ ${otherParticipantDisplay.name} pediu a palavra!`}</span>
+                    </div>
+                  )}
+
+                  {/* ── OVERLAY DE RECONEXÃO AUTOMÁTICA EM TEMPO REAL ── */}
+                  {(isReconnecting || !isNetworkOnline) && (
+                    <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                      <div className="relative mb-6">
+                        <div className="w-20 h-20 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 border-r-cyan-400 animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <RotateCw className="w-8 h-8 text-cyan-400 animate-spin" />
+                        </div>
+                      </div>
+
+                      <h2 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-wide">
+                        {!isNetworkOnline
+                          ? '⚠️ Sem Conexão com a Internet'
+                          : '🔄 Reconectando Aula ao Vivo...'}
+                      </h2>
+
+                      <p className="text-xs sm:text-sm text-cyan-200/90 font-medium max-w-md mb-6 leading-relaxed">
+                        {!isNetworkOnline
+                          ? 'Detectamos que seu dispositivo perdeu o sinal de internet. A chamada será reconectada automaticamente assim que o sinal voltar.'
+                          : reconnectReason || 'Ajustando sinal de rede e restabelecendo a comunicação com o participante...'}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => triggerIceRestart()}
+                          className="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-black text-xs sm:text-sm shadow-[0_0_30px_rgba(6,182,212,0.5)] transform hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                        >
+                          <Zap className="w-4 h-4 fill-slate-950" />
+                          <span>Tentar Reconectar Agora</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleLeaveRoom}
+                          className="px-5 py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs sm:text-sm transition-all cursor-pointer"
+                        >
+                          Sair da Sala
+                        </button>
+                      </div>
+
+                      <div className="mt-6 flex items-center gap-2 text-[11px] font-semibold text-slate-400 bg-slate-900/60 px-4 py-1.5 rounded-full border border-slate-800">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                        <span>Monitor de Sinal WebRTC P2P Ativo</span>
+                      </div>
                     </div>
                   )}
 
