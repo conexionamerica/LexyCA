@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMarketplace, getTeacherEarnPercent } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -17,9 +17,17 @@ export default function TeacherDashboard() {
   } = useMarketplace();
   
   const { profile, updateProfile } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'inicio';
   const setActiveTab = (tab) => setSearchParams({ tab });
+
+  // Função para navegar de forma direta e segura à Sala Virtual WebRTC
+  const handleJoinClassroom = (booking) => {
+    if (!booking) return;
+    const roomKey = booking.lesson_code || booking.id || 'AULA-LIVE';
+    navigate(`/classroom/${roomKey}`);
+  };
 
   const MIN_RATE = 13;
   const MAX_RATE = 40;
@@ -1026,13 +1034,14 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                      <a
-                        href={`/classroom/${nextBooking.id}`}
+                      <button
+                        type="button"
+                        onClick={() => handleJoinClassroom(nextBooking)}
                         className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Video className="w-3.5 h-3.5" />
                         <span>Entrar na Aula</span>
-                      </a>
+                      </button>
 
                       {!isClassCompletedState ? (
                         <button
@@ -1109,10 +1118,8 @@ export default function TeacherDashboard() {
                             Detalhes
                           </button>
                           <button
-                            onClick={() => {
-                              setSelectedBookingForModal(booking);
-                              setIsVirtualRoomActive(true);
-                            }}
+                            type="button"
+                            onClick={() => handleJoinClassroom(booking)}
                             className="flex-1 sm:flex-initial bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-black px-4 py-1.5 rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-1"
                           >
                             <Video className="w-3.5 h-3.5" />
@@ -2096,7 +2103,7 @@ export default function TeacherDashboard() {
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <button
                             type="button"
-                            onClick={() => window.open(`/classroom/${b.id}`, '_blank')}
+                            onClick={() => handleJoinClassroom(b)}
                             className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 hover:from-amber-400 hover:to-emerald-300 text-slate-950 font-black text-xs px-6 py-3 rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
                           >
                             <Video className="w-4 h-4 fill-slate-950 text-slate-950" />
@@ -2846,15 +2853,14 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            {/* BOTÓN PRINCIPAL: SALA VIRTUAL DE VÍDEO DENTRO DA NOSSA PLATAFORMA (NO GOOGLE MEET) */}
+            {/* BOTÓN PRINCIPAL: SALA VIRTUAL DE VÍDEO DENTRO DA NOSSA PLATAFORMA (WEBRTC SPACE) */}
             <button
-              onClick={() => {
-                setIsVirtualRoomActive(true);
-              }}
+              type="button"
+              onClick={() => handleJoinClassroom(selectedBookingForModal)}
               className="w-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black py-3 px-4 rounded-2xl shadow-xl flex items-center justify-center gap-2.5 transition-all text-xs cursor-pointer"
             >
               <span className="text-base">📹</span>
-              <span>Entrar na Sala Virtual de Vídeo (In-App)</span>
+              <span>Entrar na Sala Virtual 🚀</span>
             </button>
 
             {/* ACCIONES DE GESTIÓN DE AULA (ESTILO ALUNO.CONEXIONAMERICA.COM.BR) */}
@@ -2917,137 +2923,6 @@ export default function TeacherDashboard() {
               className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2.5 rounded-xl cursor-pointer border border-slate-700 mt-2"
             >
               Fechar Detalhes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 1: SALA VIRTUAL DE VÍDEO (LEXI CLASS ROOM IN-APP) */}
-      {isVirtualRoomActive && selectedBookingForModal && (
-        <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col animate-fade-in">
-          {/* TOP BAR */}
-          <div className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-base shadow-md">
-                📹
-              </div>
-              <div>
-                <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-                  <span>Sala Virtual Lexy Class</span>
-                  <span className="bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse uppercase">
-                    ● AO VIVO
-                  </span>
-                </h2>
-                <p className="text-[11px] text-slate-400">
-                  Aula de Espanhol com {selectedBookingForModal.studentName} ({selectedBookingForModal.studentLevel || 'Iniciante'})
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono font-bold text-amber-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span>Tempo Decorrido: {formatTimer(roomElapsedSeconds)}</span>
-              </span>
-              <span className="text-xs font-mono font-bold text-emerald-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
-                💰 R$ {hourlyRate || tutor.hourlyRate || 23}/h
-              </span>
-              <button
-                onClick={() => {
-                  setIsVirtualRoomActive(false);
-                  setIsFeedbackDialogOpen(true);
-                }}
-                className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow cursor-pointer transition-all hover:scale-105"
-              >
-                🔴 Encerrar Aula & Avaliar
-              </button>
-            </div>
-          </div>
-
-          {/* VIDEO STREAMS & INTERACTIVE AREA */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 overflow-hidden bg-slate-950">
-            {/* MAIN VIDEO SCREEN: STUDENT / PRESENTATION */}
-            <div className="md:col-span-3 bg-slate-900 rounded-3xl border border-slate-800/80 relative overflow-hidden flex flex-col items-center justify-center shadow-2xl">
-              <img
-                src={selectedBookingForModal.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=600&auto=format&fit=crop&q=80'}
-                alt={selectedBookingForModal.studentName}
-                className="w-full h-full object-cover opacity-80"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40"></div>
-
-              {/* STUDENT LABEL */}
-              <div className="absolute bottom-4 left-4 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-800 text-white font-extrabold text-xs flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>{selectedBookingForModal.studentName}</span>
-              </div>
-
-              {/* PIP / TUTOR CAMERA VIEW */}
-              <div className="absolute top-4 right-4 w-48 h-36 bg-slate-950 rounded-2xl border-2 border-cyan-400/50 shadow-2xl overflow-hidden">
-                <img
-                  src={tutor.avatar || profile?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'}
-                  alt="Você"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white bg-slate-950/90 px-2 py-0.5 rounded-md border border-slate-800">
-                  Você (Tutor)
-                </div>
-              </div>
-            </div>
-
-            {/* SIDEBAR: CLASS CHAT & NOTES */}
-            <div className="bg-slate-900 rounded-3xl border border-slate-800 p-4 flex flex-col justify-between space-y-3">
-              <div className="border-b border-slate-800 pb-2">
-                <h3 className="text-xs font-black text-white flex items-center gap-1.5">
-                  <span>💬 Chat da Aula</span>
-                </h3>
-              </div>
-
-              <div className="flex-1 space-y-2 overflow-y-auto text-xs pr-1 scrollbar-none">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                  <span className="font-extrabold text-cyan-400 block text-[10px]">Sistema</span>
-                  <span>Conexão HD estabelecida. Sala de vídeo segura iniciada.</span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-300">
-                  <span className="font-extrabold text-amber-400 block text-[10px]">{selectedBookingForModal.studentName}</span>
-                  <span>Olá professor! Prontos para a aula de hoje?</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 pt-2 border-t border-slate-800">
-                <input
-                  type="text"
-                  placeholder="Digite no chat da aula..."
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
-                />
-                <button className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs px-3 py-2 rounded-xl cursor-pointer">
-                  Enviar
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* CONTROL TOOLBAR AT BOTTOM */}
-          <div className="bg-slate-900 border-t border-slate-800 p-3 flex items-center justify-center gap-3">
-            <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-2xl border border-slate-700 cursor-pointer text-xs font-bold flex items-center gap-2">
-              <span>🎤</span>
-              <span>Microfone On</span>
-            </button>
-            <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-2xl border border-slate-700 cursor-pointer text-xs font-bold flex items-center gap-2">
-              <span>📹</span>
-              <span>Câmera On</span>
-            </button>
-            <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-2xl border border-slate-700 cursor-pointer text-xs font-bold flex items-center gap-2">
-              <span>🖥️</span>
-              <span>Compartilhar Tela</span>
-            </button>
-            <button
-              onClick={() => {
-                setIsVirtualRoomActive(false);
-                setIsFeedbackDialogOpen(true);
-              }}
-              className="bg-rose-600 hover:bg-rose-500 text-white font-extrabold px-6 py-2.5 rounded-2xl shadow-xl text-xs cursor-pointer"
-            >
-              Encerrar Aula
             </button>
           </div>
         </div>
