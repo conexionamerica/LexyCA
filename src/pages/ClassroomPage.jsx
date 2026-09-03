@@ -1674,18 +1674,18 @@ Dicas:
                     </div>
                   )}
 
-                  {/* BARRA DE CONTROLES FLUTUANTE EM CÍRCULOS SEPARADOS E MINIMALISTAS */}
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-40 flex items-end justify-center gap-2.5 sm:gap-4 px-2">
+                  {/* BARRA DE CONTROLES FLUTUANTE EM CÍRCULOS SEPARADOS, TRANSPARENTES E PERFEITAMENTE ALINHADOS */}
+                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 z-40 flex items-start justify-center gap-2.5 sm:gap-4 px-2">
                     
                     {/* BOTÃO MICROFONE */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={toggleMic}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
                           isMicOn
-                            ? 'bg-slate-900/85 border border-cyan-500/40 hover:border-cyan-300 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-                            : 'bg-rose-950/90 border border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                            ? 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                            : 'bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/60 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
                         }`}
                         title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
                       >
@@ -1695,20 +1695,22 @@ Dicas:
                           <MicOff className="w-5 h-5 stroke-[2.2]" />
                         )}
                       </button>
-                      <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isMicOn ? 'text-slate-300' : 'text-rose-400'}`}>
-                        Mic<br />{isMicOn ? 'Ativo' : 'Mutado'}
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isMicOn ? 'text-slate-300' : 'text-rose-400'}`}>
+                          Mic<br />{isMicOn ? 'Ativo' : 'Mutado'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* BOTÃO CÂMERA */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={toggleVideo}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
                           isVideoOn
-                            ? 'bg-slate-900/85 border border-cyan-500/40 hover:border-cyan-300 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-                            : 'bg-rose-950/90 border border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                            ? 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                            : 'bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/60 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
                         }`}
                         title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
                       >
@@ -1718,43 +1720,49 @@ Dicas:
                           <VideoOff className="w-5 h-5 stroke-[2.2]" />
                         )}
                       </button>
-                      <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isVideoOn ? 'text-slate-300' : 'text-rose-400'}`}>
-                        Câmera<br />{isVideoOn ? 'Ativa' : 'Desativada'}
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isVideoOn ? 'text-slate-300' : 'text-rose-400'}`}>
+                          Câmera<br />{isVideoOn ? 'Ativa' : 'Desativada'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* BOTÃO COMPARTILHAR TELA */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={toggleScreenShare}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
                           isScreenSharing
-                            ? 'bg-amber-500/20 border border-amber-400 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-pulse'
-                            : 'bg-slate-900/85 border border-cyan-500/40 hover:border-cyan-300 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                            ? 'bg-amber-500/25 border border-amber-400 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.5)] animate-pulse'
+                            : 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
                         }`}
                         title="Compartilhar Tela"
                       >
                         <Monitor className="w-5 h-5 stroke-[2.2]" />
                       </button>
-                      <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isScreenSharing ? 'text-amber-300' : 'text-slate-300'}`}>
-                        Compartir<br />Tela
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isScreenSharing ? 'text-amber-300' : 'text-slate-300'}`}>
+                          Compartir<br />Tela
+                        </span>
+                      </div>
                     </div>
 
                     {/* BOTÃO REAÇÕES DE EMOJIS */}
-                    <div className="relative flex flex-col items-center gap-1.5">
+                    <div className="relative flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={() => setShowEmojiPicker(prev => !prev)}
-                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-900/85 border border-amber-500/40 hover:border-amber-300 text-amber-400 backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-900/40 hover:bg-slate-900/60 border border-amber-400/50 hover:border-amber-300 text-amber-400 backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.25)]"
                         title="Enviar Reação"
                       >
                         <Smile className="w-5 h-5 stroke-[2.2]" />
                       </button>
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-300 leading-tight text-center">
-                        Reações
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-300 leading-tight text-center">
+                          Reações
+                        </span>
+                      </div>
 
                       {/* POPOVER DE SELEÇÃO DE EMOJIS */}
                       {showEmojiPicker && (
@@ -1774,30 +1782,32 @@ Dicas:
                     </div>
 
                     {/* BOTÃO LEVANTAR A MÃO */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={toggleHandRaise}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
                           isHandRaised
-                            ? 'bg-amber-500/25 border border-amber-400 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-pulse'
-                            : 'bg-slate-900/85 border border-cyan-500/40 hover:border-cyan-300 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                            ? 'bg-amber-500/30 border border-amber-400 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.5)] animate-pulse'
+                            : 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
                         }`}
                         title="Levantar a Mão para Pedir a Palavra"
                       >
                         <Hand className={`w-5 h-5 stroke-[2.2] ${isHandRaised ? 'fill-amber-300' : ''}`} />
                       </button>
-                      <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isHandRaised ? 'text-amber-300' : 'text-slate-300'}`}>
-                        Pedir<br />Palavra
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isHandRaised ? 'text-amber-300' : 'text-slate-300'}`}>
+                          Pedir<br />Palavra
+                        </span>
+                      </div>
                     </div>
 
                     {/* BOTÃO TELA CHEIA */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={toggleFullscreen}
-                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-900/85 border border-cyan-500/40 hover:border-cyan-300 text-cyan-300 backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.25)]"
                         title="Alternar Modo Tela Cheia"
                       >
                         {isFullscreen ? (
@@ -1806,24 +1816,28 @@ Dicas:
                           <Maximize2 className="w-5 h-5 stroke-[2.2]" />
                         )}
                       </button>
-                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-300 leading-tight text-center">
-                        Tela<br />Cheia
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-300 leading-tight text-center">
+                          Tela<br />Cheia
+                        </span>
+                      </div>
                     </div>
 
                     {/* BOTÃO ENCERRAR AULA (SAIR) */}
-                    <div className="flex flex-col items-center gap-1.5">
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
                       <button
                         type="button"
                         onClick={handleEndClass}
-                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-rose-950/90 border border-rose-500/60 hover:bg-rose-900 text-rose-400 hover:text-rose-200 backdrop-blur-xl flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(244,63,94,0.35)]"
+                        className="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-rose-950/40 hover:bg-rose-900/70 border border-rose-500/70 text-rose-400 hover:text-rose-200 backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer shadow-[0_0_20px_rgba(244,63,94,0.35)]"
                         title="Encerrar Aula e Sair da Sala"
                       >
                         <LogOut className="w-5 h-5 stroke-[2.2]" />
                       </button>
-                      <span className="text-[10px] sm:text-[11px] font-bold text-rose-400 leading-tight text-center">
-                        Sair
-                      </span>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-rose-400 leading-tight text-center">
+                          Sair
+                        </span>
+                      </div>
                     </div>
 
                   </div>
