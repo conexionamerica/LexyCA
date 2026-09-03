@@ -291,143 +291,61 @@ export default function ClassroomPage() {
     document.body.appendChild(script);
   }, []);
 
-  // ── HOOK DE FUNDO VIRTUAL E DESFOQUE EM TEMPO REAL (SEM TELA PRETA) ──
+  // ── FUNÇÃO PARA APLICAR EFEITOS E FILTROS DE FUNDO EM TEMPO REAL ──
+  const getVirtualBgStyles = useCallback(() => {
+    switch (virtualBgMode) {
+      case 'blur_light':
+        return {
+          videoFilter: 'blur(8px) contrast(1.05) brightness(1.02)',
+          bgClass: 'bg-cyan-950/80 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+        };
+      case 'blur_heavy':
+        return {
+          videoFilter: 'blur(20px) contrast(1.1) brightness(1.05)',
+          bgClass: 'bg-slate-950/90 shadow-[0_0_20px_rgba(15,23,42,0.5)]'
+        };
+      case 'studio':
+        return {
+          videoFilter: 'contrast(1.18) saturate(1.3) brightness(1.08)',
+          bgClass: 'bg-gradient-to-br from-slate-950 via-cyan-950 to-sky-900 shadow-[0_0_30px_rgba(6,182,212,0.5)]'
+        };
+      case 'office':
+        return {
+          videoFilter: 'sepia(0.15) contrast(1.15) brightness(0.95)',
+          bgClass: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 shadow-[0_0_20px_rgba(51,65,85,0.4)]'
+        };
+      case 'library':
+        return {
+          videoFilter: 'sepia(0.3) contrast(1.2) brightness(0.9)',
+          bgClass: 'bg-gradient-to-br from-stone-950 via-amber-950 to-stone-900 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+        };
+      default:
+        return {
+          videoFilter: 'none',
+          bgClass: 'bg-slate-950'
+        };
+    }
+  }, [virtualBgMode]);
+
+  const currentBgTheme = getVirtualBgStyles();
+
+  // Callback ref para garantir atribuição imediata de srcObject ao elemento de vídeo local
+  const localVideoCallback = useCallback((videoEl) => {
+    localVideoRef.current = videoEl;
+    if (videoEl && localStream) {
+      videoEl.srcObject = localStream;
+      videoEl.play().catch(() => {});
+      console.log('📹 srcObject da câmera local atribuído com sucesso!');
+    }
+  }, [localStream]);
+
+  // Safety net: re-atribuir srcObject se localStream atualizar
   useEffect(() => {
-    if (!localStream) return;
-
-    const rawVideoTrack = localStream.getVideoTracks()[0];
-    if (!rawVideoTrack) return;
-
-    if (virtualBgMode === 'none') {
-      // Restaurar transmissão normal sem filtros
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream;
-        localVideoRef.current.play().catch(() => {});
-      }
-      if (pcRef.current) {
-        const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender && rawVideoTrack) {
-          sender.replaceTrack(rawVideoTrack).catch(() => {});
-        }
-      }
-      return;
-    }
-
-    let isCancelled = false;
-    let animId = null;
-
-    // Elemento de vídeo decodificador invisível no DOM (Garante decodificação de quadros em 100% dos navegadores)
-    let hiddenVideo = document.getElementById('lexy-hidden-bg-video');
-    if (!hiddenVideo) {
-      hiddenVideo = document.createElement('video');
-      hiddenVideo.id = 'lexy-hidden-bg-video';
-      hiddenVideo.style.position = 'fixed';
-      hiddenVideo.style.top = '-9999px';
-      hiddenVideo.style.left = '-9999px';
-      hiddenVideo.style.width = '640px';
-      hiddenVideo.style.height = '480px';
-      hiddenVideo.style.opacity = '0.001';
-      hiddenVideo.style.pointerEvents = 'none';
-      document.body.appendChild(hiddenVideo);
-    }
-
-    hiddenVideo.srcObject = localStream;
-    hiddenVideo.muted = true;
-    hiddenVideo.playsInline = true;
-    hiddenVideo.autoplay = true;
-    hiddenVideo.play().catch(() => {});
-
-    const canvas = bgCanvasRef.current;
-    canvas.width = 640;
-    canvas.height = 480;
-    const ctx = canvas.getContext('2d');
-
-    // Preset de gradientes e fundos embutidos
-    const drawBackgroundPreset = () => {
-      if (virtualBgMode === 'blur_light') {
-        ctx.filter = 'blur(12px)';
-        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-        ctx.filter = 'none';
-      } else if (virtualBgMode === 'blur_heavy') {
-        ctx.filter = 'blur(28px)';
-        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-        ctx.filter = 'none';
-      } else if (virtualBgMode === 'studio') {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        grad.addColorStop(0, '#090d16');
-        grad.addColorStop(0.5, '#083344');
-        grad.addColorStop(1, '#0284c7');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else if (virtualBgMode === 'office') {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        grad.addColorStop(0, '#1e293b');
-        grad.addColorStop(0.5, '#334155');
-        grad.addColorStop(1, '#0f172a');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else if (virtualBgMode === 'library') {
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        grad.addColorStop(0, '#1c1917');
-        grad.addColorStop(0.5, '#44403c');
-        grad.addColorStop(1, '#0c0a09');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else {
-        ctx.filter = 'blur(16px)';
-        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-        ctx.filter = 'none';
-      }
-    };
-
-    const renderLoop = () => {
-      if (isCancelled) return;
-
-      if (hiddenVideo.readyState >= 2 && hiddenVideo.videoWidth > 0) {
-        ctx.save();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 1. Desenhar o fundo (desfocado ou gradiente de estúdio)
-        drawBackgroundPreset();
-
-        // 2. Sobrepor a pessoa
-        ctx.globalAlpha = 0.95;
-        ctx.drawImage(hiddenVideo, 0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
-
-        ctx.restore();
-      }
-
-      animId = requestAnimationFrame(renderLoop);
-    };
-
-    renderLoop();
-
-    // Capturar o fluxo do canvas e atribuir tanto ao vídeo local quanto ao WebRTC
-    const processedCanvasStream = canvas.captureStream(30);
-    const processedVideoTrack = processedCanvasStream.getVideoTracks()[0];
-
-    if (localVideoRef.current && processedVideoTrack) {
-      const combinedStream = new MediaStream([processedVideoTrack]);
-      if (localStream.getAudioTracks()[0]) {
-        combinedStream.addTrack(localStream.getAudioTracks()[0]);
-      }
-      localVideoRef.current.srcObject = combinedStream;
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
       localVideoRef.current.play().catch(() => {});
     }
-
-    if (pcRef.current && processedVideoTrack) {
-      const sender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
-      if (sender) {
-        sender.replaceTrack(processedVideoTrack).catch(() => {});
-      }
-    }
-
-    return () => {
-      isCancelled = true;
-      if (animId) cancelAnimationFrame(animId);
-    };
-  }, [localStream, virtualBgMode]);
+  }, [localStream, hasJoinedRoom]);
 
   // ── HOOK DE CANCELAMENTO ATIVO DE RUÍDO DSP EM TEMPO REAL ──
   useEffect(() => {
@@ -1769,11 +1687,12 @@ Dicas:
                     /* MODO INVERTIDO (SUA CÂMERA NA TELA GRANDE) */
                     isVideoOn ? (
                       <video
-                        ref={localVideoRef}
+                        ref={localVideoCallback}
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]"
+                        style={{ filter: currentBgTheme.videoFilter }}
+                        className="w-full h-full object-cover rounded-2xl transform scale-x-[-1] transition-all duration-300"
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center space-y-3 p-6">
@@ -1808,7 +1727,7 @@ Dicas:
                   {/* ── MINIATURA PIP QUADRO PEQUENO (SUA CÂMERA LOCAL "VOCÊ") ── */}
                   <div
                     onClick={() => setIsSwapped(prev => !prev)}
-                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl bg-slate-950 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
+                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl ${currentBgTheme.bgClass} overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
                       (!isSwapped ? isSpeaking : isRemoteSpeaking)
                         ? 'border-4 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.9)] ring-4 ring-cyan-400/50 animate-pulse'
                         : 'border-2 border-cyan-500/40 hover:border-cyan-300'
@@ -1818,11 +1737,12 @@ Dicas:
                     {!isSwapped ? (
                       isVideoOn ? (
                         <video
-                          ref={localVideoRef}
+                          ref={localVideoCallback}
                           autoPlay
                           playsInline
                           muted
-                          className="w-full h-full object-cover transform scale-x-[-1]"
+                          style={{ filter: currentBgTheme.videoFilter }}
+                          className="w-full h-full object-cover transform scale-x-[-1] transition-all duration-300"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-2 text-center">
