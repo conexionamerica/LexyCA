@@ -137,6 +137,27 @@ export default function ClassroomPage() {
 
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+
+  // ── CALLBACK REFS PARA ATRIBUIÇÃO INSTANTÂNEA E SEGURA DE ELEMENTOS <video> ──
+  const localVideoCallback = useCallback((videoEl) => {
+    localVideoRef.current = videoEl;
+    if (videoEl && localStream) {
+      videoEl.srcObject = localStream;
+      videoEl.muted = true;
+      videoEl.play().catch(() => {});
+    }
+  }, [localStream]);
+
+  const remoteVideoCallback = useCallback((videoEl) => {
+    remoteVideoRef.current = videoEl;
+    if (videoEl && remoteStream) {
+      videoEl.srcObject = remoteStream;
+      videoEl.muted = false;
+      videoEl.volume = 1.0;
+      videoEl.play().catch(() => {});
+      console.log('[VIDEO] srcObject e áudio HD atribuídos via callback ref');
+    }
+  }, [remoteStream]);
   const [remoteVideoFrame, setRemoteVideoFrame] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   const [isRemoteVideoActive, setIsRemoteVideoActive] = useState(false);
@@ -280,15 +301,6 @@ export default function ClassroomPage() {
 
   // ── ESTADO DE CANCELAMENTO DE RUÍDO DSP ──
   const [isNoiseFilterActive, setIsNoiseFilterActive] = useState(true);
-
-  // Callback ref para atribuição imediata e segura do elemento de vídeo local
-  const localVideoCallback = useCallback((videoEl) => {
-    localVideoRef.current = videoEl;
-    if (videoEl && localStream) {
-      videoEl.srcObject = localStream;
-      videoEl.play().catch(() => {});
-    }
-  }, [localStream]);
 
   // ── HOOK DE ATRIBUIÇÃO DIRETA DE VÍDEO (100% FLUIDO A 60 FPS) ──
   useEffect(() => {
@@ -977,19 +989,6 @@ export default function ClassroomPage() {
       console.warn('Erro durante ICE Restart:', err);
     }
   }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
-
-  // ── ATRIBUIR remoteStream ao elemento <video> remoto DE FORMA ROBUSTA ──
-  // Callback ref: é chamado SEMPRE que o elemento <video> é montado no DOM
-  const remoteVideoCallback = useCallback((videoEl) => {
-    remoteVideoRef.current = videoEl;
-    if (videoEl && remoteStream) {
-      videoEl.srcObject = remoteStream;
-      videoEl.muted = false;
-      videoEl.volume = 1.0;
-      videoEl.play().catch(() => {});
-      console.log('[VIDEO] srcObject e áudio HD atribuídos via callback ref');
-    }
-  }, [remoteStream]);
 
   // Safety net: re-assign srcObject whenever remoteStream changes
   useEffect(() => {
