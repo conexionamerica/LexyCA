@@ -436,9 +436,18 @@ export default function ClassroomPage() {
 
       if (hiddenVideo.readyState >= 2 && hiddenVideo.videoWidth > 0) {
         if (selfieSegmentationRef.current) {
-          selfieSegmentationRef.current.send({ image: hiddenVideo }).catch(() => {});
-        } else {
-          // Máscara Radial de Foco Central: Rosto e corpo 100% NÍTIDOS no centro + Fundo da sala desfocado
+          try {
+            selfieSegmentationRef.current.send({ image: hiddenVideo }).catch((err) => {
+              console.warn('MediaPipe WebGL WASM desativado por falha no navegador:', err);
+              selfieSegmentationRef.current = null;
+            });
+          } catch (e) {
+            selfieSegmentationRef.current = null;
+          }
+        }
+
+        // Se o MediaPipe não estiver disponível ou tiver falhado no WebGL, renderizar via Canvas NATIVO de alta velocidade
+        if (!selfieSegmentationRef.current) {
           const w = canvas.width = 640;
           const h = canvas.height = 480;
 
@@ -446,9 +455,40 @@ export default function ClassroomPage() {
           ctx.clearRect(0, 0, w, h);
 
           // 1. Desenhar o fundo totalmente desfocado (porta, estante, sala)
-          ctx.filter = virtualBgMode === 'blur_heavy' ? 'blur(26px)' : 'blur(14px)';
-          ctx.drawImage(hiddenVideo, 0, 0, w, h);
-          ctx.filter = 'none';
+          if (virtualBgMode === 'blur_light') {
+            ctx.filter = 'blur(12px)';
+            ctx.drawImage(hiddenVideo, 0, 0, w, h);
+            ctx.filter = 'none';
+          } else if (virtualBgMode === 'blur_heavy') {
+            ctx.filter = 'blur(26px)';
+            ctx.drawImage(hiddenVideo, 0, 0, w, h);
+            ctx.filter = 'none';
+          } else if (virtualBgMode === 'studio') {
+            const grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, '#090d16');
+            grad.addColorStop(0.5, '#083344');
+            grad.addColorStop(1, '#0284c7');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+          } else if (virtualBgMode === 'office') {
+            const grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, '#1e293b');
+            grad.addColorStop(0.5, '#334155');
+            grad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+          } else if (virtualBgMode === 'library') {
+            const grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, '#1c1917');
+            grad.addColorStop(0.5, '#44403c');
+            grad.addColorStop(1, '#0c0a09');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+          } else {
+            ctx.filter = 'blur(14px)';
+            ctx.drawImage(hiddenVideo, 0, 0, w, h);
+            ctx.filter = 'none';
+          }
 
           // 2. Isolar o centro da câmera (Rosto do Usuário 100% Nítido)
           pCtx.save();
