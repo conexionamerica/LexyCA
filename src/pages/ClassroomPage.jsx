@@ -273,61 +273,8 @@ export default function ClassroomPage() {
     };
   }, [remoteStream, isRemoteConnected]);
 
-  // ── ESTADOS DE FUNDO VIRTUAL E CANCELAMENTO DE RUÍDO DSP ──
-  const [virtualBgMode, setVirtualBgMode] = useState('none'); // 'none', 'blur_light', 'blur_heavy', 'library', 'office', 'studio'
-  const [showBgPicker, setShowBgPicker] = useState(false);
+  // ── ESTADO DE CANCELAMENTO DE RUÍDO DSP ──
   const [isNoiseFilterActive, setIsNoiseFilterActive] = useState(true);
-  const bgCanvasRef = useRef(document.createElement('canvas'));
-  const personCanvasRef = useRef(document.createElement('canvas'));
-
-  // Purga e limpeza imediata de scripts legados MediaPipe em cache no navegador do usuário
-  useEffect(() => {
-    try {
-      if (window.SelfieSegmentation) {
-        delete window.SelfieSegmentation;
-      }
-      const legacyScripts = document.querySelectorAll('script[src*="selfie_segmentation"]');
-      legacyScripts.forEach(s => s.remove());
-    } catch(e) {}
-  }, []);
-
-  // Função para retornar estilos de filtro de fundo GPU em tempo real
-  const getVirtualBgStyles = useCallback(() => {
-    switch (virtualBgMode) {
-      case 'blur_light':
-        return {
-          videoFilter: 'blur(12px) contrast(1.08) brightness(1.02)',
-          containerBg: 'bg-cyan-950/80 ring-4 ring-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.5)]'
-        };
-      case 'blur_heavy':
-        return {
-          videoFilter: 'blur(28px) contrast(1.15) brightness(1.05)',
-          containerBg: 'bg-slate-950/90 ring-4 ring-slate-700/50 shadow-[0_0_35px_rgba(15,23,42,0.7)]'
-        };
-      case 'studio':
-        return {
-          videoFilter: 'blur(16px) contrast(1.25) saturate(1.4) brightness(1.1)',
-          containerBg: 'bg-gradient-to-br from-slate-950 via-cyan-950 to-sky-900 ring-4 ring-cyan-400 shadow-[0_0_40px_rgba(6,182,212,0.7)]'
-        };
-      case 'office':
-        return {
-          videoFilter: 'blur(18px) sepia(0.2) contrast(1.18) brightness(0.95)',
-          containerBg: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 ring-4 ring-slate-500 shadow-[0_0_30px_rgba(51,65,85,0.6)]'
-        };
-      case 'library':
-        return {
-          videoFilter: 'blur(20px) sepia(0.35) contrast(1.25) brightness(0.9)',
-          containerBg: 'bg-gradient-to-br from-stone-950 via-amber-950 to-stone-900 ring-4 ring-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.5)]'
-        };
-      default:
-        return {
-          videoFilter: 'none',
-          containerBg: 'bg-slate-950'
-        };
-    }
-  }, [virtualBgMode]);
-
-  const currentBgTheme = getVirtualBgStyles();
 
   // Callback ref para atribuição imediata e segura do elemento de vídeo local
   const localVideoCallback = useCallback((videoEl) => {
@@ -338,13 +285,13 @@ export default function ClassroomPage() {
     }
   }, [localStream]);
 
-  // ── HOOK DE ATRIBUIÇÃO DIRETA DE VÍDEO (100% FLUIDO - IMPOSSÍVEL TRAVAR OU PARECER FOTO) ──
+  // ── HOOK DE ATRIBUIÇÃO DIRETA DE VÍDEO (100% FLUIDO A 60 FPS) ──
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
       localVideoRef.current.play().catch(() => {});
     }
-  }, [localStream, virtualBgMode]);
+  }, [localStream]);
 
   // ── HOOK DE CANCELAMENTO ATIVO DE RUÍDO DSP EM TEMPO REAL ──
   useEffect(() => {
@@ -1690,7 +1637,6 @@ Dicas:
                         autoPlay
                         playsInline
                         muted
-                        style={{ filter: currentBgTheme.videoFilter }}
                         className="w-full h-full object-cover rounded-2xl transform scale-x-[-1] transition-all duration-300"
                       />
                     ) : (
@@ -1725,7 +1671,7 @@ Dicas:
                   {/* ── MINIATURA PIP QUADRO PEQUENO (SUA CÂMERA LOCAL "VOCÊ") ── */}
                   <div
                     onClick={() => setIsSwapped(prev => !prev)}
-                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl ${currentBgTheme.containerBg} overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
+                    className={`absolute bottom-20 right-3 sm:bottom-20 sm:right-4 w-36 h-26 sm:w-48 sm:h-34 rounded-2xl bg-slate-950 overflow-hidden shadow-2xl z-20 flex items-center justify-center cursor-pointer group hover:scale-105 transition-all duration-300 ${
                       (!isSwapped ? isSpeaking : isRemoteSpeaking)
                         ? 'border-4 border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.9)] ring-4 ring-cyan-400/50 animate-pulse'
                         : 'border-2 border-cyan-500/40 hover:border-cyan-300'
@@ -1739,7 +1685,6 @@ Dicas:
                           autoPlay
                           playsInline
                           muted
-                          style={{ filter: currentBgTheme.videoFilter }}
                           className="w-full h-full object-cover transform scale-x-[-1] transition-all duration-300"
                         />
                       ) : (
@@ -1854,89 +1799,6 @@ Dicas:
                         </span>
                       </div>
                     </div>
-
-                    {/* BOTÃO FUNDO VIRTUAL */}
-                    <div className="relative flex flex-col items-center gap-1.5 w-14 sm:w-16">
-                      <button
-                        type="button"
-                        onClick={() => setShowBgPicker(prev => !prev)}
-                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
-                          virtualBgMode !== 'none'
-                            ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_25px_rgba(6,182,212,0.5)] animate-pulse'
-                            : 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
-                        }`}
-                        title="Fundo Virtual e Desfoque"
-                      >
-                        <Sparkles className="w-5 h-5 stroke-[2.2]" />
-                      </button>
-                      <div className="h-7 sm:h-8 flex items-center justify-center">
-                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${virtualBgMode !== 'none' ? 'text-cyan-300' : 'text-slate-300'}`}>
-                          Fundo<br />Virtual
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* MODAL / POPOVER FLOANTE PARA SELEÇÃO DE FUNDO VIRTUAL */}
-                    {showBgPicker && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
-                        <div className="bg-slate-900 border border-cyan-500/50 p-4 sm:p-5 rounded-3xl shadow-2xl w-full max-w-sm space-y-4 animate-scale-in">
-                          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-cyan-300">
-                              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 animate-pulse" />
-                              <span>Efeitos de Fundo e Filtros de Câmera</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setShowBgPicker(false)}
-                              className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs cursor-pointer"
-                            >
-                              ✕
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2.5 text-xs font-bold">
-                            {[
-                              { id: 'none', label: '🚫 Sem Fundo', desc: 'Câmera Normal' },
-                              { id: 'blur_light', label: '🌫️ Desfoque Suave', desc: 'Fundo Desfocado Leve' },
-                              { id: 'blur_heavy', label: '🌫️ Desfoque Forte', desc: 'Fundo Desfocado Privado' },
-                              { id: 'studio', label: '🌆 Estúdio Neón', desc: 'Luz Neón de Estúdio' },
-                              { id: 'office', label: '🏢 Escritório', desc: 'Ambiente Executivo' },
-                              { id: 'library', label: '📚 Biblioteca', desc: 'Ambiente de Estudos' },
-                            ].map((bg) => (
-                              <button
-                                key={bg.id}
-                                type="button"
-                                onClick={() => {
-                                  setVirtualBgMode(bg.id);
-                                  setShowBgPicker(false);
-                                }}
-                                className={`p-2.5 sm:p-3 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer transform hover:scale-105 active:scale-95 ${
-                                  virtualBgMode === bg.id
-                                    ? 'bg-gradient-to-br from-cyan-500/30 to-sky-500/20 border-cyan-400 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-2 ring-cyan-400'
-                                    : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-cyan-500/50 hover:bg-slate-800/60'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="font-extrabold text-xs sm:text-sm">{bg.label}</span>
-                                  {virtualBgMode === bg.id && <span className="text-cyan-400 font-black">✓</span>}
-                                </div>
-                                <span className="text-[10px] text-slate-400 font-medium">{bg.desc}</span>
-                              </button>
-                            ))}
-                          </div>
-
-                          <div className="pt-1 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setShowBgPicker(false)}
-                              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-2.5 rounded-xl cursor-pointer transition-colors"
-                            >
-                              Concluir Seleção
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* BOTÃO FILTRO ANTI-RUÍDO DSP */}
                     <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
