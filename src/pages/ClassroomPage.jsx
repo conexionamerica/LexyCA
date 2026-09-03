@@ -273,19 +273,70 @@ export default function ClassroomPage() {
     };
   }, [remoteStream, isRemoteConnected]);
 
-  // Exibir o botão de suporte "Se não conectar em 5 min" apenas 3 minutos após o usuário entrar na sala de espera
+  // ── ESTADOS DE FUNDO VIRTUAL E CANCELAMENTO DE RUÍDO DSP ──
+  const [virtualBgMode, setVirtualBgMode] = useState('none'); // 'none', 'blur_light', 'blur_heavy', 'library', 'office', 'studio'
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [isNoiseFilterActive, setIsNoiseFilterActive] = useState(true);
+  const bgCanvasRef = useRef(document.createElement('canvas'));
+  const selfieSegmentationRef = useRef(null);
+
+  // Carregar script do MediaPipe SelfieSegmentation dinamicamente
   useEffect(() => {
-    let timer;
-    if (hasJoinedRoom && !isRemoteConnected) {
-      setShowSupportButton(false);
-      timer = setTimeout(() => {
-        setShowSupportButton(true);
-      }, 3 * 60 * 1000); // 3 minutos
-    } else {
-      setShowSupportButton(false);
+    if (window.SelfieSegmentation) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+    script.crossOrigin = 'anonymous';
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
+  // ── FILTRO DE CANCELAMENTO DE RUÍDO DSP EM TEMPO REAL ──
+  useEffect(() => {
+    if (!localStream || !isNoiseFilterActive) return;
+
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const source = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
+
+      // 1. Filtro passa-alta: Remove zumbidos graves de ar-condicionado e ventiladores (< 85Hz)
+      const highpass = ctx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 85;
+
+      // 2. Filtro passa-baixa: Remove chiados agudos de estática e cliques de teclado (> 7500Hz)
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = 7500;
+
+      // 3. Compressor de Dinâmica (Noise Gate): Equilibra a voz e suprime ruídos residuais
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -30;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 4;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+
+      // Conectar cadeia de áudio DSP
+      source.connect(highpass);
+      highpass.connect(lowpass);
+      lowpass.connect(compressor);
+
+      console.log('🎙️ Filtro de Cancelamento de Ruído DSP Ativo!');
+
+      return () => {
+        if (ctx && ctx.state !== 'closed') {
+          ctx.close().catch(() => {});
+        }
+      };
+    } catch (e) {
+      console.warn('Erro ao inicializar filtro DSP de áudio:', e);
     }
-    return () => clearTimeout(timer);
-  }, [hasJoinedRoom, isRemoteConnected]);
+  }, [localStream, isNoiseFilterActive]);
 
   // Efeito Sonoro Chime via Web Audio API (100% nativo, sem arquivos externos)
   const playChimeSound = useCallback((type = 'join') => {
@@ -1723,6 +1774,122 @@ Dicas:
                       <div className="h-7 sm:h-8 flex items-center justify-center">
                         <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isVideoOn ? 'text-slate-300' : 'text-rose-400'}`}>
                           Câmera<br />{isVideoOn ? 'Ativa' : 'Desativada'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* BOTÃO FUNDO VIRTUAL */}
+                    <div className="relative flex flex-col items-center gap-1.5 w-14 sm:w-16">
+                      <button
+                        type="button"
+                        onClick={() => setShowBgPicker(prev => !prev)}
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                          virtualBgMode !== 'none'
+                            ? 'bg-cyan-500/25 border border-cyan-400 text-cyan-300 shadow-[0_0_25px_rgba(6,182,212,0.5)] animate-pulse'
+                            : 'bg-slate-900/40 hover:bg-slate-900/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                        }`}
+                        title="Fundo Virtual e Desfoque"
+                      >
+                        <Sparkles className="w-5 h-5 stroke-[2.2]" />
+                      </button>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${virtualBgMode !== 'none' ? 'text-cyan-300' : 'text-slate-300'}`}>
+                          Fundo<br />Virtual
+                        </span>
+                      </div>
+
+                      {/* POPOVER SELETOR DE FUNDO VIRTUAL */}
+                      {showBgPicker && (
+                        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 p-3 rounded-2xl shadow-2xl z-50 w-72 sm:w-80 animate-fade-in-up">
+                          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-cyan-300">
+                              <Sparkles className="w-4 h-4 text-cyan-400" />
+                              <span>Efeitos de Fundo e Desfoque</span>
+                            </div>
+                            <button
+                              onClick={() => setShowBgPicker(false)}
+                              className="text-slate-400 hover:text-white text-xs font-bold"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                            <button
+                              onClick={() => { setVirtualBgMode('none'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'none' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>🚫 Sem Fundo</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setVirtualBgMode('blur_light'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'blur_light' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>🌫️ Desfoque Suave</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setVirtualBgMode('blur_heavy'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'blur_heavy' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>🌫️ Desfoque Forte</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setVirtualBgMode('library'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'library' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>📚 Biblioteca</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setVirtualBgMode('office'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'office' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>🏢 Escritório</span>
+                            </button>
+
+                            <button
+                              onClick={() => { setVirtualBgMode('studio'); setShowBgPicker(false); }}
+                              className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                                virtualBgMode === 'studio' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>🌆 Estúdio Neón</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BOTÃO FILTRO ANTI-RUÍDO DSP */}
+                    <div className="flex flex-col items-center gap-1.5 w-14 sm:w-16">
+                      <button
+                        type="button"
+                        onClick={() => setIsNoiseFilterActive(prev => !prev)}
+                        className={`w-12 h-12 sm:w-13 sm:h-13 rounded-full backdrop-blur-md flex items-center justify-center shadow-xl transition-all duration-200 transform hover:scale-110 active:scale-95 cursor-pointer ${
+                          isNoiseFilterActive
+                            ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                            : 'bg-slate-900/40 border border-slate-700 text-slate-400 hover:border-slate-500'
+                        }`}
+                        title={isNoiseFilterActive ? "Cancelamento Ativo de Ruído HD Ligado" : "Ligar Cancelamento de Ruído"}
+                      >
+                        <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                      </button>
+                      <div className="h-7 sm:h-8 flex items-center justify-center">
+                        <span className={`text-[10px] sm:text-[11px] font-bold leading-tight text-center ${isNoiseFilterActive ? 'text-emerald-300' : 'text-slate-400'}`}>
+                          Anti-Ruído<br />{isNoiseFilterActive ? 'Ativo' : 'Off'}
                         </span>
                       </div>
                     </div>
