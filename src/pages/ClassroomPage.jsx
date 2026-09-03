@@ -138,26 +138,23 @@ export default function ClassroomPage() {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
 
-  // ── CALLBACK REFS PARA ATRIBUIÇÃO INSTANTÂNEA E SEGURA DE ELEMENTOS <video> ──
-  const localVideoCallback = useCallback((videoEl) => {
-    localVideoRef.current = videoEl;
-    if (videoEl && localStream) {
-      videoEl.srcObject = localStream;
-      videoEl.muted = true;
-      videoEl.play().catch(() => {});
+  // ── HOOKS DE ATRIBUIÇÃO DE STREAM LOCAL E REMOTO A ELEMENTOS DE VÍDEO ──
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.muted = true;
+      localVideoRef.current.play().catch(() => {});
     }
-  }, [localStream]);
+  }, [localStream, isVideoOn, hasJoinedRoom, isSwapped]);
 
-  const remoteVideoCallback = useCallback((videoEl) => {
-    remoteVideoRef.current = videoEl;
-    if (videoEl && remoteStream) {
-      videoEl.srcObject = remoteStream;
-      videoEl.muted = false;
-      videoEl.volume = 1.0;
-      videoEl.play().catch(() => {});
-      console.log('[VIDEO] srcObject e áudio HD atribuídos via callback ref');
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.muted = false;
+      remoteVideoRef.current.volume = 1.0;
+      remoteVideoRef.current.play().catch(() => {});
     }
-  }, [remoteStream]);
+  }, [remoteStream, isRemoteConnected, isSwapped]);
   const [remoteVideoFrame, setRemoteVideoFrame] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   const [isRemoteVideoActive, setIsRemoteVideoActive] = useState(false);
@@ -1627,7 +1624,7 @@ Dicas:
                       {/* VÍDEO REMOTO DA CÂMERA DO OUTRO PARTICIPANTE (EXIBIDO APENAS QUANDO PIXELS REAIS ESTIVEREM ATIVOS) */}
                       {isRemoteConnected && remoteStream && (
                         <video
-                          ref={remoteVideoCallback}
+                          ref={remoteVideoRef}
                           autoPlay
                           playsInline
                           muted={false}
@@ -1712,7 +1709,7 @@ Dicas:
                     /* MODO INVERTIDO (SUA CÂMERA NA TELA GRANDE) */
                     isVideoOn ? (
                       <video
-                        ref={localVideoCallback}
+                        ref={localVideoRef}
                         autoPlay
                         playsInline
                         muted
@@ -1760,7 +1757,7 @@ Dicas:
                     {!isSwapped ? (
                       isVideoOn ? (
                         <video
-                          ref={localVideoCallback}
+                          ref={localVideoRef}
                           autoPlay
                           playsInline
                           muted
@@ -1782,7 +1779,7 @@ Dicas:
                       /* QUANDO INVERTIDO: EXIBE A MINIATURA DO OUTRO PARTICIPANTE */
                       isRemoteConnected && remoteStream ? (
                         <video
-                          ref={remoteVideoCallback}
+                          ref={remoteVideoRef}
                           autoPlay
                           playsInline
                           muted={false}
