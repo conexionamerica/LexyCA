@@ -278,19 +278,6 @@ export default function ClassroomPage() {
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [isNoiseFilterActive, setIsNoiseFilterActive] = useState(true);
   const bgCanvasRef = useRef(document.createElement('canvas'));
-  const selfieSegmentationRef = useRef(null);
-
-  // Carregar script do MediaPipe SelfieSegmentation dinamicamente
-  useEffect(() => {
-    if (window.SelfieSegmentation) return;
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
-    script.crossOrigin = 'anonymous';
-    script.async = true;
-    document.body.appendChild(script);
-  }, []);
-
   const personCanvasRef = useRef(document.createElement('canvas'));
 
   // Callback ref para atribuição imediata e segura do elemento de vídeo local
@@ -302,7 +289,7 @@ export default function ClassroomPage() {
     }
   }, [localStream]);
 
-  // ── HOOK DE SEGMENTAÇÃO DE CORPO E DESFOQUE DE FUNDO (ROSTO NÍTIDO + FUNDO DESFOCADO) ──
+  // ── HOOK DE FUNDO VIRTUAL E DESFOQUE NATIVO (100% ESTÁVEL - ZERO TRAVAMENTOS WASM) ──
   useEffect(() => {
     if (!localStream) return;
 
@@ -326,7 +313,7 @@ export default function ClassroomPage() {
     let isCancelled = false;
     let animId = null;
 
-    // Criar/obter elemento oculto para decodificar o vídeo nativo
+    // Criar/obter elemento oculto no DOM para decodificar o vídeo nativo da câmera
     let hiddenVideo = document.getElementById('lexy-hidden-bg-video');
     if (!hiddenVideo) {
       hiddenVideo = document.createElement('video');
@@ -357,168 +344,80 @@ export default function ClassroomPage() {
     pCanvas.height = 480;
     const pCtx = pCanvas.getContext('2d');
 
-    // Inicializar MediaPipe SelfieSegmentation se já tiver carregado no script
-    if (window.SelfieSegmentation && !selfieSegmentationRef.current) {
-      try {
-        const selfieSeg = new window.SelfieSegmentation({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
-        });
-        selfieSeg.setOptions({ modelSelection: 1, selfSelection: 1 });
-
-        selfieSeg.onResults((results) => {
-          if (isCancelled) return;
-          const w = canvas.width = results.image.width || 640;
-          const h = canvas.height = results.image.height || 480;
-          pCanvas.width = w;
-          pCanvas.height = h;
-
-          ctx.save();
-          ctx.clearRect(0, 0, w, h);
-
-          // 1. Renderizar o fundo desfocado ou cenário
-          if (virtualBgMode === 'blur_light') {
-            ctx.filter = 'blur(10px)';
-            ctx.drawImage(results.image, 0, 0, w, h);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'blur_heavy') {
-            ctx.filter = 'blur(22px)';
-            ctx.drawImage(results.image, 0, 0, w, h);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'studio') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#090d16');
-            grad.addColorStop(0.5, '#083344');
-            grad.addColorStop(1, '#0284c7');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else if (virtualBgMode === 'office') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#1e293b');
-            grad.addColorStop(0.5, '#334155');
-            grad.addColorStop(1, '#0f172a');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else if (virtualBgMode === 'library') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#1c1917');
-            grad.addColorStop(0.5, '#44403c');
-            grad.addColorStop(1, '#0c0a09');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else {
-            ctx.filter = 'blur(14px)';
-            ctx.drawImage(results.image, 0, 0, w, h);
-            ctx.filter = 'none';
-          }
-
-          // 2. Extrair a pessoa nítida (Rosto + Corpo) usando a máscara da silhueta
-          pCtx.save();
-          pCtx.clearRect(0, 0, w, h);
-          pCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-          pCtx.globalCompositeOperation = 'source-in';
-          pCtx.drawImage(results.image, 0, 0, w, h);
-          pCtx.restore();
-
-          // 3. Sobrepor a pessoa 100% nítida em cima do fundo desfocado!
-          ctx.drawImage(pCanvas, 0, 0, w, h);
-
-          ctx.restore();
-        });
-
-        selfieSegmentationRef.current = selfieSeg;
-      } catch (e) {
-        console.warn('Erro ao inicializar SelfieSegmentation:', e);
-      }
-    }
-
     const processLoop = () => {
       if (isCancelled) return;
 
       if (hiddenVideo.readyState >= 2 && hiddenVideo.videoWidth > 0) {
-        if (selfieSegmentationRef.current) {
-          try {
-            selfieSegmentationRef.current.send({ image: hiddenVideo }).catch((err) => {
-              console.warn('MediaPipe WebGL WASM desativado por falha no navegador:', err);
-              selfieSegmentationRef.current = null;
-            });
-          } catch (e) {
-            selfieSegmentationRef.current = null;
-          }
+        const w = canvas.width = 640;
+        const h = canvas.height = 480;
+
+        ctx.save();
+        ctx.clearRect(0, 0, w, h);
+
+        // 1. Renderizar fundo totalmente desfocado (porta, estante, sala)
+        if (virtualBgMode === 'blur_light') {
+          ctx.filter = 'blur(12px)';
+          ctx.drawImage(hiddenVideo, 0, 0, w, h);
+          ctx.filter = 'none';
+        } else if (virtualBgMode === 'blur_heavy') {
+          ctx.filter = 'blur(26px)';
+          ctx.drawImage(hiddenVideo, 0, 0, w, h);
+          ctx.filter = 'none';
+        } else if (virtualBgMode === 'studio') {
+          const grad = ctx.createLinearGradient(0, 0, w, h);
+          grad.addColorStop(0, '#090d16');
+          grad.addColorStop(0.5, '#083344');
+          grad.addColorStop(1, '#0284c7');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+        } else if (virtualBgMode === 'office') {
+          const grad = ctx.createLinearGradient(0, 0, w, h);
+          grad.addColorStop(0, '#1e293b');
+          grad.addColorStop(0.5, '#334155');
+          grad.addColorStop(1, '#0f172a');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+        } else if (virtualBgMode === 'library') {
+          const grad = ctx.createLinearGradient(0, 0, w, h);
+          grad.addColorStop(0, '#1c1917');
+          grad.addColorStop(0.5, '#44403c');
+          grad.addColorStop(1, '#0c0a09');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, w, h);
+        } else {
+          ctx.filter = 'blur(14px)';
+          ctx.drawImage(hiddenVideo, 0, 0, w, h);
+          ctx.filter = 'none';
         }
 
-        // Se o MediaPipe não estiver disponível ou tiver falhado no WebGL, renderizar via Canvas NATIVO de alta velocidade
-        if (!selfieSegmentationRef.current) {
-          const w = canvas.width = 640;
-          const h = canvas.height = 480;
+        // 2. Extração de silhueta central do usuário (Rosto 100% NÍTIDO e FOCADO)
+        pCtx.save();
+        pCtx.clearRect(0, 0, w, h);
 
-          ctx.save();
-          ctx.clearRect(0, 0, w, h);
+        const cx = w / 2;
+        const cy = h / 2 - 10;
+        const rx = w * 0.38;
+        const ry = h * 0.48;
 
-          // 1. Desenhar o fundo totalmente desfocado (porta, estante, sala)
-          if (virtualBgMode === 'blur_light') {
-            ctx.filter = 'blur(12px)';
-            ctx.drawImage(hiddenVideo, 0, 0, w, h);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'blur_heavy') {
-            ctx.filter = 'blur(26px)';
-            ctx.drawImage(hiddenVideo, 0, 0, w, h);
-            ctx.filter = 'none';
-          } else if (virtualBgMode === 'studio') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#090d16');
-            grad.addColorStop(0.5, '#083344');
-            grad.addColorStop(1, '#0284c7');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else if (virtualBgMode === 'office') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#1e293b');
-            grad.addColorStop(0.5, '#334155');
-            grad.addColorStop(1, '#0f172a');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else if (virtualBgMode === 'library') {
-            const grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, '#1c1917');
-            grad.addColorStop(0.5, '#44403c');
-            grad.addColorStop(1, '#0c0a09');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          } else {
-            ctx.filter = 'blur(14px)';
-            ctx.drawImage(hiddenVideo, 0, 0, w, h);
-            ctx.filter = 'none';
-          }
+        const grad = pCtx.createRadialGradient(cx, cy, 30, cx, cy, Math.max(rx, ry));
+        grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+        grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.95)');
+        grad.addColorStop(0.85, 'rgba(0, 0, 0, 0.3)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-          // 2. Isolar o centro da câmera (Rosto do Usuário 100% Nítido)
-          pCtx.save();
-          pCtx.clearRect(0, 0, w, h);
+        pCtx.fillStyle = grad;
+        pCtx.beginPath();
+        pCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        pCtx.fill();
 
-          const cx = w / 2;
-          const cy = h / 2 - 10;
-          const rx = w * 0.38;
-          const ry = h * 0.48;
+        pCtx.globalCompositeOperation = 'source-in';
+        pCtx.drawImage(hiddenVideo, 0, 0, w, h);
+        pCtx.restore();
 
-          const grad = pCtx.createRadialGradient(cx, cy, 30, cx, cy, Math.max(rx, ry));
-          grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-          grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.95)');
-          grad.addColorStop(0.85, 'rgba(0, 0, 0, 0.3)');
-          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        // 3. Sobrepor o rosto nítido por cima do fundo desfocado
+        ctx.drawImage(pCanvas, 0, 0, w, h);
 
-          pCtx.fillStyle = grad;
-          pCtx.beginPath();
-          pCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-          pCtx.fill();
-
-          pCtx.globalCompositeOperation = 'source-in';
-          pCtx.drawImage(hiddenVideo, 0, 0, w, h);
-          pCtx.restore();
-
-          // 3. Sobrepor o rosto nítido por cima do fundo desfocado
-          ctx.drawImage(pCanvas, 0, 0, w, h);
-
-          ctx.restore();
-        }
+        ctx.restore();
       }
 
       animId = requestAnimationFrame(processLoop);
