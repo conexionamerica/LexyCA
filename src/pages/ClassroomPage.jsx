@@ -293,6 +293,15 @@ export default function ClassroomPage() {
 
   const personCanvasRef = useRef(document.createElement('canvas'));
 
+  // Callback ref para atribuição imediata e segura do elemento de vídeo local
+  const localVideoCallback = useCallback((videoEl) => {
+    localVideoRef.current = videoEl;
+    if (videoEl && localStream) {
+      videoEl.srcObject = localStream;
+      videoEl.play().catch(() => {});
+    }
+  }, [localStream]);
+
   // ── HOOK DE SEGMENTAÇÃO DE CORPO E DESFOQUE DE FUNDO (ROSTO NÍTIDO + FUNDO DESFOCADO) ──
   useEffect(() => {
     if (!localStream) return;
