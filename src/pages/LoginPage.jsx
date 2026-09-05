@@ -499,101 +499,25 @@ export default function LoginPage({ forceRole }) {
                   </div>
 
                   {isBrazil ? (
-                    <>
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
-                          <span className="flex items-center gap-1">
-                            <CpfIcon className="w-3.5 h-3.5 text-cyan-400" /> CPF (Residente no Brasil) *
-                          </span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          maxLength={14}
-                          value={cpf}
-                          onChange={handleCpfChange}
-                          placeholder="000.000.000-00"
-                          className={`w-full bg-slate-900 border text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400 ${
-                            cpfError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
-                          }`}
-                        />
-                        {cpfError && <p className="text-[10px] font-bold text-rose-400 mt-1">{cpfError}</p>}
-                      </div>
-
-                      {/* CAMPOS DE ENDEREÇO COMPLETO PARA NOTA FISCAL (NFS-E) E COBRANÇAS ASAAS */}
-                      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-extrabold text-cyan-400 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-cyan-400" /> Endereço para Emissão de Nota Fiscal (NFS-e)
-                          </span>
-                          {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP...</span>}
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="col-span-1">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">CEP *</label>
-                            <input
-                              type="text"
-                              maxLength={9}
-                              value={postalCode}
-                              onChange={handleCepChange}
-                              placeholder="00000-000"
-                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs font-mono font-bold outline-none focus:border-cyan-400"
-                            />
-                          </div>
-
-                          <div className="col-span-2">
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Logradouro / Rua *</label>
-                            <input
-                              type="text"
-                              value={address}
-                              onChange={(e) => setAddress(e.target.value)}
-                              placeholder="Rua / Avenida"
-                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Número *</label>
-                            <input
-                              type="text"
-                              value={addressNumber}
-                              onChange={(e) => setAddressNumber(e.target.value)}
-                              placeholder="123"
-                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Bairro *</label>
-                            <input
-                              type="text"
-                              value={province}
-                              onChange={(e) => setProvince(e.target.value)}
-                              placeholder="Bairro"
-                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Cidade / UF *</label>
-                            <input
-                              type="text"
-                              value={city ? `${city}${state ? ' - ' + state : ''}` : ''}
-                              onChange={(e) => {
-                                const parts = e.target.value.split('-');
-                                setCity(parts[0]?.trim() || '');
-                                if (parts[1]) setState(parts[1].trim());
-                              }}
-                              placeholder="Cidade - UF"
-                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
+                        <span className="flex items-center gap-1">
+                          <CpfIcon className="w-3.5 h-3.5 text-cyan-400" /> CPF (Residente no Brasil) *
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={14}
+                        value={cpf}
+                        onChange={handleCpfChange}
+                        placeholder="000.000.000-00"
+                        className={`w-full bg-slate-900 border text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400 ${
+                          cpfError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
+                        }`}
+                      />
+                      {cpfError && <p className="text-[10px] font-bold text-rose-400 mt-1">{cpfError}</p>}
+                    </div>
                   ) : (
                     <div>
                       <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mb-1">
@@ -609,6 +533,80 @@ export default function LoginPage({ forceRole }) {
                       />
                     </div>
                   )}
+
+                  {/* CAMPOS DE ENDEREÇO COMPLETO PARA NOTA FISCAL (NFS-E) E COBRANÇAS ASAAS (SEMPRE VISÍVEIS NO CADASTRO) */}
+                  <div className="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-4 space-y-3 shadow-lg">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-cyan-400" /> Endereço de Faturamento & Emissão de Nota Fiscal (NFS-e) *
+                      </span>
+                      {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP...</span>}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div className="col-span-1">
+                        <label className="text-[10px] font-bold text-slate-300 block mb-1">CEP *</label>
+                        <input
+                          type="text"
+                          maxLength={9}
+                          value={postalCode}
+                          onChange={handleCepChange}
+                          placeholder="00000-000"
+                          className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs font-mono font-bold outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="text-[10px] font-bold text-slate-300 block mb-1">Logradouro / Rua *</label>
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Rua / Avenida / Alameda"
+                          className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-300 block mb-1">Número *</label>
+                        <input
+                          type="text"
+                          value={addressNumber}
+                          onChange={(e) => setAddressNumber(e.target.value)}
+                          placeholder="123"
+                          className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-300 block mb-1">Bairro *</label>
+                        <input
+                          type="text"
+                          value={province}
+                          onChange={(e) => setProvince(e.target.value)}
+                          placeholder="Bairro"
+                          className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-300 block mb-1">Cidade / UF *</label>
+                        <input
+                          type="text"
+                          value={city ? `${city}${state ? ' - ' + state : ''}` : ''}
+                          onChange={(e) => {
+                            const parts = e.target.value.split('-');
+                            setCity(parts[0]?.trim() || '');
+                            if (parts[1]) setState(parts[1].trim());
+                          }}
+                          placeholder="São Paulo - SP"
+                          className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   {activeRole === 'student' && (
                     <>
                       <div>
