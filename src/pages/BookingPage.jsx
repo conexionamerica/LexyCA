@@ -8,7 +8,7 @@ import {
   Wallet, FileText, ArrowLeft, Sparkles, Lock, Gift, AlertCircle, RefreshCw, X 
 } from 'lucide-react';
 import { subscriptionPackages } from '../data/mockTutors';
-import StoneCheckoutModal from '../components/payment/StoneCheckoutModal';
+import AsaasCheckoutModal from '../components/payment/AsaasCheckoutModal';
 
 export default function BookingPage() {
   const { id } = useParams();
@@ -43,7 +43,7 @@ export default function BookingPage() {
   const isTrialAllowed = canBookTrial(tutor.id);
 
   const [bookingType, setBookingType] = useState('trial'); // 'trial' - Aula Experimental Única
-  const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8h / 28 dias (2 aulas/semana)
+  const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8 aulas / 30 dias (2 aulas/semana)
   
   const rawSchedule = tutor?.weeklySchedule || {};
 
@@ -156,7 +156,7 @@ export default function BookingPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [insufficientBalanceError, setInsufficientBalanceError] = useState(null);
-  const [isStoneModalOpen, setIsStoneModalOpen] = useState(false);
+  const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
 
   // Cálculo del valor total
   const totalAmount = bookingType === 'trial' 
@@ -180,13 +180,12 @@ export default function BookingPage() {
 
     setTimeout(() => {
       setIsProcessing(false);
-      // Abrir modal de checkout Stone Pagamentos S.A. para processar cobrança e liberar aula em Supabase
-      setIsStoneModalOpen(true);
+      setIsAsaasModalOpen(true);
     }, 400);
   };
 
-  const handleStoneBookingPaymentSuccess = (paymentResult) => {
-    setIsStoneModalOpen(false);
+  const handleAsaasBookingPaymentSuccess = (paymentResult) => {
+    setIsAsaasModalOpen(false);
     const primarySlot = selectedSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
     // Forçar compra única de Aula Experimental (1 sola clase, 0 suscripciones, pago único)
@@ -221,14 +220,14 @@ export default function BookingPage() {
           <div className="space-y-2">
             <h2 className="text-3xl font-extrabold text-white">¡Aulas Reservadas com Sucesso!</h2>
             <p className="text-sm text-slate-300">
-              Sua contratação com <strong className="text-cyan-300">{tutor.name}</strong> foi confirmada e os horários foram bloqueados na agenda do professor.
+              Sua contratação com <strong className="text-cyan-300">{tutor.name}</strong> foi confirmada via Asaas e os horários foram bloqueados na agenda do professor.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 text-left text-xs space-y-2.5">
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400 font-medium">Modalidade:</span>
-              <strong className="text-white font-bold">{bookingType === 'trial' ? 'Aula Experimental (45 min)' : `Assinatura de 28 Dias (${selectedPackage.hours}h / ${neededSlotsCount}x por semana)`}</strong>
+              <strong className="text-white font-bold">{bookingType === 'trial' ? 'Aula Experimental (45 min)' : `Assinatura de 30 Dias (${selectedPackage.hours} Aulas / ${neededSlotsCount}x por semana)`}</strong>
             </div>
             
             <div className="py-2 border-b border-slate-800 space-y-1">
@@ -242,7 +241,7 @@ export default function BookingPage() {
             </div>
 
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400 font-medium">Valor Descontado do Saldo:</span>
+              <span className="text-slate-400 font-medium">Valor Pago via Asaas:</span>
               <strong className="text-emerald-400 font-black text-sm">R$ {totalAmount}</strong>
             </div>
           </div>
@@ -280,57 +279,6 @@ export default function BookingPage() {
         <ArrowLeft className="w-4 h-4" />
         Voltar para o perfil de {tutor.name}
       </button>
-
-      {/* Modal Popup de Saldo Insuficiente na Carteira (Centralizado com React Portal) */}
-      {insufficientBalanceError && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="relative w-full max-w-md bg-slate-900 border-2 border-rose-500/80 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 glow-rose text-center">
-            
-            {/* Botão Cerrar */}
-            <button
-              onClick={() => setInsufficientBalanceError(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              title="Fechar"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Ícono de Alerta */}
-            <div className="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500 flex items-center justify-center mx-auto text-rose-400 animate-bounce">
-              <AlertCircle className="w-8 h-8 text-rose-500" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-white">Saldo Insuficiente na Carteira!</h3>
-              <p className="text-xs sm:text-sm text-rose-200 leading-relaxed font-medium">
-                Você possui <strong className="text-white font-bold">R$ {insufficientBalanceError.current.toFixed(2)}</strong> e o valor necessário para confirmar esta reserva é <strong className="text-white font-bold">R$ {insufficientBalanceError.required.toFixed(2)}</strong>.
-              </p>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => {
-                  setInsufficientBalanceError(null);
-                  navigate('/dashboard/student?tab=carteira');
-                }}
-                className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 text-white font-black text-xs sm:text-sm py-3.5 px-6 rounded-xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <Wallet className="w-4 h-4" />
-                <span>Recarregar Saldo Agora</span>
-              </button>
-
-              <button
-                onClick={() => setInsufficientBalanceError(null)}
-                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 px-4 rounded-xl transition-all cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </div>
-
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Error genérico */}
       {errorMessage && (
@@ -438,10 +386,10 @@ export default function BookingPage() {
           )}
         </div>
 
-        {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX BRASIL) */}
+        {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX ASAAS) */}
         <div className="space-y-3 pt-2">
           <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
-            2. Escolha a Forma de Pagamento Único (Stone Pagamentos S.A.)
+            2. Escolha a Forma de Pagamento Único (Asaas Pagamentos)
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -451,7 +399,7 @@ export default function BookingPage() {
               </div>
               <div>
                 <h4 className="font-extrabold text-white text-xs">Cartão de Crédito</h4>
-                <p className="text-[11px] text-slate-400">Aprovação instantânea via Stone S.A.</p>
+                <p className="text-[11px] text-slate-400">Aprovação instantânea via Asaas</p>
               </div>
             </div>
 
@@ -476,7 +424,7 @@ export default function BookingPage() {
 
           <button
             type="button"
-            onClick={() => setIsStoneModalOpen(true)}
+            onClick={() => setIsAsaasModalOpen(true)}
             className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Lock className="w-4 h-4" />
@@ -486,18 +434,19 @@ export default function BookingPage() {
 
       </div>
 
-      <StoneCheckoutModal
-        isOpen={isStoneModalOpen}
-        onClose={() => setIsStoneModalOpen(false)}
+      <AsaasCheckoutModal
+        isOpen={isAsaasModalOpen}
+        onClose={() => setIsAsaasModalOpen(false)}
         amount={trialRate}
-        description={`Aula Experimental (25 min) - ${tutor?.name || 'Professor Lexy'}`}
+        description={`Aula Experimental (45 min) - ${tutor?.name || 'Professor Lexy'}`}
         isRecurring={false}
+        lessonsCount={1}
         customerInfo={{
           name: profile?.full_name || student?.name || 'Aluno Lexy',
           email: profile?.email || student?.email || 'aluno@lexy.com',
           document: profile?.documentNumber || '603.198.610-82'
         }}
-        onSuccess={handleStoneBookingPaymentSuccess}
+        onSuccess={handleAsaasBookingPaymentSuccess}
       />
 
     </div>

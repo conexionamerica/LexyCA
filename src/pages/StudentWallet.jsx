@@ -3,37 +3,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { 
   Wallet, ArrowRight, ArrowDownLeft, ArrowUpRight, 
-  CheckCircle, Loader2, CreditCard, ShieldCheck, CheckCircle2, Award, Clock, Sparkles, Zap, Star
+  CheckCircle, Loader2, CreditCard, ShieldCheck, CheckCircle2, Award, Clock, Sparkles, Zap, Star, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarketplace } from '../contexts/MarketplaceContext';
-import StoneCheckoutModal from '../components/payment/StoneCheckoutModal';
+import AsaasCheckoutModal from '../components/payment/AsaasCheckoutModal';
 
 export default function StudentWallet() {
   const { profile } = useAuth();
   const { activateSubscriptionAndCredits } = useMarketplace();
   
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
-  const [isStoneModalOpen, setIsStoneModalOpen] = useState(false);
+  const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
   const [successNotice, setSuccessNotice] = useState('');
 
-  // Planos de Aulas Oficiais Lexy (Ciclo de 28 Dias)
+  // Planos de Aulas Oficiais Lexy (Ciclo de 30 Dias - Aulas de 45 min)
   const plans = [
     {
       id: 'plan-start',
       name: 'Plano Start',
-      hours: 4,
-      frequency: '1 aula / semana',
+      lessons: 4,
+      frequency: '1 aula de 45 min / semana',
       price: 200,
-      badge: 'Ciclo 28 Dias',
+      badge: 'Ciclo 30 Dias',
       badgeBg: 'bg-slate-800 text-slate-300 border-slate-700',
       popular: false
     },
     {
       id: 'plan-pro',
       name: 'Plano Pro',
-      hours: 8,
-      frequency: '2 aulas / semana',
+      lessons: 8,
+      frequency: '2 aulas de 45 min / semana',
       price: 360,
       badge: '🔥 10% OFF • Mais Popular',
       badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
@@ -42,8 +42,8 @@ export default function StudentWallet() {
     {
       id: 'plan-intensivo',
       name: 'Plano Intensivo',
-      hours: 12,
-      frequency: '3 aulas / semana',
+      lessons: 12,
+      frequency: '3 aulas de 45 min / semana',
       price: 504,
       badge: '🔥 16% OFF',
       badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
@@ -52,8 +52,8 @@ export default function StudentWallet() {
     {
       id: 'plan-fluencia',
       name: 'Plano Fluência',
-      hours: 16,
-      frequency: '4 aulas / semana',
+      lessons: 16,
+      frequency: '4 aulas de 45 min / semana',
       price: 640,
       badge: '🔥 20% OFF • Máximo Desconto',
       badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
@@ -69,7 +69,7 @@ export default function StudentWallet() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       } catch (e) {
-        console.error('Error cargando historial de carteira', e);
+        console.error('Erro ao carregar histórico de carteira', e);
       }
     }
     return [];
@@ -91,45 +91,44 @@ export default function StudentWallet() {
     });
   }, [history, profile]);
 
-  const userCalculatedHours = userHistory.reduce((acc, item) => {
-    const val = parseFloat(item.hours) || (parseFloat(item.amount) / 50) || 0;
+  const userCalculatedLessons = userHistory.reduce((acc, item) => {
+    const val = parseFloat(item.lessons) || (parseFloat(item.amount) / 50) || 0;
     if (item.type === 'recharge' || item.type === 'refund' || val > 0) {
       return acc + Math.abs(val);
     }
     return acc - Math.abs(val);
   }, 0);
 
-  // Garantir que um novo usuario sempre inicie com 0.0 Horas
-  const currentHours = Math.max(0, userCalculatedHours);
+  const currentLessons = Math.max(0, userCalculatedLessons);
   
-  const usedHours = (userHistory
+  const usedLessons = Math.round((userHistory
     .filter(h => h.type === 'payment')
-    .reduce((sum, h) => sum + Math.abs(h.amount), 0)) / 50;
+    .reduce((sum, h) => sum + Math.abs(h.amount), 0)) / 50);
 
   const completedLessonsCount = userHistory
     .filter(h => h.type === 'payment' && h.status === 'Concluído').length;
 
   const handleSelectPlan = (plan) => {
     setSelectedPlanForPayment(plan);
-    setIsStoneModalOpen(true);
+    setIsAsaasModalOpen(true);
   };
 
-  const handleStonePaymentSuccess = (paymentResult) => {
-    setIsStoneModalOpen(false);
+  const handleAsaasPaymentSuccess = (paymentResult) => {
+    setIsAsaasModalOpen(false);
     if (!selectedPlanForPayment) return;
 
     const plan = selectedPlanForPayment;
 
-    // Registrar novas horas creditadas no histórico exclusivo do aluno
+    // Registrar novas aulas creditadas no histórico exclusivo do aluno
     const newTx = {
-      id: paymentResult?.transactionId || `tx_${Date.now()}`,
+      id: paymentResult?.transactionId || `tx_asaas_${Date.now()}`,
       studentId: profile?.id || 'student-user',
       studentEmail: profile?.email || '',
       studentMatricula: profile?.matricula_code || '',
-      desc: `Assinatura ${plan.name} (+${plan.hours} Horas de Crédito)`,
+      desc: `Assinatura ${plan.name} (+${plan.lessons} Aulas de 45 min)`,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       amount: plan.price,
-      hours: plan.hours,
+      lessons: plan.lessons,
       type: 'recharge',
       status: 'Concluído'
     };
@@ -148,12 +147,12 @@ export default function StudentWallet() {
         studentMatricula: profile?.matricula_code,
         tutorId: 'tutor-default',
         planName: plan.name,
-        planHours: plan.hours,
+        planHours: plan.lessons,
         amount: plan.price
       });
     }
 
-    setSuccessNotice(`🎉 Assinatura do ${plan.name} ativada com sucesso! +${plan.hours} Horas foram adicionadas às suas Horas Disponíveis.`);
+    setSuccessNotice(`🎉 Assinatura do ${plan.name} ativada com sucesso via Asaas! +${plan.lessons} Aulas (45 min) foram adicionadas ao seu saldo.`);
     setTimeout(() => setSuccessNotice(''), 7000);
   };
 
@@ -164,10 +163,10 @@ export default function StudentWallet() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Clock className="w-5 h-5 text-cyan-400" />
-            Minhas Horas & Agendamentos LexyPay
+            <BookOpen className="w-5 h-5 text-emerald-400" />
+            Minhas Aulas & Agendamentos LexyPay
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">Gerencie seu saldo de horas de aula disponíveis para agendamentos com qualquer professor.</p>
+          <p className="text-xs text-slate-400 mt-0.5">Gerencie seu saldo de Aulas de 45 minutos disponíveis para agendar com tutores nativos.</p>
         </div>
       </div>
 
@@ -180,36 +179,36 @@ export default function StudentWallet() {
 
       {/* CARDS METRICAS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* KPI 1: Horas Disponíveis */}
+        {/* KPI 1: Aulas Disponíveis */}
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Horas Disponíveis</span>
+            <span className="text-xs text-slate-400 font-medium">Aulas Disponíveis (45 min)</span>
             <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-500/20">
               ● Saldo Ativo
             </span>
           </div>
           <p className="text-2xl font-bold text-white tracking-tight flex items-baseline gap-1.5">
-            {currentHours.toFixed(1)} <span className="text-sm font-semibold text-slate-400">{currentHours === 1 ? 'Hora' : 'Horas'}</span>
+            {currentLessons.toFixed(0)} <span className="text-sm font-semibold text-slate-400">{currentLessons === 1 ? 'Aula' : 'Aulas'}</span>
           </p>
-          <p className="text-[11px] text-cyan-400 font-medium">Créditos livres para agendar no Catálogo</p>
+          <p className="text-[11px] text-emerald-400 font-medium">Créditos de 45 min livres para agendar</p>
         </div>
 
-        {/* KPI 2: Horas Utilizadas */}
+        {/* KPI 2: Aulas Utilizadas */}
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Horas Utilizadas</span>
+            <span className="text-xs text-slate-400 font-medium">Aulas Realizadas</span>
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
           </div>
           <p className="text-2xl font-bold text-white tracking-tight flex items-baseline gap-1.5">
-            {usedHours.toFixed(1)} <span className="text-sm font-semibold text-slate-400">{usedHours === 1 ? 'Hora' : 'Horas'}</span>
+            {usedLessons.toFixed(0)} <span className="text-sm font-semibold text-slate-400">{usedLessons === 1 ? 'Aula' : 'Aulas'}</span>
           </p>
-          <p className="text-[11px] text-slate-400">Total de horas assistidas este mês</p>
+          <p className="text-[11px] text-slate-400">Total de aulas de 45 min concluídas este mês</p>
         </div>
 
-        {/* KPI 3: Aulas Realizadas */}
+        {/* KPI 3: Aulas Concluídas */}
         <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 rounded-xl p-3.5 space-y-1.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Aulas Concluídas</span>
+            <span className="text-xs text-slate-400 font-medium">Taxa de Conclusão</span>
             <Award className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <p className="text-2xl font-bold text-white tracking-tight">
@@ -224,9 +223,9 @@ export default function StudentWallet() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
-            Planos de Aulas Disponíveis (Ciclo de 28 Dias)
+            Planos de Aulas Disponíveis (Ciclo de 30 Dias)
           </h2>
-          <span className="text-[11px] text-slate-400 font-medium">As horas assinas são creditadas na sua carteira</span>
+          <span className="text-[11px] text-slate-400 font-medium">Aulas de 45 minutos creditadas na sua carteira</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -254,17 +253,17 @@ export default function StudentWallet() {
                 
                 <div className="pt-2">
                   <div className="text-2xl font-black text-white tracking-tight">
-                    +{plan.hours}.0 <span className="text-xs font-bold text-slate-400">Horas de Crédito</span>
+                    +{plan.lessons} <span className="text-xs font-bold text-slate-400">Aulas (45 min)</span>
                   </div>
                   <div className="text-xs font-bold text-amber-400 mt-1">
-                    R$ {plan.price.toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">/ 28 dias</span>
+                    R$ {plan.price.toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">/ 30 dias</span>
                   </div>
                 </div>
               </div>
 
               <button
                 onClick={() => handleSelectPlan(plan)}
-                className="w-full bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
                 <span>Assinar {plan.name}</span>
@@ -284,7 +283,7 @@ export default function StudentWallet() {
         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
           {userHistory.length === 0 ? (
             <div className="text-center py-10 text-slate-500 text-xs">
-              Nenhuma transação registrada ainda. Assine um plano acima para adicionar horas!
+              Nenhuma transação registrada ainda. Assine um plano acima para adicionar aulas de 45 minutos!
             </div>
           ) : (
             userHistory.map((item) => (
@@ -327,18 +326,19 @@ export default function StudentWallet() {
       </div>
 
       {selectedPlanForPayment && (
-        <StoneCheckoutModal
-          isOpen={isStoneModalOpen}
-          onClose={() => setIsStoneModalOpen(false)}
+        <AsaasCheckoutModal
+          isOpen={isAsaasModalOpen}
+          onClose={() => setIsAsaasModalOpen(false)}
           amount={selectedPlanForPayment.price}
-          description={`Assinatura ${selectedPlanForPayment.name} (+${selectedPlanForPayment.hours} Horas de Crédito / 28 Dias)`}
+          description={`Assinatura ${selectedPlanForPayment.name} (+${selectedPlanForPayment.lessons} Aulas de 45 min / 30 Dias)`}
           isRecurring={true}
+          lessonsCount={selectedPlanForPayment.lessons}
           customerInfo={{
             name: profile?.full_name || 'Aluno Lexy',
             email: profile?.email || 'aluno@lexy.com',
             document: profile?.documentNumber || '603.198.610-82'
           }}
-          onSuccess={handleStonePaymentSuccess}
+          onSuccess={handleAsaasPaymentSuccess}
         />
       )}
 

@@ -239,37 +239,49 @@ const isFakeMockTutor = (t) => {
           .or('role.eq.teacher,role.eq.professor');
 
         if (!error && data && active) {
-          const fetchedTutors = data.map(dbT => ({
-            id: dbT.id,
-            name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
-            email: dbT.email,
-            phone: dbT.phone || dbT.document_number || '',
-            title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
-            country: dbT.residence_country || 'Brasil',
-            countryCode: 'BR',
-            flag: '🌐',
-            avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-            nativeSpeaker: true,
-            isSuperTutor: false,
-            isVerified: dbT.status === 'approved' || !dbT.status,
-            status: dbT.status || 'approved',
-            subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
-            hourlyRate: Number(dbT.hourly_rate || 20),
-            trialRate: Number(dbT.hourly_rate || 20) * 0.5,
-            rating: 5.0,
-            reviewCount: 0,
-            totalLessons: 0,
-            activeStudents: 0,
-            responseTime: 'Responde em <1 hora',
-            videoUrl: dbT.video_url || '',
-            headline: dbT.headline || '',
-            bio: dbT.bio || '',
-            specialties: dbT.specialties || ['Conversação'],
-            languagesSpoken: dbT.languages_spoken || [{ language: dbT.subject_taught || 'Espanhol', level: 'Nativo' }],
-            weeklySchedule: dbT.weekly_schedule || {},
-            earnedBalance: 0,
-            reviews: dbT.reviews || []
-          })).filter(t => !isFakeMockTutor(t));
+          const fetchedTutors = data.map(dbT => {
+            const savedEarned = localStorage.getItem(`lexy_earned_balance_${dbT.id}`) || localStorage.getItem(`lexy_earned_balance_${dbT.email}`);
+            const savedLessons = localStorage.getItem(`lexy_total_lessons_${dbT.id}`) || localStorage.getItem(`lexy_total_lessons_${dbT.email}`);
+
+            const earnedVal = Number(dbT.earned_balance || dbT.wallet_balance || dbT.earnedBalance || savedEarned || 0);
+            const lessonsVal = Number(dbT.total_lessons || dbT.totalLessons || savedLessons || 0);
+
+            return {
+              id: dbT.id,
+              name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
+              email: dbT.email,
+              phone: dbT.phone || dbT.document_number || '',
+              title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
+              country: dbT.residence_country || 'Brasil',
+              countryCode: 'BR',
+              flag: '🌐',
+              avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+              nativeSpeaker: true,
+              isSuperTutor: false,
+              isVerified: dbT.status === 'approved' || !dbT.status,
+              status: dbT.status || 'approved',
+              subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
+              hourlyRate: Number(dbT.hourly_rate || 20),
+              trialRate: Number(dbT.hourly_rate || 20) * 0.5,
+              rating: 5.0,
+              reviewCount: 0,
+              totalLessons: lessonsVal,
+              total_lessons: lessonsVal,
+              activeStudents: 0,
+              responseTime: 'Responde em <1 hora',
+              videoUrl: dbT.video_url || '',
+              headline: dbT.headline || '',
+              bio: dbT.bio || '',
+              specialties: dbT.specialties || ['Conversação'],
+              languagesSpoken: dbT.languages_spoken || [{ language: dbT.subject_taught || 'Espanhol', level: 'Nativo' }],
+              weeklySchedule: dbT.weekly_schedule || {},
+              earnedBalance: earnedVal,
+              earned_balance: earnedVal,
+              walletBalance: earnedVal,
+              wallet_balance: earnedVal,
+              reviews: dbT.reviews || []
+            };
+          }).filter(t => !isFakeMockTutor(t));
 
           setTutors(fetchedTutors);
           localStorage.setItem(LOCAL_STORAGE_KEY_TUTORS, JSON.stringify(fetchedTutors));
@@ -395,6 +407,12 @@ const isFakeMockTutor = (t) => {
     let active = true;
     async function syncBookingsFromSupabase() {
       try {
+        let localBookings = [];
+        try {
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
+          if (saved) localBookings = JSON.parse(saved);
+        } catch (e) {}
+
         const { data, error } = await supabase.from('aulas').select('*');
 
         if (!error && data && active) {
@@ -432,11 +450,36 @@ const isFakeMockTutor = (t) => {
             createdAt: dbApt.created_at || new Date().toISOString()
           }));
 
-          setBookings(fetchedBookings);
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
-        } else if (active) {
-          setBookings([]);
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify([]));
+          // Mesclar aulas remotas do Supabase com aulas criadas localmente para não sumir ao atualizar a página
+          const mergedMap = new Map();
+          (localBookings || []).forEach(b => {
+            if (b && (b.id || b.lesson_code)) {
+              mergedMap.set(b.id || b.lesson_code, b);
+            }
+          });
+          fetchedBookings.forEach(b => {
+            if (b && (b.id || b.lesson_code)) {
+              const local = mergedMap.get(b.id || b.lesson_code);
+              if (local) {
+                mergedMap.set(b.id || b.lesson_code, {
+                  ...local,
+                  ...b,
+                  studentId: b.studentId || local.studentId,
+                  studentEmail: b.studentEmail || local.studentEmail,
+                  studentName: b.studentName || local.studentName,
+                  studentMatricula: b.studentMatricula || local.studentMatricula,
+                });
+              } else {
+                mergedMap.set(b.id || b.lesson_code, b);
+              }
+            }
+          });
+
+          const finalBookings = Array.from(mergedMap.values());
+          setBookings(finalBookings);
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(finalBookings));
+        } else if (active && localBookings.length > 0) {
+          setBookings(localBookings);
         }
       } catch (err) {
         console.warn('Error syncing aulas from Supabase:', err);
@@ -1102,29 +1145,85 @@ const isFakeMockTutor = (t) => {
   };
 
   const completeBooking = (bookingId) => {
+    if (!bookingId) return;
+    const cleanSearchId = String(bookingId).trim().toLowerCase();
+
     setBookings(prev => {
-      const target = prev.find(b => b.id === bookingId);
+      const target = prev.find(b => 
+        String(b.id || '').trim().toLowerCase() === cleanSearchId || 
+        String(b.lesson_code || '').trim().toLowerCase() === cleanSearchId
+      );
+
       if (target) {
-        const tutor = tutors.find(t => t.id === target.tutorId);
-        const earned = Number(target.amount || tutor?.hourlyRate || 20);
-        
-        // Creditar na carteira do professor
-        if (target.tutorId) {
-          setTutors(tList => tList.map(t => {
-            if (t.id === target.tutorId) {
-              const currentBal = Number(t.walletBalance || t.wallet_balance || 0);
-              const updatedBal = currentBal + earned;
-              return {
-                ...t,
-                walletBalance: updatedBal,
-                wallet_balance: updatedBal
-              };
-            }
-            return t;
-          }));
-        }
+        const targetTutorId = target.tutorId || target.tutor_id;
+        const isTrial = target.bookingType === 'trial' || target.booking_type === 'trial';
+
+        setTutors(tList => tList.map(t => {
+          if (
+            String(t.id || '').toLowerCase() === String(targetTutorId || '').toLowerCase() || 
+            String(t.email || '').toLowerCase() === String(target.tutorEmail || '').toLowerCase()
+          ) {
+            // USAR A TARIFA POR HORA CONFIGURADA PELO PROFESSOR (ex: R$ 20/h, R$ 30/h)
+            const teacherRate = Number(t.hourlyRate || t.hourly_rate || target.amount || 20);
+            const currentLessons = (t.totalLessons || t.total_lessons || 0) + 1;
+            const earnPercent = getTeacherEarnPercent(currentLessons, isTrial, tierRates);
+            const netEarned = Number((teacherRate * (earnPercent / 100)).toFixed(2));
+
+            const currentEarned = Number(t.earnedBalance || t.earned_balance || t.walletBalance || 0);
+            const newEarned = Number((currentEarned + netEarned).toFixed(2));
+
+            // Salvar no localStorage por ID e E-mail para NUNCA perder ao recarregar a página
+            try {
+              if (t.id) {
+                localStorage.setItem(`lexy_earned_balance_${t.id}`, newEarned.toString());
+                localStorage.setItem(`lexy_total_lessons_${t.id}`, currentLessons.toString());
+              }
+              if (t.email) {
+                localStorage.setItem(`lexy_earned_balance_${t.email}`, newEarned.toString());
+                localStorage.setItem(`lexy_total_lessons_${t.email}`, currentLessons.toString());
+              }
+            } catch (e) {}
+
+            // Persistir atualização de ganhos e total de aulas no Supabase (tabela profiles)
+            try {
+              supabase.from('profiles').update({
+                total_lessons: currentLessons,
+                earned_balance: newEarned,
+                wallet_balance: newEarned
+              }).eq('id', t.id).then(() => {}).catch(() => {});
+            } catch (e) {}
+
+            return {
+              ...t,
+              totalLessons: currentLessons,
+              total_lessons: currentLessons,
+              earnedBalance: newEarned,
+              earned_balance: newEarned,
+              walletBalance: newEarned,
+              wallet_balance: newEarned
+            };
+          }
+          return t;
+        }));
+
+        // Atualizar status na tabela 'aulas' do Supabase para 'concluida'
+        try {
+          supabase.from('aulas')
+            .update({ status: 'concluida', completed_at: new Date().toISOString() })
+            .or(`id.eq.${target.id},lesson_code.eq.${target.lesson_code || bookingId}`)
+            .then(() => {}).catch(() => {});
+        } catch (e) {}
       }
-      return prev.map(b => b.id === bookingId ? { ...b, status: 'completed', completedAt: new Date().toISOString() } : b);
+
+      return prev.map(b => {
+        if (
+          String(b.id || '').trim().toLowerCase() === cleanSearchId || 
+          String(b.lesson_code || '').trim().toLowerCase() === cleanSearchId
+        ) {
+          return { ...b, status: 'concluida', completedAt: new Date().toISOString() };
+        }
+        return b;
+      });
     });
   };
 

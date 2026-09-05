@@ -1,4 +1,4 @@
-// Vercel Serverless Function - Verificar Status Real da Ordem na Stone Pagamentos S.A.
+// Vercel Serverless Function - Verificar Status Real do Pagamento no Asaas API v3
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,20 +12,21 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { order_id } = req.query;
-  if (!order_id) {
-    return res.status(400).json({ error: 'ID da ordem Stone é obrigatório.' });
+  const { payment_id } = req.query;
+  if (!payment_id) {
+    return res.status(400).json({ error: 'ID do pagamento Asaas é obrigatório.' });
   }
 
-  const secretKey = process.env.VITE_STONE_SECRET_KEY || process.env.STONE_SECRET_KEY || 'sk_test_e281e8247d9842a58a07be13e0e5a577';
-  const authHeader = 'Basic ' + Buffer.from(`${secretKey}:`).toString('base64');
+  const apiKey = process.env.VITE_ASAAS_API_KEY || process.env.ASAAS_API_KEY || '';
+  const baseUrl = process.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3';
 
   try {
-    const response = await fetch(`https://api.pagar.me/core/v5/orders/${order_id}`, {
+    const response = await fetch(`${baseUrl}/payments/${payment_id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader
+        'access_token': apiKey,
+        'User-Agent': 'LexyIdiomas/1.0'
       }
     });
 
@@ -34,23 +35,26 @@ export default async function handler(req, res) {
     if (!response.ok) {
       return res.status(response.status).json({
         success: false,
-        error: data.message || 'Erro ao consultar ordem na Stone',
+        error: data.errors?.[0]?.description || 'Erro ao consultar pagamento no Asaas',
         details: data
       });
     }
 
-    const isPaid = data.status === 'paid';
+    const isPaid = data.status === 'RECEIVED' || data.status === 'CONFIRMED' || data.status === 'RECEIVED_IN_CASH';
     return res.status(200).json({
       success: true,
-      orderId: data.id,
+      paymentId: data.id,
       status: data.status,
       paid: isPaid,
-      charges: data.charges
+      value: data.value,
+      billingType: data.billingType,
+      invoiceUrl: data.invoiceUrl,
+      rawResponse: data
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Erro de comunicação com Stone Pagamentos S.A.',
+      error: 'Erro de comunicação com servidor Asaas.',
       details: error.message
     });
   }

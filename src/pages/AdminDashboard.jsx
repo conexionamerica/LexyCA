@@ -204,14 +204,80 @@ export default function AdminDashboard() {
     setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
   };
 
-  // LER AVALIAÇÕES E REVIAS DOS ALUNOS
-  const studentReviews = React.useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('lexy_student_reviews') || '[]');
-    } catch (e) {
-      return [];
+  // LER AVALIAÇÕES E FEEDBACKS (SUPABASE + LOCALSTORAGE - RETENÇÃO DE 30 DIAS)
+  const [dbReviews, setDbReviews] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchReviewsFromSupabase() {
+      try {
+        const { data, error } = await supabase
+          .from('reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && active) {
+          const now = Date.now();
+          const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
+          const valid = data.filter(r => {
+            const time = new Date(r.created_at || r.createdAt).getTime();
+            const isExpired = (now - time) >= THIRTY_DAYS;
+            if (isExpired && r.id) {
+              supabase.from('reviews').delete().eq('id', r.id).then(() => {}).catch(() => {});
+            }
+            return !isExpired;
+          }).map(r => ({
+            id: r.id,
+            bookingId: r.booking_id || r.bookingId,
+            tutorId: r.tutor_id || r.tutorId,
+            tutorName: r.tutor_name || r.tutorName || 'Professor Lexy',
+            studentId: r.student_id || r.studentId,
+            studentName: r.student_name || r.studentName || 'Aluno Lexy',
+            studentEmail: r.student_email || r.studentEmail || '',
+            rating: Number(r.rating || 5),
+            comment: r.comment || 'Sem comentário.',
+            createdAt: r.created_at || r.createdAt || new Date().toISOString()
+          }));
+
+          setDbReviews(valid);
+        }
+      } catch (err) {}
     }
+
+    fetchReviewsFromSupabase();
+    return () => { active = false; };
   }, []);
+
+  const studentReviews = React.useMemo(() => {
+    const local = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('lexy_student_reviews') || '[]');
+      } catch (e) {
+        return [];
+      }
+    })();
+
+    const now = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const mergedMap = new Map();
+
+    (local || []).forEach(r => {
+      const time = new Date(r.createdAt || r.created_at).getTime();
+      if ((now - time) < THIRTY_DAYS) {
+        mergedMap.set(r.id || `${r.bookingId}-${r.createdAt}`, r);
+      }
+    });
+
+    (dbReviews || []).forEach(r => {
+      const time = new Date(r.createdAt || r.created_at).getTime();
+      if ((now - time) < THIRTY_DAYS) {
+        mergedMap.set(r.id || `${r.bookingId}-${r.createdAt}`, r);
+      }
+    });
+
+    return Array.from(mergedMap.values()).sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+  }, [dbReviews]);
 
   // COMPUTAÇÃO DE RISCO DE EVASÃO / CHURN PARA CADA ALUNO
   const studentRiskList = React.useMemo(() => {
@@ -444,6 +510,12 @@ export default function AdminDashboard() {
         >
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" /> 🚨 Evasão & Retenção
           {highRiskStudentsCount > 0 && <span className="bg-rose-600 text-white text-[10px] rounded-full px-2 py-0.5 ml-1 font-black">{highRiskStudentsCount}</span>}
+        </button>
+        <button 
+          onClick={() => setActiveTab('feedbacks')}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'feedbacks' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
+        >
+          <Sparkles className="w-4 h-4 shrink-0 text-amber-400" /> 💬 Feedbacks ({studentReviews.length})
         </button>
         <button 
           onClick={() => setActiveTab('announcements')}
@@ -1520,6 +1592,107 @@ export default function AdminDashboard() {
                 <span>Salvar Credenciais da Stone Pagamentos S.A. 🚀</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 8: FEEDBACKS E AVALIAÇÕES DAS AULAS (EXPOSIÇÃO DE 30 DIAS COM EXPURGO AUTOMÁTICO) */}
+      {activeTab === 'feedbacks' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header de Feedbacks com Retenção de 30 Dias */}
+          <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 space-y-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black uppercase tracking-wider mb-2">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Histórico Temporário de 30 Dias • Expurgo Automático Supabase</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white">
+                  Feedbacks & Avaliações das Aulas (Professores e Alunos)
+                </h2>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                  Todas as avaliações enviadas por alunos e professores após a conclusão de cada aula no Lexy Space. Conforme as regras da plataforma, os feedbacks são mantidos por exatamente <strong>30 dias</strong> no Supabase e no painel administrativo antes de serem purgados automaticamente.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center shrink-0">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Média Geral de Satisfação</span>
+                <div className="text-2xl font-black text-amber-400 flex items-center justify-center gap-1">
+                  <span>{avgGlobalRating.toFixed(1)}</span>
+                  <span>★</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-0.5">{studentReviews.length} avaliações nos últimos 30 dias</span>
+              </div>
+            </div>
+          </div>
+
+          {/* LISTA DE FEEDBACKS */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-400" />
+                <span>Avaliações Registradas ({studentReviews.length})</span>
+              </h3>
+              <span className="text-xs font-semibold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                ● Expurgo Automático de 30 Dias Ativo
+              </span>
+            </div>
+
+            {studentReviews.length === 0 ? (
+              <div className="text-center py-12 space-y-2 text-slate-400 text-xs">
+                <Sparkles className="w-8 h-8 text-cyan-400 mx-auto opacity-50" />
+                <p className="font-semibold text-white">Nenhum feedback registrado nos últimos 30 dias.</p>
+                <p>Assim que os alunos finalizarem e avaliarem as aulas no Lexy Space, os comentários serão exibidos aqui por 30 dias.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {studentReviews.map(rev => {
+                  const createdMs = new Date(rev.createdAt || rev.created_at || Date.now()).getTime();
+                  const daysOld = Math.floor((Date.now() - createdMs) / (1000 * 60 * 60 * 24));
+                  const daysRemaining = Math.max(1, 30 - daysOld);
+
+                  return (
+                    <div key={rev.id || `${rev.bookingId}-${rev.createdAt}`} className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 space-y-3 shadow-md hover:border-slate-700 transition-all">
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-800/60 pb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-white text-xs">{rev.studentName || 'Aluno'}</h4>
+                            <span className="text-[10px] text-slate-400">({rev.studentEmail || 'Sem email'})</span>
+                          </div>
+                          <p className="text-[11px] text-cyan-400 font-medium">
+                            Aula com {rev.tutorName || 'Professor'} • Código: <span className="font-mono text-cyan-300">{rev.bookingId}</span>
+                          </p>
+                        </div>
+
+                        <span className="bg-slate-900 border border-slate-700 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>Expira em {daysRemaining}d</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-amber-400">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span key={star} className="text-sm">
+                            {star <= (rev.rating || 5) ? '★' : '☆'}
+                          </span>
+                        ))}
+                        <span className="text-xs font-bold text-white ml-1.5">{rev.rating}.0 / 5.0</span>
+                      </div>
+
+                      <div className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl">
+                        <p className="text-xs text-slate-200 italic leading-relaxed">
+                          "{rev.comment || 'Aula finalizada sem comentário em texto.'}"
+                        </p>
+                      </div>
+
+                      <div className="text-[10px] text-slate-500 text-right">
+                        <span>Data: {new Date(rev.createdAt || rev.created_at || Date.now()).toLocaleDateString()} às {new Date(rev.createdAt || rev.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

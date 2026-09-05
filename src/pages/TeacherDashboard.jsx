@@ -204,7 +204,16 @@ export default function TeacherDashboard() {
   };
 
   const nextTier = getNextTierInfo(totalLessons);
-  const [earnedBalance, setEarnedBalance] = useState(tutor.earnedBalance || 0.00);
+  const [earnedBalance, setEarnedBalance] = useState(() => {
+    return Number(tutor.earnedBalance || tutor.earned_balance || (profile?.id ? localStorage.getItem(`lexy_earned_balance_${profile.id}`) : null) || 0.00);
+  });
+
+  useEffect(() => {
+    if (tutor) {
+      const b = Number(tutor.earnedBalance || tutor.earned_balance || (profile?.id ? localStorage.getItem(`lexy_earned_balance_${profile.id}`) : null) || 0);
+      setEarnedBalance(b);
+    }
+  }, [tutor?.earnedBalance, tutor?.earned_balance, profile?.id]);
 
   const [hourlyRate, setHourlyRate] = useState(tutor.hourlyRate || 23);
   const [meetUrl, setMeetUrl] = useState(tutor.meetUrl || 'https://meet.google.com/abc-defg-hij');

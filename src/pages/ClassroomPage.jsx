@@ -1,23 +1,42 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Video, Mic, MicOff, VideoOff, Monitor, MessageSquare, 
-  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RefreshCw, RotateCw, Hand, Smile, Maximize2, Minimize2, LogOut
+  BookOpen, Sparkles, Star, CheckCircle2, Clock, X, Send, PenTool, ExternalLink, Globe, Play, Plus, AlertTriangle, AlertCircle, ShieldCheck, Zap, Volume2, User, Lock, ArrowLeftRight, RotateCw, Hand, Smile, Maximize2, Minimize2, LogOut, GripHorizontal
 } from 'lucide-react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 
-export default function ClassroomPage() {
-  const { bookingId } = useParams();
+export default function ClassroomPage({ routeBookingId }) {
+  const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { tutors = [], bookings = [] } = useMarketplace();
+  const { tutors = [], bookings = [], completeBooking } = useMarketplace();
   const { profile } = useAuth();
+
+  const [activeBookingId, setActiveBookingId] = useState(() => {
+    return localStorage.getItem('lexy_active_booking_id') || null;
+  });
+
+  const effectiveBookingId = params.bookingId || routeBookingId || activeBookingId;
+  const bookingId = effectiveBookingId;
+
+  useEffect(() => {
+    const bId = params.bookingId || routeBookingId;
+    if (bId) {
+      setActiveBookingId(bId);
+      localStorage.setItem('lexy_active_booking_id', bId);
+    }
+    setShowEndModal(false);
+    setIsReviewSubmitted(false);
+    setShowEarlyLeaveWarning(false);
+  }, [params.bookingId, routeBookingId]);
 
   // Localizar a reserva (aula) exata pelo ID ou código de aula
   const currentBooking = useMemo(() => {
-    if (!bookingId) return null;
-    const cleanId = String(bookingId).trim().toLowerCase();
+    if (!effectiveBookingId) return null;
+    const cleanId = String(effectiveBookingId).trim().toLowerCase();
 
     // 1. Busca por booking ID exato
     let found = (bookings || []).find(b => String(b.id || '').trim().toLowerCase() === cleanId);
@@ -138,28 +157,15 @@ export default function ClassroomPage() {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
 
-  // ── HOOKS DE ATRIBUIÇÃO DE STREAM LOCAL E REMOTO A ELEMENTOS DE VÍDEO ──
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.muted = true;
-      localVideoRef.current.play().catch(() => {});
-    }
-  }, [localStream, isVideoOn, hasJoinedRoom, isSwapped]);
 
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.muted = false;
-      remoteVideoRef.current.volume = 1.0;
-      remoteVideoRef.current.play().catch(() => {});
-    }
-  }, [remoteStream, isRemoteConnected, isSwapped]);
   const [remoteVideoFrame, setRemoteVideoFrame] = useState(null);
+  const [peerJoinNotification, setPeerJoinNotification] = useState(null);
   const [isRemoteConnected, setIsRemoteConnected] = useState(false);
   const [isRemoteVideoActive, setIsRemoteVideoActive] = useState(false);
   const [isPeerOnline, setIsPeerOnline] = useState(false);
   const [isSwapped, setIsSwapped] = useState(false); // Inverter vista grande x vista pequena
+  const [videoFitMode, setVideoFitMode] = useState('contain'); // 'contain' (100% visível sem cortes) | 'cover' (preencher tela)
+  const toggleVideoFitMode = () => setVideoFitMode(prev => prev === 'contain' ? 'cover' : 'contain');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [cameraError, setCameraError] = useState(null);
 
@@ -177,6 +183,8 @@ export default function ClassroomPage() {
   const [studentRating, setStudentRating] = useState(5);
   const [studentComment, setStudentComment] = useState('');
   const [isReviewSubmitted, setIsReviewSubmitted] = useState(false);
+  const [showIncompletePresenceModal, setShowIncompletePresenceModal] = useState(false);
+  const [presenceCheckDetails, setPresenceCheckDetails] = useState(null);
 
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebugPanel, setShowDebugPanel] = useState(true);
@@ -296,7 +304,52 @@ export default function ClassroomPage() {
     };
   }, [remoteStream, isRemoteConnected]);
 
-  // ── ESTADO DE CANCELAMENTO DE RUÍDO DSP ──
+  // ── ESTADO DO EFEITO DE DESFOQUE DE FUNDO (REMOVIDO) ──
+  
+  // ── ESTADO E LÓGICA DE ARRASTAR (DRAG & DROP) PARA O MINI-PLAYER FLUTUANTE ──
+  const [pipPos, setPipPos] = useState({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const posStartRef = useRef({ x: 0, y: 0 });
+
+  const handleDragStart = (e) => {
+    isDraggingRef.current = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragStartRef.current = { x: clientX, y: clientY };
+    posStartRef.current = { ...pipPos };
+  };
+
+  const handleDragMove = useCallback((e) => {
+    if (!isDraggingRef.current) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - dragStartRef.current.x;
+    const dy = clientY - dragStartRef.current.y;
+    setPipPos({
+      x: posStartRef.current.x + dx,
+      y: posStartRef.current.y + dy
+    });
+  }, [pipPos]);
+
+  const handleDragEnd = useCallback(() => {
+    isDraggingRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e) => handleDragMove(e);
+    const onUp = () => handleDragEnd();
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [handleDragMove, handleDragEnd]);
   const [isNoiseFilterActive, setIsNoiseFilterActive] = useState(true);
 
   // ── HOOK DE ATRIBUIÇÃO DIRETA DE VÍDEO (100% FLUIDO A 60 FPS) ──
@@ -332,23 +385,23 @@ export default function ClassroomPage() {
       const source = audioCtx.createMediaStreamSource(new MediaStream([rawAudioTrack]));
       const destination = audioCtx.createMediaStreamDestination();
 
-      // 1. Highpass Filter (80Hz): Elimina zumbidos graves de ar-condicionado e ventiladores
+      // 1. Highpass Filter (60Hz): Preserva o grave natural da voz e elimina infrassons/zumbidos de ar-condicionado
       const highpass = audioCtx.createBiquadFilter();
       highpass.type = 'highpass';
-      highpass.frequency.value = 80;
+      highpass.frequency.value = 60;
 
-      // 2. Lowpass Filter (7500Hz): Remove chiados de estática e cliques de teclado/mouse
+      // 2. Lowpass Filter (18000Hz): Transmissão de áudio cristalino de alta fidelidade (Hi-Fi) até 18kHz
       const lowpass = audioCtx.createBiquadFilter();
       lowpass.type = 'lowpass';
-      lowpass.frequency.value = 7500;
+      lowpass.frequency.value = 18000;
 
-      // 3. Noise Gate (Dynamics Compressor): Atenua o ruído de fundo quando o usuário não fala
+      // 3. Dynamics Compressor Nível Estúdio: Nivelamento de voz ultra suave sem distorções ou cortes
       const compressor = audioCtx.createDynamicsCompressor();
-      compressor.threshold.value = -35;
-      compressor.knee.value = 10;
-      compressor.ratio.value = 8;
+      compressor.threshold.value = -24;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 3;
       compressor.attack.value = 0.003;
-      compressor.release.value = 0.15;
+      compressor.release.value = 0.10;
 
       // Cadeia DSP de Áudio: Source -> Highpass -> Lowpass -> Compressor -> Destination
       source.connect(highpass);
@@ -463,10 +516,10 @@ export default function ClassroomPage() {
             hiddenCanvasRef.current = document.createElement('canvas');
           }
           const canvas = hiddenCanvasRef.current;
-          canvas.width = 320;
-          canvas.height = 240;
+          canvas.width = 480;
+          canvas.height = 270;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(videoEl, 0, 0, 320, 240);
+          ctx.drawImage(videoEl, 0, 0, 480, 270);
           currentFrame = canvas.toDataURL('image/jpeg', 0.4);
         }
       }
@@ -528,49 +581,86 @@ export default function ClassroomPage() {
   }, [hasJoinedRoom, isVideoOn, normalizedRoomKey, isUserTeacher, currentUserDisplay]);
 
   // ── FUNÇÃO MANUAL/AUTOMÁTICA PARA FORÇAR RECONEXÃO ICE RESTART ──
+  const reconnectAttemptsRef = useRef(0);
+
   const triggerIceRestart = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc) return;
+    if (!hasJoinedRoom || !localStream) return;
+
+    const maxAttempts = 5;
+    const attempt = reconnectAttemptsRef.current + 1;
+    reconnectAttemptsRef.current = attempt;
+
+    if (attempt > maxAttempts) {
+      addDebugLog('❌ Máximo de tentativas de reconexão atingido. Recarregando sala...');
+      reconnectAttemptsRef.current = 0;
+      // Force full re-join by toggling hasJoinedRoom
+      setHasJoinedRoom(false);
+      setIsReconnecting(false);
+      setTimeout(() => {
+        setHasJoinedRoom(true);
+        addDebugLog('🔄 Sala reiniciada completamente. Nova conexão WebRTC...');
+      }, 1500);
+      return;
+    }
+
+    const delay = Math.min(1000 * Math.pow(1.5, attempt - 1), 5000);
+    addDebugLog(`⚡ Reconexão tentativa ${attempt}/${maxAttempts} (aguardando ${Math.round(delay / 1000)}s)...`);
+    setIsReconnecting(true);
+    setReconnectReason(`Reconectando aula ao vivo... Tentativa ${attempt} de ${maxAttempts}`);
+
+    await new Promise(r => setTimeout(r, delay));
+
+    // If network is still offline, wait
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      addDebugLog('⏳ Ainda sem internet. Aguardando sinal...');
+      return;
+    }
 
     try {
-      addDebugLog('⚡ Executando WebRTC ICE Restart para restabelecer chamada...');
-      setIsReconnecting(true);
-
-      const myRole = isUserTeacher ? 'teacher' : 'student';
-      if (myRole === 'teacher') {
-        const freshOffer = await pc.createOffer({ iceRestart: true });
-        await pc.setLocalDescription(freshOffer);
-        await supabase.from('webrtc_signals').insert({
-          room_key: normalizedRoomKey,
-          sender_role: 'teacher',
-          sender_name: currentUserDisplay.name,
-          signal_type: 'offer',
-          payload: JSON.stringify({ sdp: freshOffer.sdp, isIceRestart: true }),
-          created_at: new Date().toISOString()
-        });
-      } else {
-        await supabase.from('webrtc_signals').insert({
-          room_key: normalizedRoomKey,
-          sender_role: 'student',
-          sender_name: currentUserDisplay.name,
-          signal_type: 'ready',
-          payload: JSON.stringify({ timestamp: Date.now(), isIceRestart: true }),
-          created_at: new Date().toISOString()
-        });
+      // Close old PeerConnection completely
+      const oldPc = pcRef.current;
+      if (oldPc) {
+        try {
+          if (oldPc._resendCleanup) oldPc._resendCleanup();
+          oldPc.close();
+        } catch (e) {}
+        pcRef.current = null;
       }
+
+      // Clean old signals from the database to allow fresh handshake
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      try {
+        await supabase.from('webrtc_signals').delete().eq('room_key', normalizedRoomKey);
+        addDebugLog('🧹 Sinais antigos limpos. Reiniciando handshake...');
+      } catch (e) {}
+
+      // Reset remote state
+      setRemoteStream(null);
+      setIsRemoteConnected(false);
+      setIsRemoteVideoActive(false);
+
+      // Force the WebRTC signaling useEffect to re-run by toggling hasJoinedRoom
+      setHasJoinedRoom(false);
+      await new Promise(r => setTimeout(r, 300));
+      setHasJoinedRoom(true);
+
+      addDebugLog('🚀 Nova conexão WebRTC iniciada! Aguardando participante...');
     } catch (err) {
-      console.warn('Erro durante ICE Restart:', err);
+      console.warn('Erro durante reconexão:', err);
+      addDebugLog(`⚠️ Erro na reconexão: ${err.message}`);
     }
-  }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
+  }, [isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog, hasJoinedRoom, localStream]);
 
   // ── MONITOR GLOBAL DE REDE DO NAVEGADOR (ONLINE / OFFLINE) ──
   useEffect(() => {
     const handleWindowOnline = () => {
       setIsNetworkOnline(true);
       addDebugLog('🌐 Conexão à internet restabelecida no dispositivo! Iniciando reconexão...');
+      reconnectAttemptsRef.current = 0; // Reset retry counter on fresh online event
       setIsReconnecting(true);
       setReconnectReason('Sinal de internet restaurado — Reconectando aula ao vivo...');
-      triggerIceRestart();
+      // Small delay to let the network stabilize before reconnecting
+      setTimeout(() => triggerIceRestart(), 1500);
     };
 
     const handleWindowOffline = () => {
@@ -617,6 +707,30 @@ export default function ClassroomPage() {
     const myName = currentUserDisplay.name;
     addDebugLog(`🚀 WebRTC iniciado. Sala: ${normalizedRoomKey}. Papel: ${myRole}`);
 
+    // Configurar parâmetros de transmissão HD de áudio (128kbps) e vídeo (4Mbps)
+    const configureHighQualitySenders = () => {
+      pc.getSenders().forEach(sender => {
+        if (!sender.track || !sender.setParameters) return;
+        try {
+          const params = sender.getParameters() || {};
+          if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+          }
+          if (sender.track.kind === 'video') {
+            params.encodings[0].maxBitrate = 4000000; // 4 Mbps Full HD
+            params.encodings[0].maxFramerate = 30;
+            params.encodings[0].priority = 'high';
+            params.encodings[0].networkPriority = 'high';
+          } else if (sender.track.kind === 'audio') {
+            params.encodings[0].maxBitrate = 128000; // 128 kbps Opus Hi-Fi
+            params.encodings[0].priority = 'high';
+            params.encodings[0].networkPriority = 'high';
+          }
+          sender.setParameters(params).catch(() => {});
+        } catch (e) {}
+      });
+    };
+
     // Adicionar faixas locais (áudio e vídeo)
     if (localStream) {
       localStream.getTracks().forEach(track => {
@@ -627,6 +741,7 @@ export default function ClassroomPage() {
           console.warn('Erro ao adicionar faixa local:', e);
         }
       });
+      configureHighQualitySenders();
     }
 
     // Acumulador de fluxo de mídia remoto para combinar áudio e vídeo
@@ -676,6 +791,7 @@ export default function ClassroomPage() {
     };
 
     // ── MONITORAÇÃO DE ESTADO DA CONEXÃO ICE & RECONEXÃO AUTOMÁTICA ──
+    let iceRestartTimeout = null;
     const handleConnectionStateChange = () => {
       const iceState = pc.iceConnectionState;
       const connState = pc.connectionState;
@@ -686,9 +802,22 @@ export default function ClassroomPage() {
         setIsPeerOnline(true);
         setIsReconnecting(false);
         setReconnectReason('');
-      } else if (iceState === 'disconnected' || iceState === 'failed' || connState === 'disconnected' || connState === 'failed') {
+        reconnectAttemptsRef.current = 0; // Reset on successful connection
+      } else if (iceState === 'disconnected') {
+        // Wait 3 seconds before declaring disconnection — temporary blips are normal
+        addDebugLog('⚠️ ICE desconectado. Aguardando 3s antes de reconectar...');
+        if (iceRestartTimeout) clearTimeout(iceRestartTimeout);
+        iceRestartTimeout = setTimeout(() => {
+          // Only reconnect if still disconnected
+          if (pcRef.current && (pcRef.current.iceConnectionState === 'disconnected' || pcRef.current.iceConnectionState === 'failed')) {
+            setIsReconnecting(true);
+            setReconnectReason('Sinal de rede instável — Tentando reconectar áudio e vídeo...');
+            triggerIceRestart();
+          }
+        }, 3000);
+      } else if (iceState === 'failed' || connState === 'failed') {
         setIsReconnecting(true);
-        setReconnectReason('Sinal de rede instável — Tentando reconectar áudio e vídeo...');
+        setReconnectReason('Conexão P2P perdida — Reconectando automaticamente...');
         triggerIceRestart();
       } else if (iceState === 'checking' || connState === 'connecting') {
         setIsReconnecting(true);
@@ -703,9 +832,10 @@ export default function ClassroomPage() {
     const handleWindowOnline = () => {
       setIsNetworkOnline(true);
       addDebugLog('🌐 Conexão à internet restabelecida! Iniciando reconexão...');
+      reconnectAttemptsRef.current = 0;
       setIsReconnecting(true);
       setReconnectReason('Sinal de internet restaurado — Reconectando aula...');
-      triggerIceRestart();
+      setTimeout(() => triggerIceRestart(), 1500);
     };
 
     const handleWindowOffline = () => {
@@ -1042,13 +1172,14 @@ export default function ClassroomPage() {
       if (pollInterval) clearInterval(pollInterval);
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (peerCheckInterval) clearInterval(peerCheckInterval);
+      if (iceRestartTimeout) clearTimeout(iceRestartTimeout);
       if (pcRef.current) {
         if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
         pcRef.current.close();
         pcRef.current = null;
       }
     };
-  }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog]);
+  }, [hasJoinedRoom, localStream, normalizedRoomKey, currentUserDisplay, isUserTeacher, addDebugLog, triggerIceRestart]);
   // Safety net: re-assign srcObject whenever remoteStream changes
   useEffect(() => {
     if (!remoteStream) return;
@@ -1091,11 +1222,11 @@ export default function ClassroomPage() {
           hiddenCanvasRef.current = document.createElement('canvas');
         }
         const canvas = hiddenCanvasRef.current;
-        canvas.width = 320;
-        canvas.height = 240;
+        canvas.width = 640;
+        canvas.height = 360;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoEl, 0, 0, 320, 240);
-        const frame = canvas.toDataURL('image/jpeg', 0.4);
+        ctx.drawImage(videoEl, 0, 0, 640, 360);
+        const frame = canvas.toDataURL('image/jpeg', 0.85);
 
         // 1. Transmitir via BroadcastChannel nativo (Latência 0ms entre abas/janelas no mesmo PC)
         if (bcRef.current) {
@@ -1181,46 +1312,65 @@ export default function ClassroomPage() {
     setCameraError(null);
     let stream = null;
 
+    // Registo de Presença formal no Código do Aula ao Clicar em "Entrar na Sala Virtual"
+    const lessonCode = currentBooking?.lesson_code || currentBooking?.id || bookingId || 'AULA-2026-DEFAULT';
+    const roleKey = isUserTeacher ? 'teacher' : 'student';
+    const timeStr = new Date().toLocaleTimeString('pt-BR');
+    const presenceData = {
+      lessonCode,
+      roomKey: normalizedRoomKey,
+      role: roleKey,
+      name: currentUserDisplay.name,
+      email: profile?.email || '',
+      time: timeStr,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem(`lexy_presence_${lessonCode}_${roleKey}`, JSON.stringify(presenceData));
+      localStorage.setItem(`lexy_presence_${normalizedRoomKey}_${roleKey}`, JSON.stringify(presenceData));
+      localStorage.setItem(`lexy_presence_checked_${lessonCode}_${roleKey}`, 'true');
+    } catch (e) {}
+
+    try {
+      supabase.from('webrtc_signals').insert({
+        room_key: normalizedRoomKey,
+        sender_role: roleKey,
+        sender_name: currentUserDisplay.name,
+        signal_type: 'presence_checkin',
+        payload: JSON.stringify(presenceData),
+        created_at: new Date().toISOString()
+      }).then(() => {}).catch(() => {});
+    } catch (e) {}
+
     const audioConstraints = {
       echoCancellation: { ideal: true },
       noiseSuppression: { ideal: true },
-      autoGainControl: { ideal: true }
+      autoGainControl: { ideal: true },
+      sampleRate: { ideal: 48000 },
+      sampleSize: { ideal: 16 },
+      channelCount: { ideal: 2 },
+      latency: { ideal: 0.005 }
     };
 
-    // 1ª Tentativa: Vídeo HD + Áudio HD com cancelamento de eco
+    // Tentativa Única de Captura Full HD 1080p 30fps + Áudio Estúdio 48kHz Stereo
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { 
+          width: { ideal: 1920 }, 
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
         audio: audioConstraints
       });
       setIsVideoOn(true);
       setIsMicOn(true);
-    } catch (err1) {
-      console.warn('Tentativa 1 (HD Video+Audio) falhou. Tentando flexível...', err1);
+    } catch (err) {
+      console.warn('Falha na captura Full HD, tentando fallback...', err);
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: audioConstraints });
-        setIsVideoOn(true);
-        setIsMicOn(true);
       } catch (err2) {
-        console.warn('Tentativa 2 (Video padrão) falhou:', err2);
-      }
-    }
-
-    // TENTATIVA DEDICADA DE ÁUDIO (Garante que o áudio seja capturado mesmo se o vídeo falhar)
-    if (!stream || stream.getAudioTracks().length === 0) {
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-        if (audioStream && audioStream.getAudioTracks().length > 0) {
-          if (!stream) {
-            stream = audioStream;
-          } else {
-            stream.addTrack(audioStream.getAudioTracks()[0]);
-          }
-          setIsMicOn(true);
-          console.log('🎤 Áudio HD capturado com sucesso via canal dedicado!');
-        }
-      } catch (errAudio) {
-        console.warn('⚠️ Microfone não pôde ser acessado:', errAudio);
+        console.warn('Erro ao acessar mídia:', err2);
       }
     }
 
@@ -1321,15 +1471,85 @@ export default function ClassroomPage() {
     }
   };
 
-  // Notas compartidas
-  const [notes, setNotes] = useState(`Bem-vindo à Sala Virtual Lexy! 🏫
+
+  // Notas compartidas (Quadro Interativo / Lousa Virtual)
+  const boardInitialText = `Bem-vindo à Sala Virtual Lexy! 🏫
 
 Use este quadro para anotações e exercícios durante a aula.
 
 Dicas:
 • Anote novas palavras e expressões
 • Faça perguntas ao professor
-• Pratique a escrita no idioma`);
+• Pratique a escrita no idioma`;
+  const [notes, setNotes] = useState(boardInitialText);
+  const boardBcRef = useRef(null);
+  const isLocalBoardUpdate = useRef(false);
+
+  // ── SINCRONIZAÇÃO EM TEMPO REAL DA LOUSA VIRTUAL ENTRE PROFESSOR E ALUNO ──
+  useEffect(() => {
+    if (!hasJoinedRoom || !normalizedRoomKey) return;
+
+    const boardChannelName = `lexy_board_${normalizedRoomKey}`;
+    const bc = new BroadcastChannel(boardChannelName);
+    boardBcRef.current = bc;
+
+    // Ao receber mudança do outro participante, atualizar o quadro
+    bc.onmessage = (event) => {
+      const data = event.data;
+      if (data && data.type === 'board_update' && data.sender !== currentUserDisplay.name) {
+        isLocalBoardUpdate.current = true;
+        setNotes(data.content);
+      }
+    };
+
+    // Também sincronizar via localStorage (funciona entre abas do mesmo navegador)
+    const storageKey = `lexy_board_content_${normalizedRoomKey}`;
+    const handleStorage = (e) => {
+      if (e.key === storageKey) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data && data.sender !== currentUserDisplay.name) {
+            isLocalBoardUpdate.current = true;
+            setNotes(data.content);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Carregar conteúdo existente do localStorage ao entrar
+    try {
+      const existing = localStorage.getItem(storageKey);
+      if (existing) {
+        const data = JSON.parse(existing);
+        if (data && data.content && data.content !== boardInitialText) {
+          setNotes(data.content);
+        }
+      }
+    } catch (err) {}
+
+    return () => {
+      bc.close();
+      boardBcRef.current = null;
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [hasJoinedRoom, normalizedRoomKey, currentUserDisplay.name]);
+
+  // Handler para mudanças no quadro que transmite em tempo real
+  const handleBoardChange = (e) => {
+    const newContent = e.target.value;
+    setNotes(newContent);
+
+    // Transmitir para o outro participante
+    const payload = { type: 'board_update', sender: currentUserDisplay.name, content: newContent };
+    if (boardBcRef.current) {
+      boardBcRef.current.postMessage(payload);
+    }
+    // Também salvar no localStorage para sync entre abas
+    try {
+      localStorage.setItem(`lexy_board_content_${normalizedRoomKey}`, JSON.stringify(payload));
+    } catch (err) {}
+  };
 
   // Mensajes de chat
   const [chatMessages, setChatMessages] = useState([]);
@@ -1484,7 +1704,46 @@ Dicas:
     setIsLiveVideoActive(false);
   };
 
+  const checkPresenceStatus = useCallback(() => {
+    const lessonCode = currentBooking?.lesson_code || currentBooking?.id || bookingId || 'AULA-2026-DEFAULT';
+
+    let teacherRecord = null;
+    let studentRecord = null;
+
+    try {
+      const t1 = localStorage.getItem(`lexy_presence_${lessonCode}_teacher`) || localStorage.getItem(`lexy_presence_${normalizedRoomKey}_teacher`);
+      if (t1) teacherRecord = JSON.parse(t1);
+
+      const s1 = localStorage.getItem(`lexy_presence_${lessonCode}_student`) || localStorage.getItem(`lexy_presence_${normalizedRoomKey}_student`);
+      if (s1) studentRecord = JSON.parse(s1);
+    } catch (e) {}
+
+    const teacherJoined = isUserTeacher ? true : !!teacherRecord;
+    const studentJoined = (!isUserTeacher)
+      ? true
+      : !!(studentRecord || isPeerOnline || isRemoteConnected || remoteVideoFrame);
+
+    return {
+      teacherJoined,
+      studentJoined,
+      teacherTime: teacherRecord?.time || (isUserTeacher ? new Date().toLocaleTimeString('pt-BR') : 'Não registrado'),
+      studentTime: studentRecord?.time || (studentJoined ? 'Registrada' : 'Não registrada'),
+      lessonCode,
+      bothPresent: teacherJoined && studentJoined
+    };
+  }, [currentBooking, bookingId, normalizedRoomKey, isUserTeacher, isPeerOnline, isRemoteConnected, remoteVideoFrame]);
+
   const handleEndClass = () => {
+    if (isUserTeacher) {
+      const status = checkPresenceStatus();
+      if (!status.studentJoined) {
+        exitRoomAndCleanup();
+        setPresenceCheckDetails(status);
+        setShowIncompletePresenceModal(true);
+        return;
+      }
+    }
+
     if (elapsedTime < 40 * 60) {
       setShowEarlyLeaveWarning(true);
     } else {
@@ -1494,42 +1753,285 @@ Dicas:
   };
 
   const confirmEarlyLeave = () => {
+    if (isUserTeacher) {
+      const status = checkPresenceStatus();
+      if (!status.studentJoined) {
+        setShowEarlyLeaveWarning(false);
+        exitRoomAndCleanup();
+        setPresenceCheckDetails(status);
+        setShowIncompletePresenceModal(true);
+        return;
+      }
+    }
+
     setShowEarlyLeaveWarning(false);
     exitRoomAndCleanup();
     setShowEndModal(true);
   };
 
-  const handleSubmitReview = (e) => {
+  const handleSubmitReview = async (e) => {
     e.preventDefault();
     setIsReviewSubmitted(true);
 
-    try {
-      const newReview = {
-        id: `rev-${Date.now()}`,
-        bookingId: bookingId || 'aula-demo',
-        tutorId: tutor?.id || 'tutor-1',
-        tutorName: tutor?.name || currentBooking?.tutorName || 'Professor Lexy',
-        studentId: currentBooking?.studentId || 'student-user',
-        studentName: currentBooking?.studentName || 'Aluno Lexy',
-        studentEmail: currentBooking?.studentEmail || 'aluno@lexy.com',
-        rating: studentRating,
-        comment: studentComment || 'Aula finalizada sem comentário em texto.',
-        createdAt: new Date().toISOString()
-      };
+    const newReview = {
+      id: `rev-${Date.now()}`,
+      bookingId: bookingId || 'aula-demo',
+      tutorId: tutor?.id || currentBooking?.tutorId || 'tutor-1',
+      tutorName: tutor?.name || currentBooking?.tutorName || 'Professor Lexy',
+      studentId: currentBooking?.studentId || profile?.id || 'student-user',
+      studentName: currentBooking?.studentName || profile?.full_name || 'Aluno Lexy',
+      studentEmail: currentBooking?.studentEmail || profile?.email || 'aluno@lexy.com',
+      rating: studentRating,
+      comment: studentComment || 'Aula finalizada sem comentário em texto.',
+      createdAt: new Date().toISOString()
+    };
 
+    // Salvar em localStorage mantendo histórico de até 30 dias
+    try {
       const existing = JSON.parse(localStorage.getItem('lexy_student_reviews') || '[]');
-      localStorage.setItem('lexy_student_reviews', JSON.stringify([newReview, ...existing]));
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      const valid = (existing || []).filter(r => (Date.now() - new Date(r.createdAt || r.created_at).getTime()) < THIRTY_DAYS);
+      localStorage.setItem('lexy_student_reviews', JSON.stringify([newReview, ...valid]));
     } catch (err) {
-      console.warn('Erro ao salvar avaliação do aluno:', err);
+      console.warn('Erro ao salvar avaliação em localStorage:', err);
+    }
+
+    // Persistir no Supabase (tabela reviews)
+    try {
+      await supabase.from('reviews').insert({
+        booking_id: newReview.bookingId,
+        tutor_id: newReview.tutorId,
+        tutor_name: newReview.tutorName,
+        student_id: newReview.studentId,
+        student_name: newReview.studentName,
+        student_email: newReview.studentEmail,
+        rating: newReview.rating,
+        comment: newReview.comment,
+        created_at: newReview.createdAt
+      });
+    } catch (err) {
+      console.warn('Erro ao salvar avaliação no Supabase:', err);
+    }
+
+    // Concluir aula agendada e creditar os ganhos automaticamente ao saldo do professor
+    const targetBookingId = currentBooking?.id || currentBooking?.lesson_code || bookingId;
+    if (completeBooking && targetBookingId) {
+      completeBooking(targetBookingId);
     }
 
     setTimeout(() => {
-      navigate('/dashboard/student');
+      setShowEndModal(false);
+      setIsReviewSubmitted(false);
+      navigate(isUserTeacher ? '/dashboard/teacher' : '/dashboard/student');
     }, 1800);
   };
 
+  const isOnClassroomRoute = location.pathname.startsWith('/classroom/');
+  const isMiniature = hasJoinedRoom && !isOnClassroomRoute;
+
+  // Re-attach video streams when switching between miniature and full-screen mode
+  // (different DOM video elements get mounted, so srcObject must be re-assigned)
+  // Uses multiple retries because the new video elements may not be in the DOM immediately
+  useEffect(() => {
+    let cancelled = false;
+    const attachStreams = (attempt) => {
+      if (cancelled) return;
+      if (remoteStream && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.volume = 1.0;
+        remoteVideoRef.current.play().then(() => {
+          if (!cancelled) setIsRemoteVideoActive(true);
+        }).catch(() => {
+          if (!cancelled) setIsRemoteVideoActive(true);
+        });
+        setIsRemoteVideoActive(true);
+      }
+      if (localStream && localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.play().catch(() => {});
+      }
+      // Retry up to 5 times to handle DOM mount delays
+      if (attempt < 5) {
+        setTimeout(() => attachStreams(attempt + 1), 200);
+      }
+    };
+    // Start immediately, then retry
+    const timer = setTimeout(() => attachStreams(0), 50);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [isMiniature, remoteStream, localStream]);
+
+  // ── MODO MINIATURA FLUTUANTE ARRASTÁVEL (PICTURE-IN-PICTURE NATIVO DA PLATAFORMA AO NAVEGAR POR OUTRAS PÁGINAS) ──
+  if (isMiniature) {
+    return (
+      <div 
+        style={{ transform: `translate3d(${pipPos.x}px, ${pipPos.y}px, 0)` }}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[9999] animate-fade-in-up select-none touch-none"
+      >
+        <div className="w-72 sm:w-80 bg-slate-950/95 backdrop-blur-2xl border-2 border-cyan-500/50 rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.5)] overflow-hidden transition-shadow hover:border-cyan-400">
+          
+          {/* HEADER ARRASTÁVEL DO MINI-PLAYER */}
+          <div 
+            onMouseDown={handleDragStart}
+            onTouchStart={handleDragStart}
+            className="bg-slate-900/90 px-3.5 py-2.5 border-b border-slate-800 flex items-center justify-between cursor-grab active:cursor-grabbing hover:bg-slate-850 transition-colors"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <GripHorizontal className="w-4 h-4 text-cyan-400 opacity-70 hover:opacity-100 shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-white truncate leading-tight">
+                  {otherParticipantDisplay.name}
+                </h4>
+                <span className="text-[10px] text-cyan-300 font-bold block truncate">
+                  {otherParticipantDisplay.roleLabel} • Chamada Ao Vivo 🟢
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0" onMouseDown={e => e.stopPropagation()}>
+              {/* BOTÃO NATIVO PIP DO NAVEGADOR (SISTEMA OPERACIONAL) */}
+              {typeof document !== 'undefined' && document.pictureInPictureEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (remoteVideoRef.current) {
+                      if (document.pictureInPictureElement) {
+                        document.exitPictureInPicture().catch(() => {});
+                      } else {
+                        remoteVideoRef.current.requestPictureInPicture().catch(() => {});
+                      }
+                    }
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Abrir em Janela Flutuante Externa do Sistema"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* BOTÃO MAXIMIZAR / VOLTAR À SALA VIRTUAL */}
+              <button
+                type="button"
+                onClick={() => navigate(`/classroom/${effectiveBookingId}`)}
+                className="p-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black transition-all transform hover:scale-105 cursor-pointer flex items-center gap-1 text-[11px]"
+                title="Voltar à Sala Virtual em Tela Cheia"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* TELA DE TRANSMISSÃO DE VÍDEO DO MINI-PLAYER */}
+          <div className="relative w-full h-44 sm:h-48 bg-slate-900 flex items-center justify-center overflow-hidden">
+            {isRemoteConnected && remoteStream ? (
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted={false}
+                className="w-full h-full object-cover"
+              />
+            ) : remoteVideoFrame ? (
+              <img
+                src={remoteVideoFrame}
+                alt={otherParticipantDisplay.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-4 text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 font-extrabold flex items-center justify-center text-lg uppercase animate-pulse">
+                  {otherParticipantDisplay.name ? otherParticipantDisplay.name.charAt(0) : 'U'}
+                </div>
+                <span className="text-xs text-slate-300 font-bold">Transmitindo aula ao vivo com {otherParticipantDisplay.name}...</span>
+              </div>
+            )}
+
+            {/* MINIATURA DA CÂMERA LOCAL ("VOCÊ") */}
+            <div className="absolute bottom-2 left-2 w-16 h-12 rounded-xl bg-slate-950 border border-cyan-400/60 overflow-hidden shadow-lg">
+              {isVideoOn ? (
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover transform scale-x-[-1]"
+                />
+              ) : (
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-[9px] font-bold text-slate-400">
+                  Você
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* BARRA DE CONTROLES RÁPIDOS */}
+          <div className="bg-slate-900/95 p-2 px-3 border-t border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              {/* BOTÃO MIC */}
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                  isMicOn
+                    ? 'bg-slate-800 text-cyan-300 border-cyan-500/40 hover:bg-slate-700'
+                    : 'bg-rose-950 text-rose-400 border-rose-500/60 hover:bg-rose-900'
+                }`}
+                title={isMicOn ? "Silenciar Microfone" : "Ativar Microfone"}
+              >
+                {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+              </button>
+
+              {/* BOTÃO CÂMERA */}
+              <button
+                type="button"
+                onClick={toggleVideo}
+                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                  isVideoOn
+                    ? 'bg-slate-800 text-cyan-300 border-cyan-500/40 hover:bg-slate-700'
+                    : 'bg-rose-950 text-rose-400 border-rose-500/60 hover:bg-rose-900'
+                }`}
+                title={isVideoOn ? "Desativar Câmera" : "Ativar Câmera"}
+              >
+                {isVideoOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {/* BOTÃO VOLTAR À AULA */}
+              <button
+                type="button"
+                onClick={() => navigate(`/classroom/${effectiveBookingId}`)}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-black text-xs shadow-md transition-all transform hover:scale-105 cursor-pointer flex items-center gap-1"
+              >
+                <span>Voltar à Aula</span>
+                <Maximize2 className="w-3 h-3" />
+              </button>
+
+              {/* BOTÃO ENCERRAR AULA */}
+              <button
+                type="button"
+                onClick={exitRoomAndCleanup}
+                className="p-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-400 border border-rose-500/40 transition-all cursor-pointer"
+                title="Sair / Encerrar Aula"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // Se não estiver em chamada e não estiver na rota de aula e sem modais ativos, não renderizar nada
+  if (!hasJoinedRoom && !isOnClassroomRoute && !showIncompletePresenceModal && !showEndModal && !showEarlyLeaveWarning) {
+    return null;
+  }
+
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4 animate-fade-in-up">
+    <div className="fixed top-[4.5rem] left-0 right-0 bottom-0 z-40 bg-slate-950 text-white flex flex-col p-2 sm:p-4 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 overflow-auto">
       
       {/* Header da Sala de Aula Virtual Estilo Lexy Space */}
       <div className="glass-panel rounded-2xl p-4 flex items-center justify-between border border-cyan-500/30">
@@ -1662,11 +2164,25 @@ Dicas:
                 </div>
               ) : (
                 /* VÍDEO PRINCIPAL DA CÂMERA DO NAVEGADOR QUANDO DENTRO DA SALA */
-                <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950">
+                <div className="w-full h-full flex flex-col items-center justify-center relative bg-slate-950 p-2 overflow-hidden">
                   
                   {/* ── TELA PRINCIPAL (GRANDE): TRANSMISSÃO DO OUTRO PARTICIPANTE (PROFESSOR OU ALUNO) ── */}
                   {!isSwapped ? (
-                    <div className="relative w-full h-full flex flex-col items-center justify-center">
+                    <div className="relative w-full h-full max-w-full aspect-video flex items-center justify-center bg-slate-950 rounded-2xl overflow-hidden my-auto border border-cyan-500/30 shadow-2xl">
+                      
+                      {/* BOTÃO FLUTUANTE RÁPIDO PARA AJUSTAR CORTE / ZOOM DO VÍDEO */}
+                      {(isRemoteVideoActive || remoteVideoFrame) && (
+                        <button
+                          type="button"
+                          onClick={toggleVideoFitMode}
+                          className="absolute top-3 right-3 z-30 bg-slate-950/85 hover:bg-slate-900 border border-cyan-500/50 hover:border-cyan-300 text-cyan-300 hover:text-white px-3 py-1.5 rounded-xl backdrop-blur-md text-[11px] font-extrabold flex items-center gap-1.5 shadow-xl transition-all cursor-pointer transform hover:scale-105"
+                          title={videoFitMode === 'contain' ? "Modo Atual: Vídeo Completo Sem Cortes. Clique para Preencher Tela." : "Modo Atual: Preencher Tela (Zoom). Clique para Ver Vídeo Completo Sem Cortes."}
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>{videoFitMode === 'contain' ? 'Vídeo Completo (Sem Corte) 👁️' : 'Preencher Tela (Zoom) 🔍'}</span>
+                        </button>
+                      )}
+
                       {/* PLAYER DEDICADO DE ÁUDIO REMOTO (GARANTE ÁUDIO NATIVO CRISTALINO SEM BLOQUEIOS DE AUTOPLAY) */}
                       {isRemoteConnected && remoteStream && (
                         <audio
@@ -1699,12 +2215,21 @@ Dicas:
                           onTimeUpdate={(e) => {
                             if (e.target.videoWidth > 0 && !isRemoteVideoActive) setIsRemoteVideoActive(true);
                           }}
-                          className={`w-full h-full object-cover rounded-2xl transition-opacity duration-500 ${isRemoteVideoActive ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 pointer-events-none z-0'}`}
+                          className={`w-full h-full ${videoFitMode === 'contain' ? 'object-contain bg-slate-950' : 'object-cover'} rounded-2xl transition-all duration-500 ${isRemoteVideoActive ? 'opacity-100 relative z-10' : 'opacity-0 absolute inset-0 pointer-events-none z-0'}`}
                         />
                       )}
 
-                      {/* TELA DE ESPERA PERMANENTE: MANTÉM O AVATAR E MENSAGEM ATÉ A IMAGEM DO OUTRO PARTICIPANTE REALMENTE APARECER */}
-                      {(!isRemoteConnected || !remoteStream || !isRemoteVideoActive) && (
+                      {/* TRANSMISSÃO DE VÍDEO VIA BROADCASTCHANNEL QUANDO O STREAM WEBRTC NATIVO NÃO ESTIVER PRONTO */}
+                      {(!isRemoteConnected || !remoteStream || !isRemoteVideoActive) && remoteVideoFrame && (
+                        <img
+                          src={remoteVideoFrame}
+                          alt={otherParticipantDisplay.name}
+                          className={`w-full h-full ${videoFitMode === 'contain' ? 'object-contain bg-slate-950' : 'object-cover'} rounded-2xl relative z-10`}
+                        />
+                      )}
+
+                      {/* TELA DE ESPERA PERMANENTE: MANTÉM O AVATAR E MENSAGEM SE NÃO HOUVER VÍDEO NEM FRAME */}
+                      {(!isRemoteConnected || !remoteStream || !isRemoteVideoActive) && !remoteVideoFrame && (
                         <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-5 overflow-hidden my-auto z-0">
                           
                           {/* NÉBULA LUMINOSA NO FUNDO */}
@@ -1769,22 +2294,24 @@ Dicas:
                     </div>
                   ) : (
                     /* MODO INVERTIDO (SUA CÂMERA NA TELA GRANDE) */
-                    isVideoOn ? (
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover rounded-2xl transform scale-x-[-1] transition-all duration-300"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center space-y-3 p-6">
-                        <div className="w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 font-extrabold flex items-center justify-center text-2xl uppercase">
-                          {currentUserDisplay.name.charAt(0)}
+                    <div className="relative w-full h-full max-w-full aspect-video flex items-center justify-center bg-slate-950 rounded-2xl overflow-hidden my-auto border border-cyan-500/30 shadow-2xl">
+                      {isVideoOn ? (
+                        <video
+                          ref={localVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className={`w-full h-full ${videoFitMode === 'contain' ? 'object-contain bg-slate-950' : 'object-cover'} rounded-2xl transform scale-x-[-1] transition-all duration-300`}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center space-y-3 p-6">
+                          <div className="w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-cyan-400 text-cyan-300 font-extrabold flex items-center justify-center text-2xl uppercase">
+                            {currentUserDisplay.name.charAt(0)}
+                          </div>
+                          <h3 className="text-base font-bold text-white">{currentUserDisplay.name} (Sua Câmera Desativada)</h3>
                         </div>
-                        <h3 className="text-base font-bold text-white">{currentUserDisplay.name} (Sua Câmera Desativada)</h3>
-                      </div>
-                    )
+                      )}
+                    </div>
                   )}
 
 
@@ -1919,7 +2446,7 @@ Dicas:
 
                         <button
                           type="button"
-                          onClick={handleLeaveRoom}
+                          onClick={exitRoomAndCleanup}
                           className="px-5 py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs sm:text-sm transition-all cursor-pointer"
                         >
                           Sair da Sala
@@ -2006,6 +2533,8 @@ Dicas:
                         </span>
                       </div>
                     </div>
+
+
 
                     {/* BOTÃO REAÇÕES DE EMOJIS */}
                     <div className="relative flex flex-col items-center gap-1.5 w-14 sm:w-16">
@@ -2161,7 +2690,7 @@ Dicas:
               
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={handleBoardChange}
                 className="flex-1 w-full bg-transparent text-slate-200 text-xs font-mono resize-none focus:outline-none leading-relaxed"
                 placeholder="Escreva anotações ou vocabulário aqui..."
               />
@@ -2256,7 +2785,7 @@ Dicas:
 
       {/* Modal ao Encerrar Aula */}
       {showEndModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
           <div className="glass-panel max-w-md w-full rounded-3xl p-6 text-center space-y-5 border border-cyan-500/40 animate-fade-in-up">
             
             {isReviewSubmitted ? (
@@ -2322,7 +2851,7 @@ Dicas:
 
       {/* Early Leave Warning Modal */}
       {showEarlyLeaveWarning && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center space-y-5 animate-fade-in-up">
             <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-8 h-8" />
@@ -2345,6 +2874,114 @@ Dicas:
                 Sair da sala
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Placa Informativa de Presença Incompleta */}
+      {showIncompletePresenceModal && (
+        <div className="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-4">
+          <div className="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-8 text-center space-y-6 border-2 border-rose-500/40 shadow-[0_0_60px_rgba(244,63,94,0.3)] animate-fade-in-up">
+            
+            {/* Ícone Alerta de Presença */}
+            <div className="w-18 h-18 rounded-full bg-gradient-to-br from-rose-500/30 to-amber-500/20 text-rose-400 border-2 border-rose-500/60 flex items-center justify-center mx-auto shadow-xl">
+              <AlertTriangle className="w-10 h-10 animate-pulse" />
+            </div>
+
+            {/* Cabeçalho */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-black text-rose-400 uppercase tracking-widest bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/30">
+                ⚠️ Validação de Presença de Aula
+              </span>
+              <h3 className="text-2xl font-black text-white tracking-tight pt-1">
+                Registro de Presença Incompleto
+              </h3>
+              <p className="text-xs text-slate-300 font-mono">
+                Código do Aula: <strong className="text-cyan-300">{presenceCheckDetails?.lessonCode || currentBooking?.lesson_code || bookingId}</strong>
+              </p>
+            </div>
+
+            {/* Placa com Status dos dois Participantes */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3 text-left">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+                Status de Presença Medido pelo Botão "Entrar na Sala Virtual":
+              </h4>
+
+              <div className="space-y-2 text-xs">
+                {/* PROFESSOR */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="font-extrabold text-emerald-200">
+                      {isUserTeacher ? 'Você (Professor)' : 'Professor'}:
+                    </span>
+                  </div>
+                  <span className="font-bold text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-lg border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Presença Registrada ({presenceCheckDetails?.teacherTime || 'Presente'})
+                  </span>
+                </div>
+
+                {/* ALUNO */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="font-extrabold text-rose-200">
+                      {!isUserTeacher ? 'Você (Aluno)' : 'Aluno'}:
+                    </span>
+                  </div>
+                  <span className="font-bold text-rose-400 bg-rose-500/20 px-2.5 py-0.5 rounded-lg border border-rose-500/30 flex items-center gap-1">
+                    <X className="w-3.5 h-3.5" /> Presença NÃO Registrada
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Explicação Clara dos Ganhos */}
+            <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-xs text-slate-300 leading-relaxed text-left space-y-2">
+              <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Por que esta aula não será contabilizada nos seus ganhos?</span>
+              </p>
+              <p className="text-slate-300">
+                O feedback de aulas realizado pelo professor e a contabilização dos ganhos só procederão se o sistema detectar a presença do <strong>professor e do aluno</strong> no mesmo código de aula.
+              </p>
+              <p className="text-slate-400 text-[11px]">
+                Como o aluno não clicou no botão <strong>"Entrar na Sala Virtual"</strong> para esta aula, o registro de presença ficou incompleto e os ganhos desta aula não serão contabilizados ao seu saldo.
+              </p>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              {/* Botão 1: Entendi e Sair da Sala */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIncompletePresenceModal(false);
+                  exitRoomAndCleanup();
+                  navigate(isUserTeacher ? '/dashboard/teacher' : '/dashboard/student');
+                }}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs py-3.5 px-4 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Entendi e Sair da Sala</span>
+              </button>
+
+              {/* Botão 2: Isto é um Erro */}
+              <button
+                type="button"
+                onClick={() => {
+                  const lessonCode = presenceCheckDetails?.lessonCode || currentBooking?.lesson_code || bookingId;
+                  const message = `Olá, Suporte Lexy! Identifiquei um erro no registro de presença da aula ${lessonCode}. Eu (Professor) cliquei no botão Entrar na Sala Virtual e registrei presença, mas o sistema informou que o aluno não registrou presença. Por favor, verifiquem para contabilizar meus ganhos.`;
+                  const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+                  window.open(whatsappUrl, '_blank');
+                }}
+                className="flex-1 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs py-3.5 px-4 rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 transform hover:scale-[1.02]"
+              >
+                <AlertTriangle className="w-4 h-4 text-amber-200" />
+                <span>Isto é um Erro (Suporte)</span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}

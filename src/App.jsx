@@ -1,12 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MarketplaceProvider } from './contexts/MarketplaceContext';
 
 // Layout
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
-// EmailVerificationNotice removido (verificação de e-mail desativada)
 
 // Pages
 import ExplorePage from './pages/ExplorePage';
@@ -32,7 +31,11 @@ function ProtectedAdminRoute({ children }) {
   return children;
 }
 
-function Layout() {
+function LayoutContent() {
+  const location = useLocation();
+  const classroomMatch = location.pathname.match(/\/classroom\/([^/]+)/);
+  const routeBookingId = classroomMatch ? classroomMatch[1] : null;
+
   return (
     <div className="min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200 bg-slate-950">
       <Navbar />
@@ -46,13 +49,12 @@ function Layout() {
           <Route path="/login/teacher" element={<LoginPage forceRole="teacher" />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />
           <Route path="/onboarding" element={<OnboardingFlow />} />
-          {/* Ruta de verificación de email removida */}
 
           {/* Reserva y Pago */}
           <Route path="/book/:id" element={<BookingPage />} />
 
-          {/* Aula Virtual Preply Space */}
-          <Route path="/classroom/:bookingId" element={<ClassroomPage />} />
+          {/* Aula Virtual Preply Space - Renderizada pelo gerenciador global de aula */}
+          <Route path="/classroom/:bookingId" element={<></>} />
 
           {/* Paneles de Usuario */}
           <Route path="/dashboard/student" element={<StudentDashboard />} />
@@ -69,6 +71,10 @@ function Layout() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* GERENCIADOR PERSISTENTE DA SALA VIRTUAL (MANTÉM WEBRTC CONECTADO MESMO MUDANDO DE PÁGINA) */}
+      <ClassroomPage routeBookingId={routeBookingId} />
+
       <Footer />
     </div>
   );
@@ -80,7 +86,7 @@ function App() {
       <LanguageProvider>
         <MarketplaceProvider>
           <Router>
-            <Layout />
+            <LayoutContent />
           </Router>
         </MarketplaceProvider>
       </LanguageProvider>
@@ -89,3 +95,4 @@ function App() {
 }
 
 export default App;
+

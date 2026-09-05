@@ -1,0 +1,140 @@
+// Services & API Handlers para Asaas API v3
+// Suporta PIX Instantâneo e Cartão de Crédito (Boleto Removido)
+// Ciclo Recorrente Oficial: 30 Dias (MONTHLY)
+// Unidade de Crédito: Aulas de 45 minutos
+
+const LOCAL_STORAGE_KEY_ASAAS_CONFIG = 'lexy_asaas_payment_config_v1';
+
+export const DEFAULT_ASAAS_CONFIG = {
+  mode: import.meta.env.VITE_ASAAS_ENVIRONMENT || 'sandbox', // 'sandbox' | 'production'
+  apiKey: import.meta.env.VITE_ASAAS_API_KEY || '',
+  walletId: import.meta.env.VITE_ASAAS_WALLET_ID || 'a985bddf-d92e-423b-881a-cf2d843d5ca9',
+  apiUrl: import.meta.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3',
+  pixEnabled: true,
+  cardEnabled: true,
+  invoiceEnabled: true
+};
+
+export const getAsaasConfig = () => {
+  const saved = localStorage.getItem(LOCAL_STORAGE_KEY_ASAAS_CONFIG);
+  if (saved) {
+    try {
+      return { ...DEFAULT_ASAAS_CONFIG, ...JSON.parse(saved) };
+    } catch (e) {
+      console.error('Erro ao carregar configurações do Asaas', e);
+    }
+  }
+  return DEFAULT_ASAAS_CONFIG;
+};
+
+export const saveAsaasConfig = (newConfig) => {
+  const updated = { ...getAsaasConfig(), ...newConfig };
+  localStorage.setItem(LOCAL_STORAGE_KEY_ASAAS_CONFIG, JSON.stringify(updated));
+  return updated;
+};
+
+/**
+ * Processa um pagamento pontual via Asaas (PIX ou Cartão)
+ */
+export const processAsaasPayment = async (paymentData) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        method: paymentData.method, // 'pix' | 'credit_card'
+        amount: paymentData.amount,
+        description: paymentData.description,
+        customer: paymentData.customer,
+        cardData: paymentData.cardData,
+        lessonsCount: paymentData.lessonsCount
+      })
+    });
+
+    const data = await apiRes.json();
+    if (apiRes.ok && data.success) {
+      return data;
+    } else {
+      return {
+        success: false,
+        error: data.error || 'Erro de autorização na API do Asaas.',
+        details: data
+      };
+    }
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas:', err);
+    return {
+      success: false,
+      error: 'Falha de conexão com o servidor de pagamentos Asaas.'
+    };
+  }
+};
+
+/**
+ * Processa uma Assinatura Mensal Recorrente no Asaas (Ciclo 30 Dias)
+ */
+export const processAsaasSubscription = async (subData) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: subData.amount,
+        planName: subData.planName,
+        customer: subData.customer,
+        cardData: subData.cardData,
+        method: subData.method || 'credit_card',
+        lessonsCount: subData.lessonsCount
+      })
+    });
+
+    const data = await apiRes.json();
+    if (apiRes.ok && data.success) {
+      return data;
+    } else {
+      return {
+        success: false,
+        error: data.error || 'Erro ao processar assinatura recorrente no Asaas.'
+      };
+    }
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-subscription:', err);
+    return {
+      success: false,
+      error: 'Falha ao conectar com o servidor de assinaturas Asaas.'
+    };
+  }
+};
+
+/**
+ * Solicita a emissão de Nota Fiscal Eletrônica (NFS-e) no Asaas
+ */
+export const issueAsaasInvoice = async (invoiceData) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-invoice', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        paymentId: invoiceData.paymentId,
+        value: invoiceData.value,
+        serviceDescription: invoiceData.serviceDescription,
+        customerId: invoiceData.customerId
+      })
+    });
+
+    const data = await apiRes.json();
+    return data;
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-invoice:', err);
+    return {
+      success: false,
+      error: 'Falha de conexão com o emissor de Nota Fiscal Asaas.'
+    };
+  }
+};
