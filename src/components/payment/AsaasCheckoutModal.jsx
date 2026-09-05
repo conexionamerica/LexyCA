@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ShieldCheck, CreditCard, QrCode, CheckCircle2, 
-  Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText, Phone
+  Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText, Phone, MapPin, Building
 } from 'lucide-react';
 import { processAsaasPayment, processAsaasSubscription } from '../../lib/asaasPaymentService';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
 import { formatPhone, validatePhone } from '../../lib/phoneValidator';
+import { formatCEP, validateCEP, fetchAddressByCEP } from '../../lib/cepValidator';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AsaasCheckoutModal({ 
@@ -22,21 +23,26 @@ export default function AsaasCheckoutModal({
   const { profile, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('pix'); // 'pix' | 'card' (NO BOLETO)
   const [loading, setLoading] = useState(false);
+  const [fetchingCep, setFetchingCep] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successResult, setSuccessResult] = useState(null);
 
-  // Phone input for existing users without registered phone
-  const [phoneInput, setPhoneInput] = useState(() => {
-    return customerInfo?.phone || profile?.phone || '';
-  });
+  // Cadastrais de Cobrança (Celular, CPF, CEP, Endereço, Número, Bairro)
+  const [phoneInput, setPhoneInput] = useState(() => customerInfo?.phone || profile?.phone || '');
+  const [cardCpf, setCardCpf] = useState(() => customerInfo?.document || profile?.documentNumber || '');
+  const [cepInput, setCepInput] = useState(() => customerInfo?.postalCode || profile?.postalCode || customerInfo?.cep || profile?.cep || '01001-000');
+  const [addressInput, setAddressInput] = useState(() => customerInfo?.address || profile?.address || 'Praça da Sé');
+  const [addressNumberInput, setAddressNumberInput] = useState(() => customerInfo?.addressNumber || profile?.addressNumber || '100');
+  const [provinceInput, setProvinceInput] = useState(() => customerInfo?.province || profile?.province || customerInfo?.bairro || profile?.bairro || 'Centro');
+  const [cityInput, setCityInput] = useState(() => customerInfo?.city || profile?.city || 'São Paulo');
+  const [stateInput, setStateInput] = useState(() => customerInfo?.state || profile?.state || 'SP');
 
   // Formulario Cartão de Crédito
   const [cardNumber, setCardNumber] = useState('');
   const [cardHolder, setCardHolder] = useState(customerInfo?.name || profile?.full_name || '');
   const [cardExp, setCardExp] = useState('');
   const [cardCvv, setCardCvv] = useState('');
-  const [cardCpf, setCardCpf] = useState(customerInfo?.document || profile?.documentNumber || '');
   const [installments, setInstallments] = useState(1);
 
   // Estado PIX Asaas
@@ -44,6 +50,26 @@ export default function AsaasCheckoutModal({
   const [pixCountdown, setPixCountdown] = useState(900); // 15 min
 
   const numAmount = parseFloat(amount) || 1.0;
+
+  // Auto-busca de CEP no ViaCEP
+  const handleCepChange = async (e) => {
+    const rawVal = e.target.value;
+    const formatted = formatCEP(rawVal);
+    setCepInput(formatted);
+
+    const clean = rawVal.replace(/\D/g, '');
+    if (clean.length === 8) {
+      setFetchingCep(true);
+      const res = await fetchAddressByCEP(clean);
+      setFetchingCep(false);
+      if (res) {
+        setAddressInput(res.address || addressInput);
+        setProvinceInput(res.province || provinceInput);
+        setCityInput(res.city || cityInput);
+        setStateInput(res.state || stateInput);
+      }
+    }
+  };
 
   // Reset al abrir modal
   useEffect(() => {
@@ -55,6 +81,14 @@ export default function AsaasCheckoutModal({
       setPhoneInput(currentPh);
       if (customerInfo?.name || profile?.full_name) setCardHolder(customerInfo?.name || profile?.full_name || '');
       if (customerInfo?.document || profile?.documentNumber) setCardCpf(customerInfo?.document || profile?.documentNumber || '');
+      if (customerInfo?.postalCode || profile?.postalCode || customerInfo?.cep || profile?.cep) {
+        setCepInput(customerInfo?.postalCode || profile?.postalCode || customerInfo?.cep || profile?.cep || '01001-000');
+      }
+      if (customerInfo?.address || profile?.address) setAddressInput(customerInfo?.address || profile?.address);
+      if (customerInfo?.addressNumber || profile?.addressNumber) setAddressNumberInput(customerInfo?.addressNumber || profile?.addressNumber);
+      if (customerInfo?.province || profile?.province || customerInfo?.bairro || profile?.bairro) {
+        setProvinceInput(customerInfo?.province || profile?.province || customerInfo?.bairro || profile?.bairro);
+      }
     }
   }, [isOpen, customerInfo, profile]);
 
@@ -104,11 +138,22 @@ export default function AsaasCheckoutModal({
     setLoading(true);
     setErrorMsg('');
     try {
+      const cleanCpf = cardCpf.replace(/\D/g, '');
       const res = await processAsaasPayment({
         method: 'pix',
         amount: numAmount,
         description: description || `Plano Lexy - ${lessonsCount} Aulas (45 min)`,
-        customer: { ...customerInfo, phone: phoneInput },
+        customer: { 
+          ...customerInfo, 
+          phone: phoneInput,
+          document: cleanCpf || customerInfo?.document || profile?.documentNumber,
+          postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
+          address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
+          addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
+          province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
+          city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
+          state: stateInput || customerInfo?.state || profile?.state || 'SP'
+        },
         lessonsCount: lessonsCount
       });
 
@@ -174,14 +219,29 @@ export default function AsaasCheckoutModal({
         expMonth: expParts[0],
         expYear: `20${expParts[1]}`,
         cvv: cardCvv,
-        installments: parseInt(installments, 10)
+        installments: parseInt(installments, 10),
+        postalCode: cepInput,
+        addressNumber: addressNumberInput
+      };
+
+      const custPayload = {
+        ...customerInfo,
+        name: cardHolder,
+        document: cleanCpf,
+        phone: phoneInput,
+        postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
+        address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
+        addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
+        province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
+        city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
+        state: stateInput || customerInfo?.state || profile?.state || 'SP'
       };
 
       if (isRecurring) {
         res = await processAsaasSubscription({
           amount: numAmount,
           planName: `Assinatura Lexy - ${lessonsCount} Aulas (45 min) / 30 Dias`,
-          customer: { ...customerInfo, name: cardHolder, document: cleanCpf, phone: phoneInput },
+          customer: custPayload,
           cardData: cardPayload,
           method: 'credit_card',
           lessonsCount: lessonsCount
@@ -191,7 +251,7 @@ export default function AsaasCheckoutModal({
           method: 'credit_card',
           amount: numAmount,
           description: description || `Lexy Idiomas - ${lessonsCount} Aulas (45 min)`,
-          customer: { ...customerInfo, name: cardHolder, document: cleanCpf, phone: phoneInput },
+          customer: custPayload,
           cardData: cardPayload,
           lessonsCount: lessonsCount
         });
@@ -413,6 +473,80 @@ export default function AsaasCheckoutModal({
                     <CreditCard className="w-4 h-4" />
                     <span>Cartão de Crédito</span>
                   </button>
+                </div>
+
+                {/* ENDEREÇO DE COBRANÇA PARA EMISSÃO DE NOTA FISCAL (NFS-E) */}
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-slate-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Endereço de Faturamento (NFS-e)
+                    </span>
+                    {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP...</span>}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">CEP *</label>
+                      <input
+                        type="text"
+                        maxLength={9}
+                        value={cepInput}
+                        onChange={handleCepChange}
+                        placeholder="00000-000"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-mono font-bold outline-none focus:border-emerald-400"
+                      />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Rua / Logradouro *</label>
+                      <input
+                        type="text"
+                        value={addressInput}
+                        onChange={(e) => setAddressInput(e.target.value)}
+                        placeholder="Ex: Av. Paulista"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Número *</label>
+                      <input
+                        type="text"
+                        value={addressNumberInput}
+                        onChange={(e) => setAddressNumberInput(e.target.value)}
+                        placeholder="100"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Bairro *</label>
+                      <input
+                        type="text"
+                        value={provinceInput}
+                        onChange={(e) => setProvinceInput(e.target.value)}
+                        placeholder="Bairro"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Cidade - UF *</label>
+                      <input
+                        type="text"
+                        value={cityInput ? `${cityInput}${stateInput ? ' - ' + stateInput : ''}` : ''}
+                        onChange={(e) => {
+                          const parts = e.target.value.split('-');
+                          setCityInput(parts[0]?.trim() || '');
+                          if (parts[1]) setStateInput(parts[1].trim());
+                        }}
+                        placeholder="São Paulo - SP"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
                 </div>
 
             {errorMsg && (

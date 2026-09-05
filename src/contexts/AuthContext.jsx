@@ -99,18 +99,26 @@ export const AuthProvider = ({ children }) => {
         const localAvatar = localStorage.getItem('lexy_avatar_' + session.user.id) || localStorage.getItem('lexy_avatar_' + session.user.email);
 
         const userProfile = {
-          id: session.user.id,
-          full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
-          email: session.user.email,
-          role: dbProfile.role || userMeta.role || 'student',
-          documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
-          residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
-          study_language: dbProfile.study_language || userMeta.study_language || '',
-          language_level: dbProfile.language_level || userMeta.language_level || '',
-          study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
-          avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
-          hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
-          matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
+            id: session.user.id,
+            full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
+            email: session.user.email,
+            role: dbProfile.role || userMeta.role || 'student',
+            phone: dbProfile.phone || userMeta.phone || '',
+            documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
+            postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
+            address: dbProfile.address || userMeta.address || '',
+            addressNumber: dbProfile.address_number || userMeta.addressNumber || '',
+            complement: dbProfile.complement || userMeta.complement || '',
+            province: dbProfile.province || userMeta.province || dbProfile.bairro || userMeta.bairro || '',
+            city: dbProfile.city || userMeta.city || '',
+            state: dbProfile.state || userMeta.state || '',
+            residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
+            study_language: dbProfile.study_language || userMeta.study_language || '',
+            language_level: dbProfile.language_level || userMeta.language_level || '',
+            study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
+            avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
+            hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
+            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
         };
         setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
@@ -337,6 +345,13 @@ export const AuthProvider = ({ children }) => {
         if (updatedData.study_motivation !== undefined) newMetaData.study_motivation = updatedData.study_motivation;
         if (updatedData.phone !== undefined) newMetaData.phone = updatedData.phone;
         if (updatedData.documentNumber !== undefined) newMetaData.documentNumber = updatedData.documentNumber;
+        if (updatedData.postalCode !== undefined) newMetaData.postalCode = updatedData.postalCode;
+        if (updatedData.address !== undefined) newMetaData.address = updatedData.address;
+        if (updatedData.addressNumber !== undefined) newMetaData.addressNumber = updatedData.addressNumber;
+        if (updatedData.complement !== undefined) newMetaData.complement = updatedData.complement;
+        if (updatedData.province !== undefined) newMetaData.province = updatedData.province;
+        if (updatedData.city !== undefined) newMetaData.city = updatedData.city;
+        if (updatedData.state !== undefined) newMetaData.state = updatedData.state;
 
         await supabase.auth.updateUser({ data: newMetaData });
 
@@ -352,6 +367,13 @@ export const AuthProvider = ({ children }) => {
         if (updatedData.study_motivation !== undefined) upsertData.study_motivation = updatedData.study_motivation;
         if (updatedData.phone !== undefined) upsertData.phone = updatedData.phone;
         if (updatedData.documentNumber !== undefined) upsertData.document_number = updatedData.documentNumber;
+        if (updatedData.postalCode !== undefined) upsertData.postal_code = updatedData.postalCode;
+        if (updatedData.address !== undefined) upsertData.address = updatedData.address;
+        if (updatedData.addressNumber !== undefined) upsertData.address_number = updatedData.addressNumber;
+        if (updatedData.complement !== undefined) upsertData.complement = updatedData.complement;
+        if (updatedData.province !== undefined) upsertData.province = updatedData.province;
+        if (updatedData.city !== undefined) upsertData.city = updatedData.city;
+        if (updatedData.state !== undefined) upsertData.state = updatedData.state;
 
         await supabase.from('profiles').upsert(upsertData);
       }

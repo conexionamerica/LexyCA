@@ -8,10 +8,11 @@ import {
   Search, Star, CheckCircle2, Award, Heart, Plus, Sparkles, 
   BookOpen, ChevronRight, Wallet, UserCheck, ShieldCheck, 
   RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown,
-  Camera, Save, Upload, Zap, Clock
+  Camera, Save, Upload, Zap, Clock, MapPin
 } from 'lucide-react';
 import StudentSubscriptionTab from '../components/subscription/StudentSubscriptionTab';
 import { formatPhone, validatePhone } from '../lib/phoneValidator';
+import { formatCEP, validateCEP, fetchAddressByCEP } from '../lib/cepValidator';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -110,6 +111,15 @@ export default function StudentDashboard() {
   // Estado de edição de Perfil e Foto
   const [profileAvatar, setProfileAvatar] = useState(profile?.avatar_url || '');
   const [editPhone, setEditPhone] = useState(profile?.phone || student?.phone || '');
+  const [editCep, setEditCep] = useState(profile?.postalCode || profile?.cep || '');
+  const [editAddress, setEditAddress] = useState(profile?.address || '');
+  const [editAddressNumber, setEditAddressNumber] = useState(profile?.addressNumber || '');
+  const [editComplement, setEditComplement] = useState(profile?.complement || '');
+  const [editProvince, setEditProvince] = useState(profile?.province || profile?.bairro || '');
+  const [editCity, setEditCity] = useState(profile?.city || '');
+  const [editState, setEditState] = useState(profile?.state || '');
+  const [fetchingCep, setFetchingCep] = useState(false);
+
   const [editLanguage, setEditLanguage] = useState(profile?.study_language || 'Inglês 🇬🇧🇺🇸');
   const [editLevel, setEditLevel] = useState(profile?.language_level || 'B2 - Intermediário Avançado 🎓');
   const [editMotivation, setEditMotivation] = useState(profile?.study_motivation || 'Carreira Profissional 📈');
@@ -119,11 +129,37 @@ export default function StudentDashboard() {
     if (profile) {
       if (profile.avatar_url) setProfileAvatar(profile.avatar_url);
       if (profile.phone) setEditPhone(profile.phone);
+      if (profile.postalCode || profile.cep) setEditCep(profile.postalCode || profile.cep);
+      if (profile.address) setEditAddress(profile.address);
+      if (profile.addressNumber) setEditAddressNumber(profile.addressNumber);
+      if (profile.complement) setEditComplement(profile.complement);
+      if (profile.province || profile.bairro) setEditProvince(profile.province || profile.bairro);
+      if (profile.city) setEditCity(profile.city);
+      if (profile.state) setEditState(profile.state);
       if (profile.study_language) setEditLanguage(profile.study_language);
       if (profile.language_level) setEditLevel(profile.language_level);
       if (profile.study_motivation) setEditMotivation(profile.study_motivation);
     }
   }, [profile]);
+
+  const handleCepChange = async (e) => {
+    const rawVal = e.target.value;
+    const formatted = formatCEP(rawVal);
+    setEditCep(formatted);
+
+    const clean = rawVal.replace(/\D/g, '');
+    if (clean.length === 8) {
+      setFetchingCep(true);
+      const res = await fetchAddressByCEP(clean);
+      setFetchingCep(false);
+      if (res) {
+        setEditAddress(res.address || editAddress);
+        setEditProvince(res.province || editProvince);
+        setEditCity(res.city || editCity);
+        setEditState(res.state || editState);
+      }
+    }
+  };
 
   const handleAvatarChange = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -166,6 +202,13 @@ export default function StudentDashboard() {
       updateProfile({
         avatar_url: profileAvatar,
         phone: editPhone,
+        postalCode: editCep,
+        address: editAddress,
+        addressNumber: editAddressNumber,
+        complement: editComplement,
+        province: editProvince,
+        city: editCity,
+        state: editState,
         study_language: editLanguage,
         language_level: editLevel,
         study_motivation: editMotivation
@@ -1118,6 +1161,87 @@ export default function StudentDashboard() {
                       ⚠️ Cadastre seu celular para habilitar pagamentos e Nota Fiscal no Asaas
                     </span>
                   )}
+                </div>
+
+                {/* ENDEREÇO DE COBRANÇA PARA EMISSÃO DE NOTA FISCAL (NFS-E) */}
+                <div className="sm:col-span-2 bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Endereço de Faturamento & Emissão de Nota Fiscal (NFS-e)</span>
+                    </span>
+                    {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP no ViaCEP...</span>}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1">CEP *</label>
+                      <input
+                        type="text"
+                        maxLength={9}
+                        value={editCep}
+                        onChange={handleCepChange}
+                        placeholder="00000-000"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1">Logradouro / Rua *</label>
+                      <input
+                        type="text"
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        placeholder="Ex: Av. Paulista, Rua da Consolação"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1">Número *</label>
+                      <input
+                        type="text"
+                        value={editAddressNumber}
+                        onChange={(e) => setEditAddressNumber(e.target.value)}
+                        placeholder="1000"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1">Bairro *</label>
+                      <input
+                        type="text"
+                        value={editProvince}
+                        onChange={(e) => setEditProvince(e.target.value)}
+                        placeholder="Bairro"
+                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 block mb-1">Cidade / Estado *</label>
+                      <div className="grid grid-cols-3 gap-1">
+                        <input
+                          type="text"
+                          value={editCity}
+                          onChange={(e) => setEditCity(e.target.value)}
+                          placeholder="Cidade"
+                          className="col-span-2 bg-slate-950 border border-slate-800 text-white rounded-lg px-2 py-1.5 text-xs outline-none focus:border-cyan-400"
+                        />
+                        <input
+                          type="text"
+                          maxLength={2}
+                          value={editState}
+                          onChange={(e) => setEditState(e.target.value.toUpperCase())}
+                          placeholder="UF"
+                          className="col-span-1 bg-slate-950 border border-slate-800 text-white rounded-lg px-1.5 py-1.5 text-xs font-mono font-bold text-center uppercase outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2 bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-1">

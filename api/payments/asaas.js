@@ -34,6 +34,12 @@ export default async function handler(req, res) {
     const customerName = customer?.name || 'Aluno Lexy';
     const customerPhone = (customer?.phone || customer?.mobilePhone || '11999999999').replace(/\D/g, '');
 
+    const rawCep = (customer?.postalCode || customer?.cep || cardData?.postalCode || '').replace(/\D/g, '');
+    const validPostalCode = (rawCep.length === 8) ? rawCep : '01001000'; // 01001-000 Praça da Sé, SP (universal valid CEP)
+    const addressNumber = customer?.addressNumber || cardData?.addressNumber || '100';
+    const address = customer?.address || 'Praça da Sé';
+    const province = customer?.province || customer?.bairro || 'Centro';
+
     const asaasHeaders = {
       'Content-Type': 'application/json',
       'access_token': apiKey,
@@ -63,6 +69,10 @@ export default async function handler(req, res) {
         email: customerEmail,
         cpfCnpj: validCpf,
         mobilePhone: customerPhone,
+        postalCode: validPostalCode,
+        address: address,
+        addressNumber: addressNumber,
+        province: province,
         notificationDisabled: true
       };
 
@@ -119,9 +129,11 @@ export default async function handler(req, res) {
         name: (cardData.holderName || customerName).toUpperCase(),
         email: customerEmail,
         cpfCnpj: validCpf,
-        postalCode: '90015151',
-        addressNumber: '325',
-        phone: customerPhone
+        postalCode: validPostalCode,
+        addressNumber: addressNumber,
+        addressComplement: customer?.complement || null,
+        phone: customerPhone,
+        mobilePhone: customerPhone
       };
     }
 

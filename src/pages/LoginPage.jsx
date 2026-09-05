@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { validateCPF, formatCPF } from '../lib/cpfValidator';
 import { formatPhone, validatePhone } from '../lib/phoneValidator';
+import { formatCEP, validateCEP, fetchAddressByCEP } from '../lib/cepValidator';
 import { 
   Globe, Mail, Lock, User, UserCheck, GraduationCap, 
   ArrowRight, CheckCircle2, AlertCircle, Eye, EyeOff, 
-  Sparkles, Star, Gift, Zap, FileText, Phone, CreditCard as CpfIcon 
+  Sparkles, Star, Gift, Zap, FileText, Phone, MapPin, Building, CreditCard as CpfIcon 
 } from 'lucide-react';
 
 import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
@@ -48,6 +49,16 @@ export default function LoginPage({ forceRole }) {
   const [residenceCountry, setResidenceCountry] = useState('Brasil 🇧🇷');
   const [cpf, setCpf] = useState('');
   const [passport, setPassport] = useState('');
+
+  // Endereço e Nota Fiscal (NFS-e / Asaas)
+  const [postalCode, setPostalCode] = useState('');
+  const [address, setAddress] = useState('');
+  const [addressNumber, setAddressNumber] = useState('');
+  const [complement, setComplement] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [fetchingCep, setFetchingCep] = useState(false);
   
   // Novos campos de registro
   const [studyLanguage, setStudyLanguage] = useState('');
@@ -95,6 +106,25 @@ export default function LoginPage({ forceRole }) {
       }
     } else {
       setPhoneError('');
+    }
+  };
+
+  const handleCepChange = async (e) => {
+    const rawVal = e.target.value;
+    const formatted = formatCEP(rawVal);
+    setPostalCode(formatted);
+
+    const clean = rawVal.replace(/\D/g, '');
+    if (clean.length === 8) {
+      setFetchingCep(true);
+      const res = await fetchAddressByCEP(clean);
+      setFetchingCep(false);
+      if (res) {
+        setAddress(res.address || address);
+        setProvince(res.province || province);
+        setCity(res.city || city);
+        setState(res.state || state);
+      }
     }
   };
 
@@ -189,6 +219,13 @@ export default function LoginPage({ forceRole }) {
         phone,
         documentNumber: docNumber,
         residenceCountry,
+        postalCode,
+        address,
+        addressNumber,
+        complement,
+        province,
+        city,
+        state,
         study_language: studyLanguage,
         language_level: languageLevel,
         study_motivation: studyMotivation
@@ -206,7 +243,13 @@ export default function LoginPage({ forceRole }) {
             phone,
             residenceCountry,
             documentType: isBrazil ? 'cpf' : 'passport',
-            documentNumber: docNumber
+            documentNumber: docNumber,
+            postalCode,
+            address,
+            addressNumber,
+            province,
+            city,
+            state
           });
         }
         setTimeout(() => {
@@ -456,25 +499,101 @@ export default function LoginPage({ forceRole }) {
                   </div>
 
                   {isBrazil ? (
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
-                        <span className="flex items-center gap-1">
-                          <CpfIcon className="w-3.5 h-3.5 text-cyan-400" /> CPF (Residente no Brasil) *
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={14}
-                        value={cpf}
-                        onChange={handleCpfChange}
-                        placeholder="000.000.000-00"
-                        className={`w-full bg-slate-900 border text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400 ${
-                          cpfError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
-                        }`}
-                      />
-                      {cpfError && <p className="text-[10px] font-bold text-rose-400 mt-1">{cpfError}</p>}
-                    </div>
+                    <>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
+                          <span className="flex items-center gap-1">
+                            <CpfIcon className="w-3.5 h-3.5 text-cyan-400" /> CPF (Residente no Brasil) *
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={14}
+                          value={cpf}
+                          onChange={handleCpfChange}
+                          placeholder="000.000.000-00"
+                          className={`w-full bg-slate-900 border text-white rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none focus:border-cyan-400 ${
+                            cpfError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
+                          }`}
+                        />
+                        {cpfError && <p className="text-[10px] font-bold text-rose-400 mt-1">{cpfError}</p>}
+                      </div>
+
+                      {/* CAMPOS DE ENDEREÇO COMPLETO PARA NOTA FISCAL (NFS-E) E COBRANÇAS ASAAS */}
+                      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-extrabold text-cyan-400 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-cyan-400" /> Endereço para Emissão de Nota Fiscal (NFS-e)
+                          </span>
+                          {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP...</span>}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-1">
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">CEP *</label>
+                            <input
+                              type="text"
+                              maxLength={9}
+                              value={postalCode}
+                              onChange={handleCepChange}
+                              placeholder="00000-000"
+                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs font-mono font-bold outline-none focus:border-cyan-400"
+                            />
+                          </div>
+
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Logradouro / Rua *</label>
+                            <input
+                              type="text"
+                              value={address}
+                              onChange={(e) => setAddress(e.target.value)}
+                              placeholder="Rua / Avenida"
+                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Número *</label>
+                            <input
+                              type="text"
+                              value={addressNumber}
+                              onChange={(e) => setAddressNumber(e.target.value)}
+                              placeholder="123"
+                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Bairro *</label>
+                            <input
+                              type="text"
+                              value={province}
+                              onChange={(e) => setProvince(e.target.value)}
+                              placeholder="Bairro"
+                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Cidade / UF *</label>
+                            <input
+                              type="text"
+                              value={city ? `${city}${state ? ' - ' + state : ''}` : ''}
+                              onChange={(e) => {
+                                const parts = e.target.value.split('-');
+                                setCity(parts[0]?.trim() || '');
+                                if (parts[1]) setState(parts[1].trim());
+                              }}
+                              placeholder="Cidade - UF"
+                              className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2.5 py-2 text-xs outline-none focus:border-cyan-400"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div>
                       <label className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mb-1">
