@@ -63,6 +63,7 @@ export const AuthProvider = ({ children }) => {
             full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
             email: session.user.email,
             role: dbProfile.role || userMeta.role || 'student',
+            phone: dbProfile.phone || userMeta.phone || '',
             documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
             residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
             study_language: dbProfile.study_language || userMeta.study_language || '',
@@ -195,7 +196,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
-  const signUpWithSupabase = async ({ name, email, password, role, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation }) => {
+  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signUp({
@@ -206,6 +207,7 @@ export const AuthProvider = ({ children }) => {
             name: name,
             full_name: name,
             role: role || 'student',
+            phone: phone || '',
             documentNumber: documentNumber || '',
             residenceCountry: residenceCountry || 'Brasil 🇧🇷',
             hourlyRate: hourlyRate || 20,
@@ -218,7 +220,6 @@ export const AuthProvider = ({ children }) => {
 
       if (error) {
         const msg = error.message?.toLowerCase() || '';
-        // Manejar rate limit de Supabase (error 429)
         if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('email rate limit') || error.status === 429) {
           return { success: false, error: '⏳ Limite de cadastros atingido. A Supabase permite poucos cadastros por hora no plano gratuito. Por favor, aguarde alguns minutos e tente novamente.' };
         }
@@ -237,13 +238,13 @@ export const AuthProvider = ({ children }) => {
 
       const userId = data.user.id;
 
-      // Intentar persistir en tabla profiles de Supabase
       try {
         await supabase.from('profiles').upsert({
           id: userId,
           full_name: name,
           email: cleanEmail,
           role: role || 'student',
+          phone: phone || '',
           document_number: documentNumber || '',
           residence_country: residenceCountry || 'Brasil 🇧🇷',
           hourly_rate: hourlyRate || 20,
@@ -258,6 +259,7 @@ export const AuthProvider = ({ children }) => {
         full_name: name,
         email: cleanEmail,
         role: role || 'student',
+        phone: phone || '',
         documentNumber: documentNumber || '',
         residenceCountry: residenceCountry || 'Brasil 🇧🇷',
         study_language: study_language || '',

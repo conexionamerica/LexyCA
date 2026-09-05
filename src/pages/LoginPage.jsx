@@ -3,10 +3,11 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { validateCPF, formatCPF } from '../lib/cpfValidator';
+import { formatPhone, validatePhone } from '../lib/phoneValidator';
 import { 
   Globe, Mail, Lock, User, UserCheck, GraduationCap, 
   ArrowRight, CheckCircle2, AlertCircle, Eye, EyeOff, 
-  Sparkles, Star, Gift, Zap, FileText, CreditCard as CpfIcon 
+  Sparkles, Star, Gift, Zap, FileText, Phone, CreditCard as CpfIcon 
 } from 'lucide-react';
 
 import TermsPrivacyModal from '../components/modals/TermsPrivacyModal';
@@ -42,6 +43,7 @@ export default function LoginPage({ forceRole }) {
   // Campos del formulario
   const [name, setName] = useState('');
   const [email, setEmail] = useState(isAdmin ? 'emaildeconexionamerica@gmail.com' : '');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState(isAdmin ? 'AlyRoberto2026*' : '');
   const [residenceCountry, setResidenceCountry] = useState('Brasil 🇧🇷');
   const [cpf, setCpf] = useState('');
@@ -56,6 +58,7 @@ export default function LoginPage({ forceRole }) {
   
   // Validaciones y Errores
   const [cpfError, setCpfError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -76,6 +79,22 @@ export default function LoginPage({ forceRole }) {
       }
     } else {
       setCpfError('');
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+
+    const clean = formatted.replace(/\D/g, '');
+    if (clean.length >= 8) {
+      if (!validatePhone(formatted, isBrazil)) {
+        setPhoneError('Número de celular inválido. Informe um número verdadeiro com DDD.');
+      } else {
+        setPhoneError('');
+      }
+    } else {
+      setPhoneError('');
     }
   };
 
@@ -137,6 +156,13 @@ export default function LoginPage({ forceRole }) {
         return;
       }
 
+      if (!phone.trim() || !validatePhone(phone, isBrazil)) {
+        setIsLoading(false);
+        setPhoneError('Por favor, informe um número de celular verdadeiro e válido com DDD.');
+        setErrorMessage('Celular/WhatsApp verdadeiro é obrigatório para notificações de aulas e cobranças Asaas.');
+        return;
+      }
+
       if (activeRole === 'student') {
         if (isBrazil) {
           const cleanCPF = cpf.replace(/\D/g, '');
@@ -160,6 +186,7 @@ export default function LoginPage({ forceRole }) {
         email: cleanEmail,
         password,
         role: activeRole,
+        phone,
         documentNumber: docNumber,
         residenceCountry,
         study_language: studyLanguage,
@@ -176,13 +203,13 @@ export default function LoginPage({ forceRole }) {
             name,
             email: cleanEmail,
             password,
+            phone,
             residenceCountry,
             documentType: isBrazil ? 'cpf' : 'passport',
             documentNumber: docNumber
           });
         }
         setTimeout(() => {
-          // Após criação de conta, redirecionar direto ao painel do aluno/tutor
           if (activeRole === 'teacher') {
             navigate('/dashboard/teacher');
           } else {
@@ -198,14 +225,12 @@ export default function LoginPage({ forceRole }) {
   return (
     <TechVeinsBackground className="min-h-[85vh] flex items-center justify-center px-4 py-8 animate-fade-in-up">
       
-      {/* CARD PRINCIPAL RÉPLICA DE ALUNO.CONEXIONAMERICA.COM.BR */}
       <div className="w-full max-w-5xl bg-slate-950/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-cyan-500/30 grid grid-cols-1 md:grid-cols-12 relative z-10">
         
         {/* LADO IZQUIERDO: BANNERS PROMO & NOVIDADES */}
         <div className="md:col-span-5 bg-gradient-to-br from-slate-950 via-cyan-950 to-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-4 sm:p-6 md:p-10 flex flex-col justify-between relative overflow-hidden text-white">
           <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
           
-          {/* Logo Branding */}
           <div className="relative z-10 space-y-3">
             <Link to="/" className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-slate-950 shadow-lg shadow-cyan-500/25">
@@ -219,7 +244,6 @@ export default function LoginPage({ forceRole }) {
               </div>
             </Link>
 
-            {/* Banner Oportunidades & Novidades */}
             <div className={`p-4 rounded-2xl bg-slate-900/80 border space-y-2 shadow-xl ${activeRole === 'teacher' ? 'border-amber-500/30' : 'border-cyan-500/30'}`}>
               <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${activeRole === 'teacher' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}`}>
                 <Sparkles className="w-3 h-3 text-amber-400" /> {activeRole === 'teacher' ? 'Área de Docência' : 'Nova Estrutura Lexy'}
@@ -249,7 +273,6 @@ export default function LoginPage({ forceRole }) {
             </div>
           </div>
 
-          {/* Convenios & Parcerias Row */}
           <div className="relative z-10 pt-4 border-t border-slate-800/80 text-center space-y-1 hidden sm:block">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Parcerias e Convênios</p>
             <div className="flex items-center justify-center gap-4 sm:gap-6 opacity-75 text-xs font-black text-slate-400 flex-wrap">
@@ -261,7 +284,7 @@ export default function LoginPage({ forceRole }) {
           </div>
         </div>
 
-        {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO RÉPLICA */}
+        {/* LADO DERECHO: FORMULARIO DE LOGIN / REGISTRO */}
         <div className="md:col-span-7 p-4 sm:p-6 md:p-10 flex flex-col justify-center bg-slate-950/95 space-y-5">
 
           <div className="space-y-1.5">
@@ -290,7 +313,6 @@ export default function LoginPage({ forceRole }) {
             </p>
           </div>
 
-          {/* Selector Tabs: Iniciar Sessão vs Criar Conta */}
           <div className="grid grid-cols-2 gap-1 p-1 bg-slate-900 border border-slate-800 rounded-2xl">
             <button
               type="button"
@@ -313,7 +335,6 @@ export default function LoginPage({ forceRole }) {
             </button>
           </div>
 
-          {/* Error Message */}
           {errorMessage && (
             <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-3.5 rounded-2xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -321,7 +342,6 @@ export default function LoginPage({ forceRole }) {
             </div>
           )}
 
-          {/* Success Notification */}
           {registrationSuccess ? (
             <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-300 text-xs font-bold p-5 rounded-2xl text-center space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
@@ -331,7 +351,6 @@ export default function LoginPage({ forceRole }) {
           ) : (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               
-              {/* Nome Completo (solo al Criar Conta) */}
               {!isLogin && (
                 <div>
                   <label className="text-[11px] font-bold text-slate-400 block mb-1">Nome Completo *</label>
@@ -349,7 +368,6 @@ export default function LoginPage({ forceRole }) {
                 </div>
               )}
 
-              {/* Email */}
               <div>
                 <label className="text-[11px] font-bold text-slate-400 block mb-1">E-mail *</label>
                 <div className="relative">
@@ -365,7 +383,34 @@ export default function LoginPage({ forceRole }) {
                 </div>
               </div>
 
-              {/* Password */}
+              {!isLogin && (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 flex items-center justify-between mb-1">
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5 text-cyan-400" /> Celular / WhatsApp (com DDD) *
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={handlePhoneChange}
+                      placeholder={isBrazil ? '(11) 99999-8888' : '+1 (555) 000-0000'}
+                      className={`w-full bg-slate-900 border text-white rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-mono font-medium outline-none focus:border-cyan-400 ${
+                        phoneError ? 'border-rose-500 text-rose-300' : 'border-slate-800'
+                      }`}
+                    />
+                  </div>
+                  {phoneError ? (
+                    <p className="text-[10px] font-bold text-rose-400 mt-1">{phoneError}</p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-0.5">Obrigatório para emissão de cobrança Asaas e confirmação de aulas.</p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[11px] font-bold text-slate-400 block">Senha *</label>
@@ -393,7 +438,6 @@ export default function LoginPage({ forceRole }) {
                 </div>
               </div>
 
-              {/* Campos adicionales de País y CPF / Documento Internacional al Criar Conta */}
               {!isLogin && (
                 <>
                   <div>
@@ -403,6 +447,7 @@ export default function LoginPage({ forceRole }) {
                       onChange={(e) => {
                         setResidenceCountry(e.target.value);
                         setCpfError('');
+                        setPhoneError('');
                       }}
                       className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none cursor-pointer focus:border-cyan-400"
                     >
@@ -575,7 +620,6 @@ export default function LoginPage({ forceRole }) {
 
           <TermsPrivacyModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
 
-          {/* Student Support Section */}
           <div className="pt-6 border-t border-slate-800/80 text-center space-y-3">
             <p className="text-xs text-slate-400 font-medium">Tem problemas ao iniciar sessão na sua conta?</p>
             <a 

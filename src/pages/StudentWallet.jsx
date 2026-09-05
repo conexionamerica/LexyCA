@@ -336,7 +336,8 @@ export default function StudentWallet() {
           customerInfo={{
             name: profile?.full_name || 'Aluno Lexy',
             email: profile?.email || 'aluno@lexy.com',
-            document: profile?.documentNumber || '603.198.610-82'
+            document: profile?.documentNumber || '603.198.610-82',
+            phone: profile?.phone || '11999999999'
           }}
           onSuccess={handleAsaasPaymentSuccess}
         />

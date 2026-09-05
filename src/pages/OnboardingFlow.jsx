@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { validateCPF, formatCPF } from '../lib/cpfValidator';
+import { formatPhone, validatePhone } from '../lib/phoneValidator';
 import { 
   User, Mail, Phone, Globe, Clock, DollarSign, Award, 
   Video, FileText, CheckCircle2, ArrowRight, ArrowLeft, 
@@ -207,7 +208,7 @@ export default function OnboardingFlow() {
       if (!formData.full_name.trim()) return 'Por favor, informe seu nome completo.';
       if (!formData.birth_date) return 'Por favor, informe sua data de nascimento.';
       if (!formData.email.trim() || !formData.email.includes('@')) return 'Por favor, informe um e-mail válido.';
-      if (!formData.phone.trim()) return 'Por favor, informe seu telefone/WhatsApp.';
+      if (!formData.phone.trim() || !validatePhone(formData.phone, formData.country === 'Brasil')) return 'Por favor, informe um telefone/WhatsApp verdadeiro e válido com DDD.';
       if (formData.country === 'Brasil') {
         const cleanCPF = formData.document_number.replace(/\D/g, '');
         if (!cleanCPF) return 'Por favor, informe seu CPF.';
