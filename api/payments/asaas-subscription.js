@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       'User-Agent': 'LexyIdiomas/1.0'
     };
 
-    // 1. Buscar ou Criar Cliente no Asaas
+    // 1. Buscar ou Criar/Atualizar Cliente no Asaas
     let asaasCustomerId = null;
     try {
       const searchRes = await fetch(`${baseUrl}/customers?cpfCnpj=${validCpf}`, {
@@ -54,6 +54,24 @@ export default async function handler(req, res) {
       const searchData = await searchRes.json();
       if (searchRes.ok && searchData.data && searchData.data.length > 0) {
         asaasCustomerId = searchData.data[0].id;
+        // Atualizar o nome do cliente no Asaas com o nome cadastrado no nosso site
+        try {
+          await fetch(`${baseUrl}/customers/${asaasCustomerId}`, {
+            method: 'PUT',
+            headers: asaasHeaders,
+            body: JSON.stringify({
+              name: customerName,
+              email: customerEmail,
+              mobilePhone: customerPhone,
+              postalCode: validPostalCode,
+              address: address,
+              addressNumber: addressNumber,
+              province: province
+            })
+          });
+        } catch (updErr) {
+          console.warn('[Asaas Sub] Aviso ao atualizar nome do cliente:', updErr);
+        }
       }
     } catch (e) {
       console.warn('[Asaas Sub] Falha na busca por CPF:', e);

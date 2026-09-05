@@ -139,12 +139,15 @@ export default function AsaasCheckoutModal({
     setErrorMsg('');
     try {
       const cleanCpf = cardCpf.replace(/\D/g, '');
+      const registeredName = profile?.full_name || customerInfo?.name || customerInfo?.accountName || 'Aluno Lexy';
+      
       const res = await processAsaasPayment({
         method: 'pix',
         amount: numAmount,
         description: description || `Plano Lexy - ${lessonsCount} Aulas (45 min)`,
         customer: { 
           ...customerInfo, 
+          name: registeredName,
           phone: phoneInput,
           document: cleanCpf || customerInfo?.document || profile?.documentNumber,
           postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
@@ -212,6 +215,7 @@ export default function AsaasCheckoutModal({
     try {
       const expParts = cardExp.split('/');
       let res;
+      const registeredName = profile?.full_name || customerInfo?.name || customerInfo?.accountName || 'Aluno Lexy';
 
       const cardPayload = {
         number: cleanCard,
@@ -226,7 +230,7 @@ export default function AsaasCheckoutModal({
 
       const custPayload = {
         ...customerInfo,
-        name: cardHolder,
+        name: registeredName,
         document: cleanCpf,
         phone: phoneInput,
         postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
