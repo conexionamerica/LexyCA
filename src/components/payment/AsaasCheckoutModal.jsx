@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ShieldCheck, CreditCard, QrCode, CheckCircle2, 
-  Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText
+  Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText, Phone
 } from 'lucide-react';
 import { processAsaasPayment, processAsaasSubscription } from '../../lib/asaasPaymentService';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
+import { formatPhone, validatePhone } from '../../lib/phoneValidator';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AsaasCheckoutModal({ 
   isOpen, 
@@ -17,18 +19,24 @@ export default function AsaasCheckoutModal({
   isRecurring = false, 
   lessonsCount = 4 
 }) {
+  const { profile, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('pix'); // 'pix' | 'card' (NO BOLETO)
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successResult, setSuccessResult] = useState(null);
 
+  // Phone input for existing users without registered phone
+  const [phoneInput, setPhoneInput] = useState(() => {
+    return customerInfo?.phone || profile?.phone || '';
+  });
+
   // Formulario Cartão de Crédito
   const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState(customerInfo?.name || '');
+  const [cardHolder, setCardHolder] = useState(customerInfo?.name || profile?.full_name || '');
   const [cardExp, setCardExp] = useState('');
   const [cardCvv, setCardCvv] = useState('');
-  const [cardCpf, setCardCpf] = useState(customerInfo?.document || '');
+  const [cardCpf, setCardCpf] = useState(customerInfo?.document || profile?.documentNumber || '');
   const [installments, setInstallments] = useState(1);
 
   // Estado PIX Asaas
@@ -43,10 +51,12 @@ export default function AsaasCheckoutModal({
       setErrorMsg('');
       setSuccessResult(null);
       setPixData(null);
-      if (customerInfo?.name) setCardHolder(customerInfo.name);
-      if (customerInfo?.document) setCardCpf(customerInfo.document);
+      const currentPh = customerInfo?.phone || profile?.phone || '';
+      setPhoneInput(currentPh);
+      if (customerInfo?.name || profile?.full_name) setCardHolder(customerInfo?.name || profile?.full_name || '');
+      if (customerInfo?.document || profile?.documentNumber) setCardCpf(customerInfo?.document || profile?.documentNumber || '');
     }
-  }, [isOpen, customerInfo]);
+  }, [isOpen, customerInfo, profile]);
 
   // Temporizador Regresivo PIX
   useEffect(() => {
@@ -87,6 +97,10 @@ export default function AsaasCheckoutModal({
 
   // Generar PIX Asaas
   const handleGeneratePix = async () => {
+    if (!validatePhone(phoneInput)) {
+      setErrorMsg('Por favor, cadastre um número de celular válido para gerar a cobrança.');
+      return;
+    }
     setLoading(true);
     setErrorMsg('');
     try {
@@ -94,7 +108,7 @@ export default function AsaasCheckoutModal({
         method: 'pix',
         amount: numAmount,
         description: description || `Plano Lexy - ${lessonsCount} Aulas (45 min)`,
-        customer: customerInfo,
+        customer: { ...customerInfo, phone: phoneInput },
         lessonsCount: lessonsCount
       });
 
@@ -115,6 +129,11 @@ export default function AsaasCheckoutModal({
   const handleSubmitCard = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!validatePhone(phoneInput)) {
+      setErrorMsg('Por favor, cadastre um número de celular válido para concluir.');
+      return;
+    }
 
     const cleanCard = cardNumber.replace(/\D/g, '');
     if (cleanCard.length < 13) {
@@ -162,7 +181,7 @@ export default function AsaasCheckoutModal({
         res = await processAsaasSubscription({
           amount: numAmount,
           planName: `Assinatura Lexy - ${lessonsCount} Aulas (45 min) / 30 Dias`,
-          customer: { ...customerInfo, name: cardHolder, document: cleanCpf },
+          customer: { ...customerInfo, name: cardHolder, document: cleanCpf, phone: phoneInput },
           cardData: cardPayload,
           method: 'credit_card',
           lessonsCount: lessonsCount
@@ -172,7 +191,7 @@ export default function AsaasCheckoutModal({
           method: 'credit_card',
           amount: numAmount,
           description: description || `Lexy Idiomas - ${lessonsCount} Aulas (45 min)`,
-          customer: { ...customerInfo, name: cardHolder, document: cleanCpf },
+          customer: { ...customerInfo, name: cardHolder, document: cleanCpf, phone: phoneInput },
           cardData: cardPayload,
           lessonsCount: lessonsCount
         });
@@ -234,6 +253,8 @@ export default function AsaasCheckoutModal({
   const seconds = pixCountdown % 60;
   const formattedCountdown = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   const cardBrand = getCardBrand(cardNumber);
+
+  const isPhoneValid = validatePhone(phoneInput);
 
   if (!isOpen) return null;
 
@@ -306,34 +327,93 @@ export default function AsaasCheckoutModal({
               </div>
             </div>
 
-            {/* Selector de Método de Pago (PIX e Cartão de Crédito APENAS - Sem Boleto) */}
-            <div className="grid grid-cols-2 gap-2 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('pix'); setErrorMsg(''); }}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeTab === 'pix'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <QrCode className="w-4 h-4" />
-                <span>PIX Instantâneo</span>
-              </button>
+            {/* SI EL USUARIO NO TIENE CELULAR REGISTRADO, SOLICITARLO ANTES DE PERMITIR EL PAGO */}
+            {!isPhoneValid ? (
+              <div className="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-5 space-y-4 animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-white text-sm">Cadastro de Celular / WhatsApp Necessário</h4>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Para realizar o pagamento no Asaas e garantir a emissão automática da Nota Fiscal (NFS-e), informe seu celular.
+                    </p>
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => { setActiveTab('card'); setErrorMsg(''); }}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  activeTab === 'card'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Cartão de Crédito</span>
-              </button>
-            </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 block">Número de Celular com DDD (Brasil) *</label>
+                  <input
+                    type="text"
+                    value={phoneInput}
+                    onChange={(e) => {
+                      setPhoneInput(formatPhone(e.target.value));
+                      setErrorMsg('');
+                    }}
+                    placeholder="(11) 99999-9999"
+                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-3 text-sm font-mono font-bold outline-none focus:border-emerald-400"
+                  />
+                  <p className="text-[10px] text-slate-400">Exemplo: (11) 98765-4321</p>
+                </div>
+
+                {errorMsg && (
+                  <div className="text-xs font-bold text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+                    {errorMsg}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!validatePhone(phoneInput)) {
+                      setErrorMsg('Por favor, informe um número de celular válido no formato (DDD) 9XXXX-XXXX.');
+                      return;
+                    }
+                    if (updateProfile) {
+                      updateProfile({ phone: phoneInput });
+                    }
+                    if (customerInfo) {
+                      customerInfo.phone = phoneInput;
+                    }
+                    setErrorMsg('');
+                  }}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salvar Celular e Ir para o Pagamento</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Selector de Método de Pago (PIX e Cartão de Crédito APENAS - Sem Boleto) */}
+                <div className="grid grid-cols-2 gap-2 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('pix'); setErrorMsg(''); }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeTab === 'pix'
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>PIX Instantâneo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('card'); setErrorMsg(''); }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeTab === 'card'
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Cartão de Crédito</span>
+                  </button>
+                </div>
 
             {errorMsg && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl space-y-1.5 animate-fade-in">
@@ -545,6 +625,8 @@ export default function AsaasCheckoutModal({
                   <span>{loading ? 'Processando pagamento...' : `Pagar R$ ${numAmount.toFixed(2)}`}</span>
                 </button>
               </form>
+            )}
+            </>
             )}
 
             {/* Footer de Garantia Asaas e Nota Fiscal */}

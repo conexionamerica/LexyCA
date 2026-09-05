@@ -7,7 +7,7 @@ import {
 import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import StoneCheckoutModal from '../payment/StoneCheckoutModal';
+import AsaasCheckoutModal from '../payment/AsaasCheckoutModal';
 import { pauseStoneSubscription, resumeStoneSubscription, cancelStoneSubscription } from '../../lib/stonePaymentService';
 
 export default function StudentSubscriptionTab() {
@@ -1050,16 +1050,18 @@ export default function StudentSubscriptionTab() {
         </div>
       )}
 
-      <StoneCheckoutModal
+      <AsaasCheckoutModal
         isOpen={isStoneModalOpen}
         onClose={() => setIsStoneModalOpen(false)}
         amount={totalCycleAmount}
         description={`Assinatura Recorrente de 30 Dias (${selectedLessonsPerWeek}x/sem) - ${targetTutor?.name}`}
         isRecurring={true}
+        lessonsCount={selectedLessonsPerWeek * 4}
         customerInfo={{
           name: profile?.full_name || 'Aluno Lexy',
           email: profile?.email || 'aluno@lexy.com',
-          document: profile?.documentNumber || '603.198.610-82'
+          document: profile?.documentNumber || '603.198.610-82',
+          phone: profile?.phone || ''
         }}
         onSuccess={handleStoneSubscriptionPaymentSuccess}
       />

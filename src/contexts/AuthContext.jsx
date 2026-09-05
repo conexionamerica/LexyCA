@@ -322,6 +322,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        const currentMeta = session.user.user_metadata || {};
         if (updatedData.avatar_url) {
           localStorage.setItem('lexy_avatar_' + session.user.id, updatedData.avatar_url);
           if (session.user.email) {
@@ -329,25 +330,30 @@ export const AuthProvider = ({ children }) => {
           }
         }
 
-        await supabase.auth.updateUser({
-          data: {
-            avatar_url: updatedData.avatar_url,
-            study_language: updatedData.study_language,
-            language_level: updatedData.language_level,
-            study_motivation: updatedData.study_motivation
-          }
-        });
+        const newMetaData = { ...currentMeta };
+        if (updatedData.avatar_url !== undefined) newMetaData.avatar_url = updatedData.avatar_url;
+        if (updatedData.study_language !== undefined) newMetaData.study_language = updatedData.study_language;
+        if (updatedData.language_level !== undefined) newMetaData.language_level = updatedData.language_level;
+        if (updatedData.study_motivation !== undefined) newMetaData.study_motivation = updatedData.study_motivation;
+        if (updatedData.phone !== undefined) newMetaData.phone = updatedData.phone;
+        if (updatedData.documentNumber !== undefined) newMetaData.documentNumber = updatedData.documentNumber;
 
-        await supabase.from('profiles').upsert({
+        await supabase.auth.updateUser({ data: newMetaData });
+
+        const upsertData = {
           id: session.user.id,
           full_name: updatedData.full_name || profile?.full_name,
           email: session.user.email,
-          avatar_url: updatedData.avatar_url,
-          study_language: updatedData.study_language,
-          language_level: updatedData.language_level,
-          study_motivation: updatedData.study_motivation,
           updated_at: new Date().toISOString()
-        });
+        };
+        if (updatedData.avatar_url !== undefined) upsertData.avatar_url = updatedData.avatar_url;
+        if (updatedData.study_language !== undefined) upsertData.study_language = updatedData.study_language;
+        if (updatedData.language_level !== undefined) upsertData.language_level = updatedData.language_level;
+        if (updatedData.study_motivation !== undefined) upsertData.study_motivation = updatedData.study_motivation;
+        if (updatedData.phone !== undefined) upsertData.phone = updatedData.phone;
+        if (updatedData.documentNumber !== undefined) upsertData.document_number = updatedData.documentNumber;
+
+        await supabase.from('profiles').upsert(upsertData);
       }
     } catch (e) {
       console.warn('Error syncing profile update to Supabase:', e);

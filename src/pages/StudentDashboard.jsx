@@ -11,6 +11,7 @@ import {
   Camera, Save, Upload, Zap, Clock
 } from 'lucide-react';
 import StudentSubscriptionTab from '../components/subscription/StudentSubscriptionTab';
+import { formatPhone, validatePhone } from '../lib/phoneValidator';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -108,6 +109,7 @@ export default function StudentDashboard() {
 
   // Estado de edição de Perfil e Foto
   const [profileAvatar, setProfileAvatar] = useState(profile?.avatar_url || '');
+  const [editPhone, setEditPhone] = useState(profile?.phone || student?.phone || '');
   const [editLanguage, setEditLanguage] = useState(profile?.study_language || 'Inglês 🇬🇧🇺🇸');
   const [editLevel, setEditLevel] = useState(profile?.language_level || 'B2 - Intermediário Avançado 🎓');
   const [editMotivation, setEditMotivation] = useState(profile?.study_motivation || 'Carreira Profissional 📈');
@@ -116,6 +118,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (profile) {
       if (profile.avatar_url) setProfileAvatar(profile.avatar_url);
+      if (profile.phone) setEditPhone(profile.phone);
       if (profile.study_language) setEditLanguage(profile.study_language);
       if (profile.language_level) setEditLevel(profile.language_level);
       if (profile.study_motivation) setEditMotivation(profile.study_motivation);
@@ -162,6 +165,7 @@ export default function StudentDashboard() {
     if (updateProfile) {
       updateProfile({
         avatar_url: profileAvatar,
+        phone: editPhone,
         study_language: editLanguage,
         language_level: editLevel,
         study_motivation: editMotivation
@@ -1093,6 +1097,27 @@ export default function StudentDashboard() {
                 <div>
                   <span className="text-slate-500 block mb-0.5 font-medium">País de Residência</span>
                   <span className="text-white font-medium text-xs bg-slate-900 px-3 py-2 rounded-lg block border border-slate-800/60">{currentCountry}</span>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-cyan-400 block mb-1 font-bold">Telefone / WhatsApp (Celular para Cobranças Asaas) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(formatPhone(e.target.value))}
+                    placeholder="(11) 99999-9999"
+                    className="w-full bg-slate-900 border border-slate-800 text-white font-bold rounded-lg px-3 py-2 text-xs outline-none focus:border-cyan-400 font-mono"
+                  />
+                  {editPhone ? (
+                    <span className={`text-[10px] font-bold mt-1 block ${validatePhone(editPhone) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {validatePhone(editPhone) ? '✓ Número de celular válido para cobranças' : '⚠️ Número inválido (necessário DDD + 9 dígitos)'}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-amber-400 font-bold mt-1 block">
+                      ⚠️ Cadastre seu celular para habilitar pagamentos e Nota Fiscal no Asaas
+                    </span>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2 bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-1">
