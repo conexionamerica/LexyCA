@@ -167,6 +167,9 @@ export default function ClassroomPage({ routeBookingId }) {
   const [videoFitMode, setVideoFitMode] = useState('contain'); // 'contain' (100% visível sem cortes) | 'cover' (preencher tela)
   const toggleVideoFitMode = () => setVideoFitMode(prev => prev === 'contain' ? 'cover' : 'contain');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [remoteIsScreenSharing, setRemoteIsScreenSharing] = useState(false);
+  const [remoteStudentCheckIn, setRemoteStudentCheckIn] = useState(false);
+  const screenStreamRef = useRef(null);
   const [cameraError, setCameraError] = useState(null);
 
   // Estados da Sala Virtual & Saguão de Entrada (Lobby)
@@ -591,60 +594,71 @@ export default function ClassroomPage({ routeBookingId }) {
     reconnectAttemptsRef.current = attempt;
 
     if (attempt > maxAttempts) {
-      addDebugLog('❌ Máximo de tentativas de reconexão atingido. Recarregando sala...');
+      addDebugLog('⚠️ Tentativas de reconexão atingiram o limite. Reiniciando handshake...');
       reconnectAttemptsRef.current = 0;
-      // Force full re-join by toggling hasJoinedRoom
-      setHasJoinedRoom(false);
-      setIsReconnecting(false);
-      setTimeout(() => {
-        setHasJoinedRoom(true);
-        addDebugLog('🔄 Sala reiniciada completamente. Nova conexão WebRTC...');
-      }, 1500);
-      return;
     }
 
-    const delay = Math.min(1000 * Math.pow(1.5, attempt - 1), 5000);
+    const delay = Math.min(1000 * Math.pow(1.5, attempt - 1), 4000);
     addDebugLog(`⚡ Reconexão tentativa ${attempt}/${maxAttempts} (aguardando ${Math.round(delay / 1000)}s)...`);
     setIsReconnecting(true);
-    setReconnectReason(`Reconectando aula ao vivo... Tentativa ${attempt} de ${maxAttempts}`);
+    setReconnectReason(`Reconectando aula ao vivo (ajustando sinal de rede)... Tentativa ${attempt} de ${maxAttempts}`);
 
     await new Promise(r => setTimeout(r, delay));
 
-    // If network is still offline, wait
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      addDebugLog('⏳ Ainda sem internet. Aguardando sinal...');
+      addDebugLog('⏳ Dispositivo offline. Aguardando sinal de internet...');
       return;
     }
 
     try {
-      // Close old PeerConnection completely
-      const oldPc = pcRef.current;
-      if (oldPc) {
-        try {
-          if (oldPc._resendCleanup) oldPc._resendCleanup();
-          oldPc.close();
-        } catch (e) {}
-        pcRef.current = null;
-      }
-
-      // Clean old signals from the database to allow fresh handshake
+      const pc = pcRef.current;
       const myRole = isUserTeacher ? 'teacher' : 'student';
-      try {
-        await supabase.from('webrtc_signals').delete().eq('room_key', normalizedRoomKey);
-        addDebugLog('🧹 Sinais antigos limpos. Reiniciando handshake...');
-      } catch (e) {}
 
-      // Reset remote state
-      setRemoteStream(null);
-      setIsRemoteConnected(false);
-      setIsRemoteVideoActive(false);
+      if (pc && pc.signalingState !== 'closed') {
+        addDebugLog('🔄 Disparando ICE Restart no PeerConnection existente...');
+        if (myRole === 'teacher') {
+          const freshOffer = await pc.createOffer({ iceRestart: true });
+          await pc.setLocalDescription(freshOffer);
+          await supabase.from('webrtc_signals').insert({
+            room_key: normalizedRoomKey,
+            sender_role: myRole,
+            sender_name: currentUserDisplay.name,
+            signal_type: 'offer',
+            payload: JSON.stringify({ sdp: freshOffer.sdp }),
+            created_at: new Date().toISOString()
+          });
+          addDebugLog('📤 Oferta de ICE Restart enviada ao participante!');
+        } else {
+          await supabase.from('webrtc_signals').insert({
+            room_key: normalizedRoomKey,
+            sender_role: myRole,
+            sender_name: currentUserDisplay.name,
+            signal_type: 'ready',
+            payload: JSON.stringify({ timestamp: Date.now() }),
+            created_at: new Date().toISOString()
+          });
+          addDebugLog('📤 Sinal de prontidão (ready) reenviado para renegociação!');
+        }
+      } else {
+        addDebugLog('🧹 Reiniciando canal de sinalização para reconexão...');
+        try {
+          await supabase.from('webrtc_signals').delete().eq('room_key', normalizedRoomKey);
+        } catch (e) {}
 
-      // Force the WebRTC signaling useEffect to re-run by toggling hasJoinedRoom
-      setHasJoinedRoom(false);
-      await new Promise(r => setTimeout(r, 300));
-      setHasJoinedRoom(true);
+        setRemoteStream(null);
+        setIsRemoteConnected(false);
+        setIsRemoteVideoActive(false);
 
-      addDebugLog('🚀 Nova conexão WebRTC iniciada! Aguardando participante...');
+        await supabase.from('webrtc_signals').insert({
+          room_key: normalizedRoomKey,
+          sender_role: myRole,
+          sender_name: currentUserDisplay.name,
+          signal_type: myRole === 'teacher' ? 'teacher_online' : 'ready',
+          payload: JSON.stringify({ timestamp: Date.now() }),
+          created_at: new Date().toISOString()
+        });
+        addDebugLog('🚀 Sinal de reconexão enviado com sucesso!');
+      }
     } catch (err) {
       console.warn('Erro durante reconexão:', err);
       addDebugLog(`⚠️ Erro na reconexão: ${err.message}`);
@@ -1054,6 +1068,28 @@ export default function ClassroomPage({ routeBookingId }) {
           return;
         }
 
+        // 6. Processamento de REGISTRO DE PRESENÇA FORMAL DA SALA VIRTUAL
+        if (signalType === 'presence_checkin') {
+          if (payload?.role === 'student') {
+            setRemoteStudentCheckIn(true);
+            addDebugLog('✅ Presença formal do ALUNO confirmada via sinalização!');
+          }
+          return;
+        }
+
+        // 7. Processamento de STATUS DE COMPARTILHAMENTO DE TELA
+        if (signalType === 'screen_share_status') {
+          const isSharing = !!payload?.isSharing;
+          setRemoteIsScreenSharing(isSharing);
+          if (isSharing) {
+            addDebugLog(`🖥️ ${otherParticipantDisplay.name} iniciou o compartilhamento de tela!`);
+            setVideoFitMode('contain');
+          } else {
+            addDebugLog(`📹 ${otherParticipantDisplay.name} encerrou o compartilhamento de tela.`);
+          }
+          return;
+        }
+
         // 5. Processamento de CANDIDATOS ICE
         if (signalType === 'ice-candidate' && payload) {
           const candInit = payload.candidate && typeof payload.candidate === 'object' 
@@ -1093,11 +1129,28 @@ export default function ClassroomPage({ routeBookingId }) {
 
     // Iniciar sessão com Handshake de Presença Idempotente
     const cleanAndStart = async () => {
+      // Checar se o aluno já registrou presença formal no banco de sinais
+      try {
+        const { data: existingStudentPresence } = await supabase
+          .from(SIGNAL_TABLE)
+          .select('*')
+          .eq('room_key', normalizedRoomKey)
+          .eq('sender_role', 'student')
+          .eq('signal_type', 'presence_checkin')
+          .limit(1);
+
+        if (existingStudentPresence && existingStudentPresence.length > 0) {
+          setRemoteStudentCheckIn(true);
+          addDebugLog('✅ Presença formal do aluno encontrada no banco!');
+        }
+      } catch (e) {}
+
       if (myRole === 'teacher') {
         // ═══ PROFESSOR ═══
         try {
-          await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey);
-          addDebugLog('🧹 [PROFESSOR] Sala de sinalização limpa');
+          // Limpar apenas sinais de SDP/ICE antigos sem apagar o registro de presença formal
+          await supabase.from(SIGNAL_TABLE).delete().eq('room_key', normalizedRoomKey).neq('signal_type', 'presence_checkin');
+          addDebugLog('🧹 [PROFESSOR] Sala de sinalização limpa (presença preservada)');
         } catch (e) {}
         
         lastProcessedId = 0;
@@ -1445,25 +1498,91 @@ export default function ClassroomPage({ routeBookingId }) {
     setIsVideoOn(!isVideoOn);
   };
 
-  // Compartilhar Tela Nativo (Screen Sharing)
+  // Compartilhar Tela Nativo (Screen Sharing) via WebRTC Track Replacement
+  const stopScreenSharing = useCallback(async () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(t => t.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+
+    // 1. Restaurar a faixa da câmera no WebRTC PeerConnection
+    const cameraTrack = localStream?.getVideoTracks()[0];
+    if (pcRef.current && cameraTrack) {
+      const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (videoSender) {
+        await videoSender.replaceTrack(cameraTrack);
+        addDebugLog('📹 Transmissão da Câmera restaurada no WebRTC!');
+      }
+    }
+
+    // 2. Restaurar elemento de vídeo local
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+
+    // 3. Notificar o outro participante via sinalização
+    try {
+      const myRole = isUserTeacher ? 'teacher' : 'student';
+      await supabase.from('webrtc_signals').insert({
+        room_key: normalizedRoomKey,
+        sender_role: myRole,
+        sender_name: currentUserDisplay.name,
+        signal_type: 'screen_share_status',
+        payload: JSON.stringify({ isSharing: false }),
+        created_at: new Date().toISOString()
+      });
+    } catch (e) {}
+  }, [localStream, isUserTeacher, normalizedRoomKey, currentUserDisplay, addDebugLog]);
+
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      setIsScreenSharing(false);
-      if (localVideoRef.current && localStream) {
-        localVideoRef.current.srcObject = localStream;
-      }
+      await stopScreenSharing();
     } else {
       try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: "always" },
+          audio: false
+        });
+
+        screenStreamRef.current = screenStream;
+        const screenTrack = screenStream.getVideoTracks()[0];
         setIsScreenSharing(true);
+
+        // 1. Atualizar elemento de vídeo local
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
+          localVideoRef.current.play().catch(() => {});
         }
-        screenStream.getVideoTracks()[0].onended = () => {
-          setIsScreenSharing(false);
-          if (localVideoRef.current && localStream) {
-            localVideoRef.current.srcObject = localStream;
+
+        // 2. Substituir a faixa de vídeo enviada via WebRTC para o participante remoto!
+        if (pcRef.current) {
+          const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (videoSender) {
+            await videoSender.replaceTrack(screenTrack);
+            addDebugLog('🖥️ Transmissão da TELA enviada com sucesso via WebRTC!');
+          } else {
+            pcRef.current.addTrack(screenTrack, screenStream);
+            addDebugLog('🖥️ Nova faixa de Tela adicionada ao WebRTC!');
           }
+        }
+
+        // 3. Notificar participante remoto via sinalização
+        try {
+          const myRole = isUserTeacher ? 'teacher' : 'student';
+          await supabase.from('webrtc_signals').insert({
+            room_key: normalizedRoomKey,
+            sender_role: myRole,
+            sender_name: currentUserDisplay.name,
+            signal_type: 'screen_share_status',
+            payload: JSON.stringify({ isSharing: true }),
+            created_at: new Date().toISOString()
+          });
+        } catch (e) {}
+
+        screenTrack.onended = () => {
+          stopScreenSharing();
         };
       } catch (err) {
         console.warn('Compartilhamento de tela cancelado pelo usuário:', err);
@@ -1718,20 +1837,20 @@ Dicas:
       if (s1) studentRecord = JSON.parse(s1);
     } catch (e) {}
 
-    const teacherJoined = isUserTeacher ? true : !!teacherRecord;
+    const teacherJoined = isUserTeacher ? (hasJoinedRoom || !!teacherRecord) : !!teacherRecord;
     const studentJoined = (!isUserTeacher)
-      ? true
-      : !!(studentRecord || isPeerOnline || isRemoteConnected || remoteVideoFrame);
+      ? (hasJoinedRoom || !!studentRecord)
+      : !!(studentRecord || remoteStudentCheckIn);
 
     return {
       teacherJoined,
       studentJoined,
-      teacherTime: teacherRecord?.time || (isUserTeacher ? new Date().toLocaleTimeString('pt-BR') : 'Não registrado'),
-      studentTime: studentRecord?.time || (studentJoined ? 'Registrada' : 'Não registrada'),
+      teacherTime: teacherRecord?.time || (teacherJoined ? (teacherRecord?.time || new Date().toLocaleTimeString('pt-BR')) : 'Não registrado'),
+      studentTime: studentRecord?.time || (studentJoined ? (studentRecord?.time || 'Registrada') : 'Não registrada'),
       lessonCode,
       bothPresent: teacherJoined && studentJoined
     };
-  }, [currentBooking, bookingId, normalizedRoomKey, isUserTeacher, isPeerOnline, isRemoteConnected, remoteVideoFrame]);
+  }, [currentBooking, bookingId, normalizedRoomKey, isUserTeacher, hasJoinedRoom, remoteStudentCheckIn]);
 
   const handleEndClass = () => {
     if (isUserTeacher) {
@@ -2170,6 +2289,14 @@ Dicas:
                   {!isSwapped ? (
                     <div className="relative w-full h-full max-w-full aspect-video flex items-center justify-center bg-slate-950 rounded-2xl overflow-hidden my-auto border border-cyan-500/30 shadow-2xl">
                       
+                      {/* BADGE DE COMPARTILHAMENTO DE TELA ATIVO */}
+                      {(isScreenSharing || remoteIsScreenSharing) && (
+                        <div className="absolute top-3 left-3 z-30 bg-amber-500/90 text-slate-950 border border-amber-300 px-3 py-1.5 rounded-xl backdrop-blur-md text-[11px] font-black flex items-center gap-1.5 shadow-2xl animate-pulse">
+                          <Monitor className="w-4 h-4 fill-slate-950 text-slate-950" />
+                          <span>{isScreenSharing ? '🖥️ Você está compartilhando sua tela' : `🖥️ ${otherParticipantDisplay.name} está compartilhando a tela`}</span>
+                        </div>
+                      )}
+
                       {/* BOTÃO FLUTUANTE RÁPIDO PARA AJUSTAR CORTE / ZOOM DO VÍDEO */}
                       {(isRemoteVideoActive || remoteVideoFrame) && (
                         <button
