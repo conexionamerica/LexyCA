@@ -146,6 +146,12 @@ export default function ClassroomPage({ routeBookingId }) {
     return `lexy_room_${cleanParam}`;
   }, [currentBooking, bookingId, tutor, profile, isUserTeacher]);
 
+  // ID Unificado e Normalizado de Código de Aula para Validação de Presença
+  const cleanLessonCode = useMemo(() => {
+    const raw = currentBooking?.lesson_code || currentBooking?.id || bookingId || 'AULA-2026-DEFAULT';
+    return String(raw).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  }, [currentBooking, bookingId]);
+
   // WebRTC Media Stream States (Local & Remote Streams)
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -1359,6 +1365,65 @@ export default function ClassroomPage({ routeBookingId }) {
     return canvas.captureStream(30);
   };
 
+  // ── SINC DE PRESENÇA EM TEMPO REAL NO BANCO DE DADOS (RODA CONTINUAMENTE DESDE O LOBBY) ──
+  useEffect(() => {
+    let active = true;
+
+    const syncPresenceFromDb = async () => {
+      if (!active) return;
+      const lessonCode = currentBooking?.lesson_code || currentBooking?.id || bookingId || 'AULA-2026-DEFAULT';
+
+      // 1. Checar LocalStorage local
+      try {
+        const s1 = localStorage.getItem(`lexy_presence_${lessonCode}_student`) || 
+                   localStorage.getItem(`lexy_presence_${cleanLessonCode}_student`) || 
+                   localStorage.getItem(`lexy_presence_${normalizedRoomKey}_student`);
+        if (s1) {
+          setRemoteStudentCheckIn(true);
+          return;
+        }
+      } catch (e) {}
+
+      // 2. Consultar Supabase webrtc_signals por cleanLessonCode, normalizedRoomKey ou lessonCode
+      try {
+        const { data: signals } = await supabase
+          .from('webrtc_signals')
+          .select('*')
+          .in('room_key', [cleanLessonCode, normalizedRoomKey, lessonCode])
+          .eq('sender_role', 'student')
+          .eq('signal_type', 'presence_checkin')
+          .limit(1);
+
+        if (signals && signals.length > 0 && active) {
+          setRemoteStudentCheckIn(true);
+          return;
+        }
+      } catch (e) {}
+
+      // 3. Consultar Supabase tabela public.aulas
+      try {
+        const { data: aulaRows } = await supabase
+          .from('aulas')
+          .select('student_presence, student_joined_at')
+          .or(`id.eq.${lessonCode},lesson_code.eq.${lessonCode},lesson_code.eq.${currentBooking?.lesson_code || ''}`)
+          .limit(1);
+
+        if (aulaRows && aulaRows[0] && (aulaRows[0].student_presence || aulaRows[0].student_joined_at) && active) {
+          setRemoteStudentCheckIn(true);
+          return;
+        }
+      } catch (e) {}
+    };
+
+    syncPresenceFromDb();
+    const interval = setInterval(syncPresenceFromDb, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [cleanLessonCode, normalizedRoomKey, currentBooking, bookingId]);
+
   // Função para Entrar na Sala com Gesto Direto do Usuário e Captura HD de Áudio e Vídeo
   const handleJoinRoom = async () => {
     setIsConnecting(true);
@@ -1371,6 +1436,7 @@ export default function ClassroomPage({ routeBookingId }) {
     const timeStr = new Date().toLocaleTimeString('pt-BR');
     const presenceData = {
       lessonCode,
+      cleanLessonCode,
       roomKey: normalizedRoomKey,
       role: roleKey,
       name: currentUserDisplay.name,
@@ -1381,19 +1447,44 @@ export default function ClassroomPage({ routeBookingId }) {
 
     try {
       localStorage.setItem(`lexy_presence_${lessonCode}_${roleKey}`, JSON.stringify(presenceData));
+      localStorage.setItem(`lexy_presence_${cleanLessonCode}_${roleKey}`, JSON.stringify(presenceData));
       localStorage.setItem(`lexy_presence_${normalizedRoomKey}_${roleKey}`, JSON.stringify(presenceData));
       localStorage.setItem(`lexy_presence_checked_${lessonCode}_${roleKey}`, 'true');
     } catch (e) {}
 
+    // Transmitir em webrtc_signals usando múltiplas chaves para garantir 100% de detecção cross-device
     try {
-      supabase.from('webrtc_signals').insert({
-        room_key: normalizedRoomKey,
-        sender_role: roleKey,
-        sender_name: currentUserDisplay.name,
-        signal_type: 'presence_checkin',
-        payload: JSON.stringify(presenceData),
-        created_at: new Date().toISOString()
-      }).then(() => {}).catch(() => {});
+      const dbPayload = [
+        {
+          room_key: cleanLessonCode,
+          sender_role: roleKey,
+          sender_name: currentUserDisplay.name,
+          signal_type: 'presence_checkin',
+          payload: JSON.stringify(presenceData),
+          created_at: new Date().toISOString()
+        },
+        {
+          room_key: normalizedRoomKey,
+          sender_role: roleKey,
+          sender_name: currentUserDisplay.name,
+          signal_type: 'presence_checkin',
+          payload: JSON.stringify(presenceData),
+          created_at: new Date().toISOString()
+        }
+      ];
+      supabase.from('webrtc_signals').insert(dbPayload).then(() => {}).catch(() => {});
+    } catch (e) {}
+
+    // Atualizar registro na tabela 'aulas' do Supabase
+    try {
+      const updatePayload = isUserTeacher
+        ? { teacher_presence: true, teacher_joined_at: new Date().toISOString() }
+        : { student_presence: true, student_joined_at: new Date().toISOString() };
+
+      supabase.from('aulas')
+        .update(updatePayload)
+        .or(`id.eq.${lessonCode},lesson_code.eq.${lessonCode},lesson_code.eq.${currentBooking?.lesson_code || ''}`)
+        .then(() => {}).catch(() => {});
     } catch (e) {}
 
     const audioConstraints = {
@@ -1823,24 +1914,62 @@ Dicas:
     setIsLiveVideoActive(false);
   };
 
-  const checkPresenceStatus = useCallback(() => {
+  // ── VERIFICAÇÃO ASSÍNCRONA DE PRESENÇA EM TEMPO REAL ANTES DE ENCERRAR AULA ──
+  const verifyStudentPresenceAsync = useCallback(async () => {
     const lessonCode = currentBooking?.lesson_code || currentBooking?.id || bookingId || 'AULA-2026-DEFAULT';
 
     let teacherRecord = null;
     let studentRecord = null;
 
     try {
-      const t1 = localStorage.getItem(`lexy_presence_${lessonCode}_teacher`) || localStorage.getItem(`lexy_presence_${normalizedRoomKey}_teacher`);
+      const t1 = localStorage.getItem(`lexy_presence_${lessonCode}_teacher`) || 
+                 localStorage.getItem(`lexy_presence_${cleanLessonCode}_teacher`) || 
+                 localStorage.getItem(`lexy_presence_${normalizedRoomKey}_teacher`);
       if (t1) teacherRecord = JSON.parse(t1);
 
-      const s1 = localStorage.getItem(`lexy_presence_${lessonCode}_student`) || localStorage.getItem(`lexy_presence_${normalizedRoomKey}_student`);
+      const s1 = localStorage.getItem(`lexy_presence_${lessonCode}_student`) || 
+                 localStorage.getItem(`lexy_presence_${cleanLessonCode}_student`) || 
+                 localStorage.getItem(`lexy_presence_${normalizedRoomKey}_student`);
       if (s1) studentRecord = JSON.parse(s1);
     } catch (e) {}
 
+    let isStudentPresent = (!isUserTeacher) ? (hasJoinedRoom || !!studentRecord) : !!(studentRecord || remoteStudentCheckIn);
+
+    // Se o professor estiver encerrando a aula e o aluno não constar no estado local, faz consulta direta no Supabase
+    if (isUserTeacher && !isStudentPresent) {
+      try {
+        const { data: signals } = await supabase
+          .from('webrtc_signals')
+          .select('*')
+          .in('room_key', [cleanLessonCode, normalizedRoomKey, lessonCode])
+          .eq('sender_role', 'student')
+          .eq('signal_type', 'presence_checkin')
+          .limit(1);
+
+        if (signals && signals.length > 0) {
+          isStudentPresent = true;
+          setRemoteStudentCheckIn(true);
+        }
+      } catch (e) {}
+
+      if (!isStudentPresent) {
+        try {
+          const { data: aulaRows } = await supabase
+            .from('aulas')
+            .select('student_presence, student_joined_at')
+            .or(`id.eq.${lessonCode},lesson_code.eq.${lessonCode},lesson_code.eq.${currentBooking?.lesson_code || ''}`)
+            .limit(1);
+
+          if (aulaRows && aulaRows[0] && (aulaRows[0].student_presence || aulaRows[0].student_joined_at)) {
+            isStudentPresent = true;
+            setRemoteStudentCheckIn(true);
+          }
+        } catch (e) {}
+      }
+    }
+
     const teacherJoined = isUserTeacher ? (hasJoinedRoom || !!teacherRecord) : !!teacherRecord;
-    const studentJoined = (!isUserTeacher)
-      ? (hasJoinedRoom || !!studentRecord)
-      : !!(studentRecord || remoteStudentCheckIn);
+    const studentJoined = isStudentPresent;
 
     return {
       teacherJoined,
@@ -1850,11 +1979,11 @@ Dicas:
       lessonCode,
       bothPresent: teacherJoined && studentJoined
     };
-  }, [currentBooking, bookingId, normalizedRoomKey, isUserTeacher, hasJoinedRoom, remoteStudentCheckIn]);
+  }, [currentBooking, bookingId, cleanLessonCode, normalizedRoomKey, isUserTeacher, hasJoinedRoom, remoteStudentCheckIn]);
 
-  const handleEndClass = () => {
+  const handleEndClass = async () => {
     if (isUserTeacher) {
-      const status = checkPresenceStatus();
+      const status = await verifyStudentPresenceAsync();
       if (!status.studentJoined) {
         exitRoomAndCleanup();
         setPresenceCheckDetails(status);
@@ -1871,9 +2000,9 @@ Dicas:
     }
   };
 
-  const confirmEarlyLeave = () => {
+  const confirmEarlyLeave = async () => {
     if (isUserTeacher) {
-      const status = checkPresenceStatus();
+      const status = await verifyStudentPresenceAsync();
       if (!status.studentJoined) {
         setShowEarlyLeaveWarning(false);
         exitRoomAndCleanup();
@@ -2163,9 +2292,17 @@ Dicas:
                 <Video className="w-3 h-3 text-cyan-400" /> Space Live
               </span>
             </h2>
-            <span className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+            <span className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
               <Lock className="w-3 h-3 text-emerald-400" />
               <span>{tutor.subject} • Sala Privada ID: <code className="font-mono text-cyan-300">{currentBooking?.lesson_code || bookingId}</code></span>
+
+              <span className={`ml-2 px-2 py-0.5 rounded text-[11px] font-extrabold flex items-center gap-1 ${
+                remoteStudentCheckIn 
+                  ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' 
+                  : 'bg-rose-500/15 border border-rose-500/30 text-rose-400 animate-pulse'
+              }`}>
+                {remoteStudentCheckIn ? '🟢 Aluno Presente' : '🔴 Aluno Ausente'}
+              </span>
             </span>
           </div>
         </div>
@@ -2256,6 +2393,22 @@ Dicas:
                       <span className="flex items-center gap-1 bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-800 backdrop-blur-md shadow-md">
                         <Zap className="w-3.5 h-3.5 text-amber-400" /> Alta Definição HD
                       </span>
+                    </div>
+
+                    {/* BANNER DE PRESENÇA EM TEMPO REAL NO LOBBY */}
+                    <div className="w-full max-w-sm pt-1">
+                      <div className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold shadow-lg ${
+                        remoteStudentCheckIn
+                          ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+                          : 'bg-rose-950/80 border-rose-500/50 text-rose-300 animate-pulse'
+                      }`}>
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${remoteStudentCheckIn ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+                        <span>
+                          {isUserTeacher
+                            ? (remoteStudentCheckIn ? '🟢 Aluno Presente (Entrou na Sala Virtual)' : '🔴 Aluno Ausente (Aguardando clicar em "Entrar na Sala Virtual")')
+                            : (hasJoinedRoom ? '🟢 Sua Presença Registrada' : '🔴 Clique no botão abaixo para registrar sua presença')}
+                        </span>
+                      </div>
                     </div>
 
                     {cameraError && (
