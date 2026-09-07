@@ -721,7 +721,13 @@ const isFakeMockTutor = (t) => {
   };
 
   const activateSubscriptionAndCredits = ({ tutorId, planHours = 8, planName = 'Plano Pro', amount, studentId, studentEmail, studentMatricula, studentName }) => {
-    const tutor = tutors.find(t => t.id === tutorId) || tutors[0];
+    const tutor = tutors.find(t => t.id === tutorId || t.email === tutorId) || {
+      id: tutorId || 'tutor-current',
+      name: 'Professor Lexy',
+      subject: 'Idioma',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+      hourlyRate: 20
+    };
     const now = new Date();
     const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
     const hoursToCredit = Number(planHours) || 8;

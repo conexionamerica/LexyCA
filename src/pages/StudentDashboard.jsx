@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useMarketplace } from '../contexts/MarketplaceContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, generateMatriculaCode } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Calendar, Video, CreditCard, MessageSquare, 
@@ -86,8 +86,20 @@ export default function StudentDashboard() {
 
   const activeChatMessages = useMemo(() => {
     if (!activeTutor) return [];
-    return directChatMessages.filter(msg => msg.tutorId === activeTutor.id);
-  }, [directChatMessages, activeTutor]);
+    const pId = String(profile?.id || student?.id || '').toLowerCase();
+    const pEmail = String(profile?.email || student?.email || '').toLowerCase();
+
+    return directChatMessages.filter(msg => {
+      const matchTutor = String(msg.tutorId || '').toLowerCase() === String(activeTutor.id).toLowerCase();
+      if (!matchTutor) return false;
+      const mStudentId = String(msg.studentId || '').toLowerCase();
+      const mStudentEmail = String(msg.studentEmail || '').toLowerCase();
+      if (mStudentId || mStudentEmail) {
+        return (pId && mStudentId === pId) || (pEmail && mStudentEmail === pEmail) || mStudentId === 'stud-1';
+      }
+      return true;
+    });
+  }, [directChatMessages, activeTutor, profile, student]);
 
   const renderAvatar = (url, name, className = "w-9 h-9 rounded-full shrink-0") => {
     if (url && !url.includes('images.unsplash.com')) {
@@ -483,7 +495,7 @@ export default function StudentDashboard() {
   const nextBooking = filteredBookingsList.find(b => b.status === 'confirmed' || b.status === 'rescheduled') || filteredBookingsList[0];
   const subsequentBookings = filteredBookingsList.filter(b => b.id !== nextBooking?.id);
 
-  const userMatricula = profile?.matricula_code || 'LXY-2026-784219';
+  const userMatricula = profile?.matricula_code || student?.matricula_code || generateMatriculaCode(profile?.id || student?.id, profile?.email || student?.email);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 animate-fade-in-up">
@@ -1029,7 +1041,8 @@ export default function StudentDashboard() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && studentChatMessage.trim()) {
                     sendDirectMessage({
-                      studentId: 'stud-1',
+                      studentId: profile?.id || student?.id || 'student-user',
+                      studentEmail: profile?.email || student?.email || '',
                       tutorId: activeTutor.id,
                       senderName: profile?.full_name || currentName,
                       senderRole: 'student',
@@ -1044,7 +1057,8 @@ export default function StudentDashboard() {
                 onClick={() => {
                   if (studentChatMessage.trim()) {
                     sendDirectMessage({
-                      studentId: 'stud-1',
+                      studentId: profile?.id || student?.id || 'student-user',
+                      studentEmail: profile?.email || student?.email || '',
                       tutorId: activeTutor.id,
                       senderName: profile?.full_name || currentName,
                       senderRole: 'student',

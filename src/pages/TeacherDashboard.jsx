@@ -36,9 +36,9 @@ export default function TeacherDashboard() {
     (profile?.id && String(t.id).toLowerCase() === String(profile.id).toLowerCase()) || 
     (profile?.email && String(t.email).toLowerCase() === String(profile.email).toLowerCase()) ||
     (profile?.full_name && String(t.name).toLowerCase() === String(profile.full_name).toLowerCase())
-  ) || tutors[0] || {
+  ) || {
     id: profile?.id || 'tutor-current',
-    name: profile?.full_name || 'Professor Nativo',
+    name: profile?.full_name || profile?.name || 'Professor Lexy',
     email: profile?.email || '',
     status: profile?.status || 'approved',
     hourlyRate: Number(profile?.hourly_rate || 20),
@@ -50,11 +50,11 @@ export default function TeacherDashboard() {
   const isBookingForThisTeacher = (b) => {
     if (!b) return false;
 
-    const cleanStr = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanStr = (s) => String(s || '').toLowerCase().trim();
 
-    const bTutorId = cleanStr(b.tutorId);
-    const bTutorEmail = cleanStr(b.tutorEmail);
-    const bTutorName = cleanStr(b.tutorName);
+    const bTutorId = cleanStr(b.tutorId || b.teacherId || b.tutor_id);
+    const bTutorEmail = cleanStr(b.tutorEmail || b.teacherEmail || b.tutor_email);
+    const bTutorName = cleanStr(b.tutorName || b.teacherName || b.tutor_name);
 
     const pId = cleanStr(profile?.id);
     const pEmail = cleanStr(profile?.email);
@@ -69,30 +69,19 @@ export default function TeacherDashboard() {
     if (tId && bTutorId && (bTutorId === tId || bTutorId.includes(tId) || tId.includes(bTutorId))) return true;
 
     // Direct Email match
-    if (pEmail && bTutorEmail && (bTutorEmail === pEmail || bTutorEmail.includes(pEmail) || pEmail.includes(bTutorEmail))) return true;
-    if (tEmail && bTutorEmail && (bTutorEmail === tEmail || bTutorEmail.includes(tEmail) || tEmail.includes(bTutorEmail))) return true;
+    if (pEmail && bTutorEmail && bTutorEmail === pEmail) return true;
+    if (tEmail && bTutorEmail && bTutorEmail === tEmail) return true;
 
-    // Name match (exact or substring)
-    if (pName && bTutorName && (bTutorName === pName || bTutorName.includes(pName) || pName.includes(bTutorName))) return true;
-    if (tName && bTutorName && (bTutorName === tName || bTutorName.includes(tName) || tName.includes(bTutorName))) return true;
-
-    // Token match on teacher name (e.g. 'teste de hoje' matches 'teste de hoje !')
-    if (bTutorName && (pName || tName)) {
-      const targetName = pName || tName;
-      const bTokens = bTutorName.split(/\s+/).filter(x => x.length > 2);
-      const targetTokens = targetName.split(/\s+/).filter(x => x.length > 2);
-      if (bTokens.some(bt => targetTokens.includes(bt))) return true;
-    }
-
-    if (!bTutorId && !bTutorEmail && !bTutorName) return true;
+    // Direct Name match
+    if (pName && bTutorName && bTutorName === pName) return true;
+    if (tName && bTutorName && bTutorName === tName) return true;
 
     return false;
   };
 
   const myTeacherBookings = React.useMemo(() => {
-    const matched = (bookings || []).filter(b => isBookingForThisTeacher(b));
-    if (matched.length > 0) return matched;
-    return bookings || [];
+    if (!profile && !tutor) return [];
+    return (bookings || []).filter(b => isBookingForThisTeacher(b));
   }, [bookings, profile, tutor]);
 
   const myStudentsList = React.useMemo(() => {
@@ -1812,144 +1801,163 @@ export default function TeacherDashboard() {
 
                 {/* Lista de Conversas com Alunos */}
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-900/80 scrollbar-none">
-                  {myStudentsList.map(st => {
-                    const isSelected = selectedStudentId === st.id;
-                    const studentMsgs = (directChatMessages || []).filter(m => m.studentId === st.id);
-                    const lastMsg = studentMsgs[studentMsgs.length - 1];
-
-                    return (
-                      <div
-                        key={st.id}
-                        onClick={() => setSelectedStudentId(st.id)}
-                        className={`p-3.5 flex items-start gap-3 cursor-pointer transition-all relative ${
-                          isSelected
-                            ? 'bg-amber-500/10 border-l-4 border-amber-400'
-                            : 'hover:bg-slate-900/50'
-                        }`}
-                      >
-                        <div className="relative shrink-0">
-                          <img
-                            src={st.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
-                            alt={st.name}
-                            className="w-11 h-11 rounded-full object-cover border border-slate-700"
-                          />
-                          <span className="w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full absolute bottom-0 right-0"></span>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <h4 className={`text-xs font-bold truncate ${isSelected ? 'text-amber-300' : 'text-white'}`}>
-                              {st.name}
-                            </h4>
-                            {lastMsg && (
-                              <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                                {lastMsg.timestamp ? lastMsg.timestamp.split(' ')[0] : 'Hoje'}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-400 truncate">
-                            {lastMsg ? lastMsg.text : `Iniciar conversa com ${st.name.split(' ')[0]}...`}
-                          </p>
-                          <span className="inline-block text-[9px] font-semibold text-cyan-400 bg-cyan-500/10 px-1.5 py-0.2 rounded border border-cyan-500/20 mt-1">
-                            {st.level}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ÁREA PRINCIPAL DO CHAT DA DIREITA (ESTILO ALUNO.CONEXIONAMERICA) */}
-              <div className="flex-1 flex flex-col bg-slate-950/40 relative">
-                
-                {/* Header do Chat Ativo */}
-                <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={selectedStudent.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
-                      alt={selectedStudent.name}
-                      className="w-10 h-10 rounded-full object-cover border border-amber-400/40"
-                    />
-                    <div>
-                      <h3 className="text-sm font-extrabold text-white">{selectedStudent.name}</h3>
-                      <p className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span>{selectedStudent.level} • Aluno Ativo</span>
-                      </p>
+                  {myStudentsList.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-500 space-y-1">
+                      <p className="font-semibold text-slate-400">Nenhum aluno no momento</p>
+                      <p className="text-[11px] text-slate-500">Suas conversas aparecerão aqui.</p>
                     </div>
-                  </div>
-                </div>
+                  ) : (
+                    myStudentsList.map(st => {
+                      const isSelected = selectedStudentId === st.id;
+                      const studentMsgs = (directChatMessages || []).filter(m => m.studentId === st.id);
+                      const lastMsg = studentMsgs[studentMsgs.length - 1];
 
-                {/* Área de Mensagens (Thread) */}
-                <div 
-                  ref={teacherMessagesContainerRef} 
-                  className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 bg-slate-950/60"
-                >
-                  <div className="flex justify-center my-2">
-                    <span className="text-[10px] text-slate-400 font-medium bg-slate-900/80 border border-slate-800/80 px-3 py-1 rounded-full">
-                      Hoje
-                    </span>
-                  </div>
-
-                  {activeStudentMessages.length > 0 ? (
-                    activeStudentMessages.map(msg => {
-                      const isTeacher = msg.senderRole === 'teacher';
                       return (
                         <div
-                          key={msg.id}
-                          className={`flex ${isTeacher ? 'justify-end' : 'justify-start'} w-full`}
+                          key={st.id}
+                          onClick={() => setSelectedStudentId(st.id)}
+                          className={`p-3.5 flex items-start gap-3 cursor-pointer transition-all relative ${
+                            isSelected
+                              ? 'bg-amber-500/10 border-l-4 border-amber-400'
+                              : 'hover:bg-slate-900/50'
+                          }`}
                         >
-                          <div
-                            className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-md space-y-1 ${
-                              isTeacher
-                                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-medium rounded-tr-sm'
-                                : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-sm'
-                            }`}
-                          >
-                            <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
-                            
-                            <div className={`flex items-center justify-end gap-1 text-[10px] ${
-                              isTeacher ? 'text-slate-950/80 font-bold' : 'text-slate-400'
-                            }`}>
-                              <span>{msg.timestamp || 'Agora'}</span>
-                              {isTeacher && (
-                                <span className="text-slate-950 font-black">✓✓</span>
+                          <div className="relative shrink-0">
+                            <img
+                              src={st.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
+                              alt={st.name}
+                              className="w-11 h-11 rounded-full object-cover border border-slate-700"
+                            />
+                            <span className="w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full absolute bottom-0 right-0"></span>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <h4 className={`text-xs font-bold truncate ${isSelected ? 'text-amber-300' : 'text-white'}`}>
+                                {st.name}
+                              </h4>
+                              {lastMsg && (
+                                <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                                  {lastMsg.timestamp ? lastMsg.timestamp.split(' ')[0] : 'Hoje'}
+                                </span>
                               )}
                             </div>
+                            <p className="text-[11px] text-slate-400 truncate">
+                              {lastMsg ? lastMsg.text : `Iniciar conversa com ${st.name.split(' ')[0]}...`}
+                            </p>
+                            <span className="inline-block text-[9px] font-semibold text-cyan-400 bg-cyan-500/10 px-1.5 py-0.2 rounded border border-cyan-500/20 mt-1">
+                              {st.level}
+                            </span>
                           </div>
                         </div>
                       );
                     })
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs space-y-2">
-                      <MessageSquare className="w-12 h-12 text-slate-700 opacity-40" />
-                      <p className="font-semibold text-slate-400">Nenhuma mensagem anterior com {selectedStudent.name}.</p>
-                      <p className="text-[11px] text-slate-500">Envie a primeira mensagem para iniciar a conversa.</p>
-                    </div>
                   )}
                 </div>
-
-                {/* Footer do Chat (Input + Botão Enviar Circular) */}
-                <div className="p-3 bg-slate-900/90 border-t border-slate-800 shrink-0">
-                  <form onSubmit={handleSendTeacherChat} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={teacherChatMessage}
-                      onChange={(e) => setTeacherChatMessage(e.target.value)}
-                      placeholder={`Digitar mensagem para ${selectedStudent.name}...`}
-                      className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-full px-4 py-2.5 text-xs outline-none focus:border-amber-400/80 placeholder-slate-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!teacherChatMessage.trim()}
-                      className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40 text-slate-950 font-black flex items-center justify-center shadow-md cursor-pointer shrink-0 transition-transform active:scale-95"
-                    >
-                      <Send className="w-4 h-4 ml-0.5" />
-                    </button>
-                  </form>
-                </div>
               </div>
+
+              {/* ÁREA PRINCIPAL DO CHAT DA DIREITA */}
+              {!selectedStudent ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/40 space-y-3">
+                  <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-lg">
+                    <MessageSquare className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-white">Nenhuma conversa no momento</h3>
+                  <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                    Quando seus alunos agendarem aulas ou entrarem em contato, a caixa de entrada do chat exibirá todas as mensagens aqui.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col bg-slate-950/40 relative">
+                  
+                  {/* Header do Chat Ativo */}
+                  <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={selectedStudent.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
+                        alt={selectedStudent.name}
+                        className="w-10 h-10 rounded-full object-cover border border-amber-400/40"
+                      />
+                      <div>
+                        <h3 className="text-sm font-extrabold text-white">{selectedStudent.name}</h3>
+                        <p className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span>{selectedStudent.level} • Aluno Ativo</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Área de Mensagens (Thread) */}
+                  <div 
+                    ref={teacherMessagesContainerRef} 
+                    className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 bg-slate-950/60"
+                  >
+                    <div className="flex justify-center my-2">
+                      <span className="text-[10px] text-slate-400 font-medium bg-slate-900/80 border border-slate-800/80 px-3 py-1 rounded-full">
+                        Hoje
+                      </span>
+                    </div>
+
+                    {activeStudentMessages.length > 0 ? (
+                      activeStudentMessages.map(msg => {
+                        const isTeacher = msg.senderRole === 'teacher';
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex ${isTeacher ? 'justify-end' : 'justify-start'} w-full`}
+                          >
+                            <div
+                              className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-md space-y-1 ${
+                                isTeacher
+                                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-medium rounded-tr-sm'
+                                  : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-sm'
+                              }`}
+                            >
+                              <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                              
+                              <div className={`flex items-center justify-end gap-1 text-[10px] ${
+                                isTeacher ? 'text-slate-950/80 font-bold' : 'text-slate-400'
+                              }`}>
+                                <span>{msg.timestamp || 'Agora'}</span>
+                                {isTeacher && (
+                                  <span className="text-slate-950 font-black">✓✓</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs space-y-2">
+                        <MessageSquare className="w-12 h-12 text-slate-700 opacity-40" />
+                        <p className="font-semibold text-slate-400">Nenhuma mensagem anterior com {selectedStudent.name}.</p>
+                        <p className="text-[11px] text-slate-500">Envie a primeira mensagem para iniciar a conversa.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer do Chat (Input + Botão Enviar Circular) */}
+                  <div className="p-3 bg-slate-900/90 border-t border-slate-800 shrink-0">
+                    <form onSubmit={handleSendTeacherChat} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={teacherChatMessage}
+                        onChange={(e) => setTeacherChatMessage(e.target.value)}
+                        placeholder={`Digitar mensagem para ${selectedStudent.name}...`}
+                        className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-full px-4 py-2.5 text-xs outline-none focus:border-amber-400/80 placeholder-slate-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!teacherChatMessage.trim()}
+                        className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40 text-slate-950 font-black flex items-center justify-center shadow-md cursor-pointer shrink-0 transition-transform active:scale-95"
+                      >
+                        <Send className="w-4 h-4 ml-0.5" />
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
 
             </div>
           </div>

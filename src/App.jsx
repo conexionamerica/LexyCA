@@ -48,7 +48,7 @@ function LayoutContent() {
           <Route path="/login/student" element={<LoginPage forceRole="student" />} />
           <Route path="/login/teacher" element={<LoginPage forceRole="teacher" />} />
           <Route path="/tutor/:id" element={<TutorProfilePage />} />
-          <Route path="/onboarding" element={<OnboardingFlow />} />
+          <Route path="/onboarding" element={<Navigate to="/login/teacher?mode=signup" replace />} />
 
           {/* Reserva y Pago */}
           <Route path="/book/:id" element={<BookingPage />} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth, generateMatriculaCode } from '../../contexts/AuthContext';
 import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import LexyAnimatedLogo from './LexyAnimatedLogo';
@@ -162,7 +162,7 @@ export default function Navbar() {
                       <span className="text-[10px] text-slate-400 block truncate">{profile.email}</span>
                       <div className="pt-1.5 flex items-center justify-between text-xs">
                         <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 font-bold">
-                          Matrícula: {profile.matricula_code || 'LXY-2026-784219'}
+                          Matrícula: {profile.matricula_code || generateMatriculaCode(profile.id, profile.email)}
                         </span>
                       </div>
                     </div>
@@ -229,7 +229,7 @@ export default function Navbar() {
 
                 {/* BOTÃO 2: SEJA UM PROFESSOR */}
                 <Link
-                  to="/onboarding"
+                  to="/login/teacher?mode=signup"
                   className="bg-slate-900 hover:bg-slate-850 border border-amber-500/50 text-amber-300 hover:text-amber-200 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 hover:scale-105"
                 >
                   <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
@@ -275,7 +275,7 @@ export default function Navbar() {
           </Link>
 
           <Link
-            to="/onboarding"
+            to="/login/teacher?mode=signup"
             onClick={() => setIsMobileMenuOpen(false)}
             className="w-full bg-slate-900 text-amber-300 font-bold text-xs p-3 rounded-xl border border-slate-800 flex items-center justify-center gap-2"
           >

@@ -65,6 +65,13 @@ export const AuthProvider = ({ children }) => {
             role: dbProfile.role || userMeta.role || 'student',
             phone: dbProfile.phone || userMeta.phone || '',
             documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
+            postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
+            address: dbProfile.address || userMeta.address || '',
+            addressNumber: dbProfile.address_number || userMeta.addressNumber || '',
+            complement: dbProfile.complement || userMeta.complement || '',
+            province: dbProfile.province || userMeta.province || dbProfile.bairro || userMeta.bairro || '',
+            city: dbProfile.city || userMeta.city || '',
+            state: dbProfile.state || userMeta.state || '',
             residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
             study_language: dbProfile.study_language || userMeta.study_language || '',
             language_level: dbProfile.language_level || userMeta.language_level || '',
@@ -181,16 +188,36 @@ export const AuthProvider = ({ children }) => {
       }
 
       const userMeta = data.user.user_metadata || {};
+      let dbProfile = {};
+      try {
+        const { data: profileDb } = await supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle();
+        if (profileDb) dbProfile = profileDb;
+      } catch (dbErr) {
+        console.warn('Profiles fetch warning on login:', dbErr);
+      }
+
       const localAvatar = localStorage.getItem('lexy_avatar_' + data.user.id) || localStorage.getItem('lexy_avatar_' + data.user.email);
       const userProfile = {
         id: data.user.id,
-        full_name: userMeta.name || userMeta.full_name || cleanEmail.split('@')[0],
+        full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || cleanEmail.split('@')[0],
         email: data.user.email,
-        role: userMeta.role || 'student',
-        documentNumber: userMeta.documentNumber || '',
-        residenceCountry: userMeta.residenceCountry || 'Brasil 🇧🇷',
-        avatar_url: localAvatar || userMeta.avatar_url || '',
-        hourly_rate: userMeta.hourlyRate || 20
+        role: dbProfile.role || userMeta.role || 'student',
+        phone: dbProfile.phone || userMeta.phone || '',
+        documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
+        postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
+        address: dbProfile.address || userMeta.address || '',
+        addressNumber: dbProfile.address_number || userMeta.addressNumber || '',
+        complement: dbProfile.complement || userMeta.complement || '',
+        province: dbProfile.province || userMeta.province || dbProfile.bairro || userMeta.bairro || '',
+        city: dbProfile.city || userMeta.city || '',
+        state: dbProfile.state || userMeta.state || '',
+        residenceCountry: dbProfile.residence_country || userMeta.residenceCountry || 'Brasil 🇧🇷',
+        study_language: dbProfile.study_language || userMeta.study_language || '',
+        language_level: dbProfile.language_level || userMeta.language_level || '',
+        study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
+        avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
+        hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
+        matricula_code: dbProfile.matricula_code || generateMatriculaCode(data.user.id, data.user.email)
       };
       setProfile(userProfile);
       return { success: true, user: userProfile };
@@ -204,7 +231,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
-  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation }) => {
+  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signUp({
@@ -221,7 +248,10 @@ export const AuthProvider = ({ children }) => {
             hourlyRate: hourlyRate || 20,
             study_language: study_language || '',
             language_level: language_level || '',
-            study_motivation: study_motivation || ''
+            study_motivation: study_motivation || '',
+            subject_taught: subject_taught || '',
+            headline: headline || '',
+            bio: bio || ''
           }
         }
       });
@@ -256,6 +286,9 @@ export const AuthProvider = ({ children }) => {
           document_number: documentNumber || '',
           residence_country: residenceCountry || 'Brasil 🇧🇷',
           hourly_rate: hourlyRate || 20,
+          subject_taught: subject_taught || '',
+          headline: headline || '',
+          bio: bio || '',
           updated_at: new Date().toISOString()
         });
       } catch (dbErr) {
