@@ -135,10 +135,15 @@ export default function AsaasCheckoutModal({
       setErrorMsg('Por favor, cadastre um número de celular válido para gerar a cobrança.');
       return;
     }
+    const cleanCpf = cardCpf.replace(/\D/g, '');
+    if (!cleanCpf || !validateCPF(cleanCpf)) {
+      setErrorMsg('Por favor, informe um CPF verdadeiro e válido para gerar a cobrança Asaas.');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
     try {
-      const cleanCpf = cardCpf.replace(/\D/g, '');
       const registeredName = profile?.full_name || customerInfo?.name || customerInfo?.accountName || 'Aluno Lexy';
       
       const res = await processAsaasPayment({
@@ -149,7 +154,7 @@ export default function AsaasCheckoutModal({
           ...customerInfo, 
           name: registeredName,
           phone: phoneInput,
-          document: cleanCpf || customerInfo?.document || profile?.documentNumber,
+          document: cleanCpf,
           postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
           address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
           addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
@@ -183,6 +188,12 @@ export default function AsaasCheckoutModal({
       return;
     }
 
+    const cleanCpf = cardCpf.replace(/\D/g, '');
+    if (!cleanCpf || !validateCPF(cleanCpf)) {
+      setErrorMsg('CPF do titular obrigatório e inválido. Verifique os dígitos.');
+      return;
+    }
+
     const cleanCard = cardNumber.replace(/\D/g, '');
     if (cleanCard.length < 13) {
       setErrorMsg('Por favor, informe um número de cartão válido.');
@@ -201,12 +212,6 @@ export default function AsaasCheckoutModal({
 
     if (cardCvv.length < 3) {
       setErrorMsg('Informe o código CVC de segurança.');
-      return;
-    }
-
-    const cleanCpf = cardCpf.replace(/\D/g, '');
-    if (cleanCpf.length === 11 && !validateCPF(cleanCpf)) {
-      setErrorMsg('CPF do titular inválido.');
       return;
     }
 
@@ -319,6 +324,9 @@ export default function AsaasCheckoutModal({
   const cardBrand = getCardBrand(cardNumber);
 
   const isPhoneValid = validatePhone(phoneInput);
+  const cleanCpfDigits = (cardCpf || '').replace(/\D/g, '');
+  const isCpfValid = cleanCpfDigits.length === 11 && validateCPF(cleanCpfDigits);
+  const isCustomerReady = isPhoneValid && isCpfValid;
 
   if (!isOpen) return null;
 
@@ -391,35 +399,52 @@ export default function AsaasCheckoutModal({
               </div>
             </div>
 
-            {/* SI EL USUARIO NO TIENE CELULAR REGISTRADO, SOLICITARLO ANTES DE PERMITIR EL PAGO */}
-            {!isPhoneValid ? (
+            {/* SI EL USUARIO NO TIENE CELULAR O CPF VÁLIDOS REGISTRADOS, SOLICITARLOS OBLIGATORIAMENTE */}
+            {!isCustomerReady ? (
               <div className="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-5 space-y-4 animate-fade-in">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <Phone className="w-5 h-5" />
+                    <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div className="space-y-1">
-                    <h4 className="font-extrabold text-white text-sm">Cadastro de Celular / WhatsApp Necessário</h4>
+                    <h4 className="font-extrabold text-white text-sm">Dados Cadastrais Obrigatórios (Asaas)</h4>
                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                      Para realizar o pagamento no Asaas e garantir a emissão automática da Nota Fiscal (NFS-e), informe seu celular.
+                      Para emitir cobranças e Nota Fiscal (NFS-e) no gateway Asaas, informe seu celular com DDD e seu CPF verdadeiro.
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 block">Número de Celular com DDD (Brasil) *</label>
-                  <input
-                    type="text"
-                    value={phoneInput}
-                    onChange={(e) => {
-                      setPhoneInput(formatPhone(e.target.value));
-                      setErrorMsg('');
-                    }}
-                    placeholder="(11) 99999-9999"
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-3 text-sm font-mono font-bold outline-none focus:border-emerald-400"
-                  />
-                  <p className="text-[10px] text-slate-400">Exemplo: (11) 98765-4321</p>
-                </div>
+                {!isPhoneValid && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300 block">Número de Celular com DDD *</label>
+                    <input
+                      type="text"
+                      value={phoneInput}
+                      onChange={(e) => {
+                        setPhoneInput(formatPhone(e.target.value));
+                        setErrorMsg('');
+                      }}
+                      placeholder="(11) 99999-9999"
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                )}
+
+                {!isCpfValid && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300 block">CPF do Titular / Pagador *</label>
+                    <input
+                      type="text"
+                      value={cardCpf}
+                      onChange={(e) => {
+                        setCardCpf(formatCPF(e.target.value));
+                        setErrorMsg('');
+                      }}
+                      placeholder="000.000.000-00"
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                )}
 
                 {errorMsg && (
                   <div className="text-xs font-bold text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
@@ -431,21 +456,27 @@ export default function AsaasCheckoutModal({
                   type="button"
                   onClick={() => {
                     if (!validatePhone(phoneInput)) {
-                      setErrorMsg('Por favor, informe um número de celular válido no formato (DDD) 9XXXX-XXXX.');
+                      setErrorMsg('Por favor, informe um número de celular verdadeiro no formato (DDD) 9XXXX-XXXX.');
+                      return;
+                    }
+                    const cleanCpf = cardCpf.replace(/\D/g, '');
+                    if (!cleanCpf || !validateCPF(cleanCpf)) {
+                      setErrorMsg('Por favor, informe um CPF verdadeiro e válido com 11 dígitos.');
                       return;
                     }
                     if (updateProfile) {
-                      updateProfile({ phone: phoneInput });
+                      updateProfile({ phone: phoneInput, documentNumber: cardCpf });
                     }
                     if (customerInfo) {
                       customerInfo.phone = phoneInput;
+                      customerInfo.document = cardCpf;
                     }
                     setErrorMsg('');
                   }}
                   className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Salvar Celular e Ir para o Pagamento</span>
+                  <span>Salvar Dados e Continuar para Pagamento</span>
                 </button>
               </div>
             ) : (

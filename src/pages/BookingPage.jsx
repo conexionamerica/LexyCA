@@ -444,7 +444,7 @@ export default function BookingPage() {
         customerInfo={{
           name: profile?.full_name || student?.name || 'Aluno Lexy',
           email: profile?.email || student?.email || 'aluno@lexy.com',
-          document: profile?.documentNumber || '603.198.610-82',
+          document: profile?.documentNumber || student?.documentNumber || '',
           phone: profile?.phone || student?.phone || ''
         }}
         onSuccess={handleAsaasBookingPaymentSuccess}

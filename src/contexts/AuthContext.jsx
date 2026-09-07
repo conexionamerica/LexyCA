@@ -78,7 +78,8 @@ export const AuthProvider = ({ children }) => {
             study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
             avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
             hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
-            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
+            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email),
+            wallet_history: dbProfile.wallet_history || userMeta.wallet_history || []
           };
           setProfile(userProfile);
         }
@@ -125,7 +126,8 @@ export const AuthProvider = ({ children }) => {
             study_motivation: dbProfile.study_motivation || userMeta.study_motivation || '',
             avatar_url: localAvatar || dbProfile.avatar_url || userMeta.avatar_url || '',
             hourly_rate: dbProfile.hourly_rate || userMeta.hourlyRate || 20,
-            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email)
+            matricula_code: dbProfile.matricula_code || generateMatriculaCode(session.user.id, session.user.email),
+            wallet_history: dbProfile.wallet_history || userMeta.wallet_history || []
         };
         setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
@@ -451,6 +453,39 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const saveWalletTransaction = async (newTx) => {
+    if (!newTx) return;
+    setProfile(prev => {
+      if (!prev) return prev;
+      const currentHistory = Array.isArray(prev.wallet_history) ? prev.wallet_history : [];
+      if (currentHistory.some(item => item.id === newTx.id)) return prev;
+      const updatedHistory = [newTx, ...currentHistory];
+      const updated = { ...prev, wallet_history: updatedHistory };
+      localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, JSON.stringify(updated));
+      localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
+      return updated;
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const currentMeta = session.user.user_metadata || {};
+        const currentHist = Array.isArray(currentMeta.wallet_history) ? currentMeta.wallet_history : [];
+        const updatedHist = [newTx, ...currentHist.filter(h => h.id !== newTx.id)];
+        await supabase.auth.updateUser({
+          data: { ...currentMeta, wallet_history: updatedHist }
+        });
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          wallet_history: updatedHist,
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.warn('Error saving wallet transaction to Supabase:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user: profile,
@@ -462,7 +497,8 @@ export const AuthProvider = ({ children }) => {
       signOut,
       logout: signOut,
       updateProfile,
-      updateWalletBalance
+      updateWalletBalance,
+      saveWalletTransaction
     }}>
       {children}
     </AuthContext.Provider>

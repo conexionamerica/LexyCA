@@ -10,8 +10,8 @@ import { useMarketplace } from '../contexts/MarketplaceContext';
 import AsaasCheckoutModal from '../components/payment/AsaasCheckoutModal';
 
 export default function StudentWallet() {
-  const { profile } = useAuth();
-  const { activateSubscriptionAndCredits } = useMarketplace();
+  const { profile, saveWalletTransaction } = useAuth();
+  const { activateSubscriptionAndCredits, bookings } = useMarketplace();
   
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
   const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
@@ -80,16 +80,45 @@ export default function StudentWallet() {
     const pId = String(profile.id || '').toLowerCase();
     const pEmail = String(profile.email || '').toLowerCase();
 
-    return (history || []).filter(h => {
-      const hStudentId = String(h.studentId || h.userId || '').toLowerCase();
-      const hStudentEmail = String(h.studentEmail || h.userEmail || '').toLowerCase();
+    const profileHistory = Array.isArray(profile?.wallet_history) ? profile.wallet_history : [];
+    const combinedRaw = [...profileHistory, ...(history || [])];
 
-      if (hStudentId || hStudentEmail) {
-        return (pId && hStudentId === pId) || (pEmail && hStudentEmail === pEmail);
-      }
-      return false;
+    // Mapear aulas reservadas do Supabase em transações se não existirem no histórico
+    const studentBookings = (bookings || []).filter(b => {
+      const sId = String(b.studentId || b.student_id || '').toLowerCase();
+      const sEmail = String(b.studentEmail || b.email || '').toLowerCase();
+      return (pId && sId === pId) || (pEmail && sEmail === pEmail);
     });
-  }, [history, profile]);
+
+    const bookingTxList = studentBookings.map(b => ({
+      id: `tx_booking_${b.id}`,
+      studentId: profile.id,
+      studentEmail: profile.email,
+      desc: `Agendamento: ${b.tutorName || 'Professor'} (${b.day} às ${b.time})`,
+      date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
+      amount: b.amount || 20,
+      lessons: b.planHours || 1,
+      type: 'payment',
+      status: b.status === 'confirmed' ? 'Concluído' : b.status || 'Concluído'
+    }));
+
+    const allTx = [...combinedRaw, ...bookingTxList];
+
+    // Eliminar duplicados por ID
+    const uniqueMap = new Map();
+    allTx.forEach(tx => {
+      if (tx && tx.id) {
+        const hStudentId = String(tx.studentId || tx.userId || '').toLowerCase();
+        const hStudentEmail = String(tx.studentEmail || tx.userEmail || '').toLowerCase();
+        const matches = (pId && hStudentId === pId) || (pEmail && hStudentEmail === pEmail) || (!hStudentId && !hStudentEmail);
+        if (matches) {
+          uniqueMap.set(tx.id, tx);
+        }
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  }, [history, profile, bookings]);
 
   const userCalculatedLessons = userHistory.reduce((acc, item) => {
     const val = parseFloat(item.lessons) || (parseFloat(item.amount) / 50) || 0;
@@ -138,6 +167,10 @@ export default function StudentWallet() {
       localStorage.setItem('lexy_wallet_history', JSON.stringify(updated));
       return updated;
     });
+
+    if (typeof saveWalletTransaction === 'function') {
+      saveWalletTransaction(newTx);
+    }
 
     if (typeof activateSubscriptionAndCredits === 'function') {
       activateSubscriptionAndCredits({
@@ -336,7 +369,7 @@ export default function StudentWallet() {
           customerInfo={{
             name: profile?.full_name || 'Aluno Lexy',
             email: profile?.email || 'aluno@lexy.com',
-            document: profile?.documentNumber || '603.198.610-82',
+            document: profile?.documentNumber || '',
             phone: profile?.phone || ''
           }}
           onSuccess={handleAsaasPaymentSuccess}
