@@ -244,6 +244,14 @@ export default function LoginPage({ forceRole }) {
           setErrorMessage('Por favor, selecione o idioma que deseja ensinar.');
           return;
         }
+        if (!teacherHeadline || !teacherHeadline.trim()) {
+          setErrorMessage('Por favor, informe um título (headline) para o seu perfil.');
+          return;
+        }
+        if (!teacherBio || !teacherBio.trim()) {
+          setErrorMessage('Por favor, escreva uma breve biografia ou metodologia sobre suas aulas.');
+          return;
+        }
       } else {
         if (!studyLanguage) {
           setErrorMessage('Por favor, selecione o idioma que deseja estudar.');
@@ -294,10 +302,10 @@ export default function LoginPage({ forceRole }) {
               full_name: name,
               email: cleanEmail,
               phone,
-              headline: teacherHeadline || 'Professor(a) de Idiomas',
-              subject_taught: teacherSubject || 'Inglês 🇬🇧🇺🇸',
+              headline: teacherHeadline.trim(),
+              subject_taught: teacherSubject,
               hourly_rate: Number(teacherRate) || 50,
-              bio: teacherBio || 'Professor qualificado na Lexy Idiomas.',
+              bio: teacherBio.trim(),
               country: residenceCountry,
               avatar_url: profilePhotoPreview || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80'
             });

@@ -41,7 +41,7 @@ export default function ExplorePage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('Todos');
   const [sortBy, setSortBy] = useState('rating'); // 'rating', 'price_asc', 'price_desc', 'popular'
   const [activeVideoUrl, setActiveVideoUrl] = useState(null);
-  const [favorites, setFavorites] = useState(['tutor-1']);
+  const [favorites, setFavorites] = useState([]);
 
   useEffect(() => {
     const subjectParam = searchParams.get('subject');
@@ -421,7 +421,7 @@ export default function ExplorePage() {
 
                       <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 mt-2 text-center">
                         <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aula Experimental</span>
-                        <span className="text-sm font-extrabold text-emerald-300">Apenas R$ {tutor.trialRate} por 25 min</span>
+                        <span className="text-sm font-extrabold text-emerald-300">Apenas R$ {tutor.trialRate} por 30 min</span>
                       </div>
                     </div>
 

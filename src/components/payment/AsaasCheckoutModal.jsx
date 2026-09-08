@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ShieldCheck, CreditCard, QrCode, CheckCircle2, 
@@ -27,6 +27,9 @@ export default function AsaasCheckoutModal({
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successResult, setSuccessResult] = useState(null);
+
+  const phoneInputRef = useRef(null);
+  const cpfInputRef = useRef(null);
 
   // Cadastrais de Cobrança (Celular, CPF, CEP, Endereço, Número, Bairro)
   const [phoneInput, setPhoneInput] = useState(() => customerInfo?.phone || profile?.phone || '');
@@ -418,6 +421,7 @@ export default function AsaasCheckoutModal({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300 block">Número de Celular com DDD *</label>
                     <input
+                      ref={phoneInputRef}
                       type="text"
                       value={phoneInput}
                       onChange={(e) => {
@@ -434,6 +438,7 @@ export default function AsaasCheckoutModal({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-300 block">CPF do Titular / Pagador *</label>
                     <input
+                      ref={cpfInputRef}
                       type="text"
                       value={cardCpf}
                       onChange={(e) => {
@@ -457,11 +462,13 @@ export default function AsaasCheckoutModal({
                   onClick={() => {
                     if (!validatePhone(phoneInput)) {
                       setErrorMsg('Por favor, informe um número de celular verdadeiro no formato (DDD) 9XXXX-XXXX.');
+                      phoneInputRef.current?.focus();
                       return;
                     }
                     const cleanCpf = cardCpf.replace(/\D/g, '');
                     if (!cleanCpf || !validateCPF(cleanCpf)) {
                       setErrorMsg('Por favor, informe um CPF verdadeiro e válido com 11 dígitos.');
+                      cpfInputRef.current?.focus();
                       return;
                     }
                     if (updateProfile) {

@@ -312,7 +312,7 @@ export default function BookingPage() {
               1. Selecione o Dia e Horário Disponível na Agenda Nativa do Professor
             </label>
             <span className="text-xs font-extrabold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30">
-              Duração: 45 minutos
+              Duração: 30 minutos
             </span>
           </div>
 
@@ -433,7 +433,7 @@ export default function BookingPage() {
         isOpen={isAsaasModalOpen}
         onClose={() => setIsAsaasModalOpen(false)}
         amount={trialRate}
-        description={`Aula Experimental (45 min) - ${tutor?.name || 'Professor Lexy'}`}
+        description={`Aula Experimental (30 min) - ${tutor?.name || 'Professor Lexy'}`}
         isRecurring={false}
         lessonsCount={1}
         customerInfo={{

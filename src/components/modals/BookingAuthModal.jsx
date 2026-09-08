@@ -194,7 +194,7 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
       province,
       city,
       state,
-      study_language: studyLanguage,
+      study_language: studyLanguage.split(' ')[0],
       language_level: languageLevel,
       study_motivation: studyMotivation
     });
