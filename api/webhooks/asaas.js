@@ -72,7 +72,7 @@ export default async function handler(req, res) {
           if (Array.isArray(profiles) && profiles.length > 0) {
             const userProfile = profiles[0];
             const currentBal = parseFloat(userProfile.wallet_balance || 0);
-            const newBal = currentBal + (lessonsToAdd * 50);
+            const newBal = currentBal + lessonsToAdd;
 
             // 2. Atualizar saldo no Supabase
             await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userProfile.id}`, {

@@ -11,7 +11,7 @@ const LOCAL_STORAGE_KEY_TRIALS = 'lexy_market_used_trials_v2';
 const LOCAL_STORAGE_KEY_SUBSCRIPTIONS = 'lexy_market_subscriptions_v2';
 const LOCAL_STORAGE_KEY_FEE = 'lexy_market_platform_fee_v2';
 const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'lexy_market_announcements_v2';
-const LOCAL_STORAGE_KEY_DIRECT_CHAT = 'lexy_market_direct_chat_v2';
+
 const LOCAL_STORAGE_KEY_TIER_RATES = 'lexy_market_tier_rates_v2';
 const LOCAL_STORAGE_KEY_PACKAGE_DISCOUNTS = 'lexy_market_package_discounts_v2';
 
@@ -166,19 +166,9 @@ const isFakeMockTutor = (t) => {
 };
 
   // Chat Direto por Aluno Selecionado
-  const [directChatMessages, setDirectChatMessages] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_DIRECT_CHAT);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error cargando chat directo', e);
-      }
-    }
-    return [];
-  });
+  const [directChatMessages, setDirectChatMessages] = useState([]);
 
-  const sendDirectMessage = (payload, roleFallback, studentIdFallback, nameFallback) => {
+  const sendDirectMessage = async (payload, roleFallback, studentIdFallback, nameFallback) => {
     let studentId = 'stud-1';
     let tutorId = 'tutor-1';
     let senderName = 'Aluno';
@@ -198,18 +188,39 @@ const isFakeMockTutor = (t) => {
       studentId = studentIdFallback || 'stud-1';
     }
 
-    const newMsg = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    const timestampStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Optimistic UI update
+    const tempMsg = {
+      id: `temp-${Date.now()}`,
       studentId,
       tutorId,
       senderName,
       senderRole,
       sender: senderRole,
       text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: timestampStr
     };
-    setDirectChatMessages(prev => [...prev, newMsg]);
-    return newMsg;
+    setDirectChatMessages(prev => [...prev, tempMsg]);
+
+    // Send to Supabase
+    try {
+      const { error } = await supabase.from('direct_messages').insert({
+        student_id: studentId,
+        tutor_id: tutorId,
+        sender_role: senderRole,
+        sender_name: senderName,
+        text,
+        timestamp: timestampStr
+      });
+      if (error) {
+        console.error('Error sending message:', error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    
+    return tempMsg;
   };
 
   // Tutores (Cadastros reais de professores)
@@ -621,8 +632,58 @@ const isFakeMockTutor = (t) => {
   }, [announcements]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_DIRECT_CHAT, JSON.stringify(directChatMessages));
-  }, [directChatMessages]);
+    let active = true;
+    async function fetchMessages() {
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (active && !error && data) {
+        const formatted = data.map(m => ({
+          id: m.id,
+          studentId: m.student_id,
+          tutorId: m.tutor_id,
+          senderName: m.sender_name,
+          senderRole: m.sender_role,
+          sender: m.sender_role,
+          text: m.text,
+          timestamp: m.timestamp || new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setDirectChatMessages(formatted);
+      }
+    }
+    
+    fetchMessages();
+
+    const channel = supabase.channel('public:direct_messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, payload => {
+        const m = payload.new;
+        const newMsg = {
+          id: m.id,
+          studentId: m.student_id,
+          tutorId: m.tutor_id,
+          senderName: m.sender_name,
+          senderRole: m.sender_role,
+          sender: m.sender_role,
+          text: m.text,
+          timestamp: m.timestamp || new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setDirectChatMessages(prev => {
+          if (prev.some(msg => msg.text === newMsg.text && msg.studentId === newMsg.studentId && msg.timestamp === newMsg.timestamp && msg.id.startsWith('temp-'))) {
+             return prev.map(msg => (msg.text === newMsg.text && msg.id.startsWith('temp-') ? newMsg : msg));
+          }
+          if (prev.find(x => x.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY_TIER_RATES, JSON.stringify(tierRates));

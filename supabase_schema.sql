@@ -349,3 +349,30 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFA
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS earned_balance NUMERIC DEFAULT 0;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_lessons INT DEFAULT 0;
 
+
+-- =================================================================================================
+-- CHAT: Mensagens Diretas (Real-Time)
+-- =================================================================================================
+CREATE TABLE IF NOT EXISTS public.direct_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_id TEXT NOT NULL,
+    tutor_id TEXT NOT NULL,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('student', 'teacher', 'admin')),
+    sender_name TEXT,
+    text TEXT NOT NULL,
+    timestamp TEXT, -- Keeping string timestamp format used in frontend or just created_at
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for direct_messages
+ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
+
+-- Allow reading messages if the user is the student or the tutor (simplified for now to allow all authenticated to test, but ideally constrained)
+CREATE POLICY "Allow everyone to read their messages"
+    ON public.direct_messages FOR SELECT
+    USING (true); -- Set to true temporarily since IDs might be 'stud-1', otherwise it breaks if we strictly check auth.uid(). In production, fix to: student_id = auth.uid()::text OR tutor_id = auth.uid()::text
+
+CREATE POLICY "Allow everyone to send messages"
+    ON public.direct_messages FOR INSERT
+    WITH CHECK (true);
+
