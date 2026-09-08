@@ -663,20 +663,7 @@ export default function LoginPage({ forceRole }) {
               {/* ── MODO CRIAR CONTA (PASSO 2 DE 3: DOCUMENTOS E ENDEREÇO) ── */}
               {!isLogin && signupStep === 2 && (
                 <div className="space-y-4 animate-fade-in">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">País de Residência *</label>
-                    <select
-                      value={residenceCountry}
-                      onChange={(e) => {
-                        setResidenceCountry(e.target.value);
-                        setCpfError('');
-                        setPhoneError('');
-                      }}
-                      className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none cursor-pointer focus:border-cyan-400"
-                    >
-                      {RESIDENCE_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
+
 
                   {isBrazil ? (
                     <div>

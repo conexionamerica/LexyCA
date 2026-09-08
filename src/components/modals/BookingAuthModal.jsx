@@ -426,19 +426,7 @@ export default function BookingAuthModal({ isOpen, onClose, tutor, onSuccessNavi
             {/* PASO 2: DOCUMENTOS E ENDEREÇO */}
             {signupStep === 2 && (
               <div className="space-y-3.5 animate-fade-in">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">País de Residência *</label>
-                  <div className="relative">
-                    <Globe className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                    <select
-                      value={residenceCountry}
-                      onChange={(e) => setResidenceCountry(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl pl-9 pr-3 py-2.5 text-xs font-bold focus:border-cyan-400 outline-none cursor-pointer"
-                    >
-                      {RESIDENCE_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </div>
+
 
                 {isBrazil ? (
                   <div>
