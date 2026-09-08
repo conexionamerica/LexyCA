@@ -460,26 +460,16 @@ const isFakeMockTutor = (t) => {
           if (saved) localBookings = JSON.parse(saved);
         } catch (e) {}
 
-        // 🔒 AISLAMIENTO: Solo descargar las aulas del usuario autenticado
+        // 🔒 Cargar todas as aulas registradas no Supabase (tabela public.aulas)
         const { data: { session: currentSession } } = await supabase.auth.getSession();
-        const userEmail = currentSession?.user?.email || '';
-        const userId = currentSession?.user?.id || '';
-        let query = supabase.from('aulas').select('*');
+        const userEmail = (currentSession?.user?.email || '').toLowerCase().trim();
+        const userId = (currentSession?.user?.id || '').toLowerCase().trim();
         
-        if (userId && userEmail) {
-          query = query.or(`student_id.eq.${userId},student_email.eq.${userEmail},tutor_id.eq.${userId},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail}`);
-        } else if (userId) {
-          query = query.or(`student_id.eq.${userId},tutor_id.eq.${userId}`);
-        } else if (userEmail) {
-          query = query.or(`student_email.eq.${userEmail},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail}`);
-        }
-        
-        const { data, error } = await query;
+        const { data, error } = await supabase.from('aulas').select('*').order('created_at', { ascending: false });
 
         if (!error && data && active) {
           const filteredData = data.filter(dbApt => {
             const dayStr = String(dbApt.day_name || dbApt.day || '');
-            // Eliminar registros antigos duplicados com (Semana 2), (Semana 3), etc.
             if (dayStr.includes('Semana 2') || dayStr.includes('Semana 3') || dayStr.includes('Semana 4') || dayStr.includes('Semana 5')) {
               if (dbApt.id) {
                 supabase.from('aulas').delete().eq('id', dbApt.id).then(() => {}).catch(e => console.warn(e));

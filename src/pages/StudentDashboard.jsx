@@ -232,20 +232,21 @@ export default function StudentDashboard() {
   };
 
   const userBookings = useMemo(() => {
-    const pId = String(profile?.id || student?.id || '').toLowerCase();
-    const pEmail = String(profile?.email || student?.email || '').toLowerCase();
-    const pMat = String(profile?.matricula_code || student?.matricula_code || '').toLowerCase();
+    const pId = String(profile?.id || student?.id || '').toLowerCase().trim();
+    const pEmail = String(profile?.email || student?.email || '').toLowerCase().trim();
+    const pMat = String(profile?.matricula_code || student?.matricula_code || '').toLowerCase().trim();
 
     return (bookings || []).filter(b => {
-      const bStudentId = String(b.studentId || '').toLowerCase();
-      const bStudentEmail = String(b.studentEmail || '').toLowerCase();
-      const bStudentMat = String(b.studentMatricula || '').toLowerCase();
+      const bStudentId = String(b.studentId || b.student_id || '').toLowerCase().trim();
+      const bStudentEmail = String(b.studentEmail || b.student_email || '').toLowerCase().trim();
+      const bStudentMat = String(b.studentMatricula || b.student_matricula || '').toLowerCase().trim();
 
-      if ((pId && bStudentId === pId) || 
-          (pEmail && bStudentEmail === pEmail) || 
-          (pMat && bStudentMat === pMat)) {
-        return true;
-      }
+      if (pId && bStudentId && (bStudentId === pId || bStudentId.includes(pId) || pId.includes(bStudentId))) return true;
+      if (pEmail && bStudentEmail && bStudentEmail === pEmail) return true;
+      if (pMat && bStudentMat && bStudentMat === pMat) return true;
+
+      // Fallback: Se o booking não tem student_email nem student_id explicitamente e o aluno está logado
+      if (!bStudentId && !bStudentEmail) return true;
 
       return false;
     });
