@@ -12,7 +12,7 @@ import BookingAuthModal from '../components/modals/BookingAuthModal';
 export default function TutorProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tutors, getTrialEligibility } = useMarketplace();
+  const { tutors, getTrialEligibility, packageDiscounts, getTutorPackageDiscount } = useMarketplace();
   const { profile } = useAuth();
 
   // Buscar tutor por ID
@@ -281,12 +281,16 @@ export default function TutorProfilePage() {
               <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula Experimental (45 min)</span>
               {(() => {
                 const eligibility = getTrialEligibility ? getTrialEligibility(tutor.id) : { allowed: true, isFree: false };
+                const trialDisc = getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor.id, 'pkg-trial') : 50;
+                const hRate = Number(tutor.hourlyRate || tutor.hourly_rate || 20);
+                const computedTrialRate = Number((hRate * (1 - trialDisc / 100)).toFixed(2));
+
                 if (eligibility.isFree) {
                   return (
                     <div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-black text-emerald-400">GRÁTIS</span>
-                        <span className="text-xs text-slate-500 line-through">R$ {tutor.trialRate}</span>
+                        <span className="text-xs text-slate-500 line-through">R$ {computedTrialRate.toFixed(2)}</span>
                       </div>
                       <div className="mt-1 inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                         🎁 Garantia de Satisfação ({eligibility.remainingFreeTrials} restantes)
@@ -298,10 +302,12 @@ export default function TutorProfilePage() {
                   <div>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-bold text-slate-400">R$</span>
-                      <span className="text-4xl font-black text-white">{tutor.trialRate}</span>
-                      <span className="bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded ml-auto">
-                        50% de Desconto
-                      </span>
+                      <span className="text-4xl font-black text-white">{computedTrialRate.toFixed(2)}</span>
+                      {trialDisc > 0 && (
+                        <span className="bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded ml-auto">
+                          {trialDisc}% de Desconto
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

@@ -17,6 +17,7 @@ const LOCAL_STORAGE_KEY_PACKAGE_DISCOUNTS = 'lexy_market_package_discounts_v2';
 
 export const DEFAULT_PACKAGE_DISCOUNTS = {
   global: {
+    'pkg-trial': 50, // 50% de Desconto por padrão no agendamento da 1ª Aula Experimental
     'pkg-4h': 0,
     'pkg-8h': 0,
     'pkg-12h': 0,
@@ -26,11 +27,27 @@ export const DEFAULT_PACKAGE_DISCOUNTS = {
 };
 
 export const getTutorPackageDiscount = (packageDiscounts, tutorId, pkgId) => {
-  if (!packageDiscounts) return 0;
+  if (!packageDiscounts) return pkgId === 'pkg-trial' ? 50 : 0;
+  
+  // 1. Ver se existe desconto específico para este tutor
+  if (tutorId && packageDiscounts.byTutor && packageDiscounts.byTutor[tutorId]) {
+    const tutorDisc = packageDiscounts.byTutor[tutorId][pkgId];
+    if (tutorDisc !== undefined && tutorDisc !== null) {
+      return Number(tutorDisc);
+    }
+  }
+
+  // 2. Ver se existe no nível global
+  if (packageDiscounts.global && packageDiscounts.global[pkgId] !== undefined) {
+    return Number(packageDiscounts.global[pkgId] || 0);
+  }
+
+  // 3. Suporte a formato plano de objeto anterior
   if (packageDiscounts[pkgId] !== undefined) {
     return Number(packageDiscounts[pkgId] || 0);
   }
-  return 0;
+
+  return pkgId === 'pkg-trial' ? 50 : 0;
 };
 
 export const DEFAULT_TIER_RATES = {

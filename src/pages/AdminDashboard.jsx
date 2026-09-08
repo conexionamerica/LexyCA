@@ -45,10 +45,10 @@ export default function AdminDashboard() {
   const handleTargetChange = (targetId) => {
     setSelectedDiscountTarget(targetId);
     if (targetId === 'all') {
-      const g = packageDiscounts?.global || (packageDiscounts?.['pkg-4h'] !== undefined ? packageDiscounts : { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 });
+      const g = packageDiscounts?.global || (packageDiscounts?.['pkg-4h'] !== undefined ? packageDiscounts : { 'pkg-trial': 50, 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 });
       setEditablePackageDiscounts(g);
     } else {
-      const tDisc = packageDiscounts?.byTutor?.[targetId] || { 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 };
+      const tDisc = packageDiscounts?.byTutor?.[targetId] || { 'pkg-trial': 50, 'pkg-4h': 0, 'pkg-8h': 0, 'pkg-12h': 0, 'pkg-16h': 0 };
       setEditablePackageDiscounts(tDisc);
     }
   };
@@ -1450,7 +1450,17 @@ export default function AdminDashboard() {
                   2. Defina os Porcentagens de Desconto (% OFF para {selectedDiscountTarget === 'all' ? 'Todos os Tutores' : (tutors.find(t => t.id === selectedDiscountTarget)?.name || 'Tutor Selecionado')})
                 </label>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl">
+                    <label className="font-extrabold text-amber-300 text-xs block mb-1">🎁 1ª Aula Experimental (% OFF)</label>
+                    <input
+                      type="number" min={0} max={100} value={editablePackageDiscounts['pkg-trial'] !== undefined ? editablePackageDiscounts['pkg-trial'] : 50}
+                      onChange={(e) => setEditablePackageDiscounts(prev => ({ ...prev, 'pkg-trial': Number(e.target.value) }))}
+                      className="w-full bg-slate-900 border border-amber-500/40 text-amber-300 font-black text-sm rounded-xl px-3 py-2 outline-none focus:border-amber-400"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-1">Padrão: 50% OFF</span>
+                  </div>
+
                   <div>
                     <label className="font-bold text-slate-300 text-xs block mb-1">Pacote 4 Horas (% OFF)</label>
                     <input
