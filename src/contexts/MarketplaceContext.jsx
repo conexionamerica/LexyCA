@@ -60,8 +60,9 @@ export const DEFAULT_TIER_RATES = {
 };
 
 // HELPER: GENERAR CÓDIGO ÚNICO DE AULA (FORMATO AULA-2026-XXXXXX)
-export const generateLessonCode = (id = '') => {
-  if (!id) return `AULA-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+export const generateLessonCode = (id = '', isTrial = false) => {
+  const prefix = isTrial ? 'EXP' : 'AULA';
+  if (!id) return `${prefix}-2026-${Math.floor(100000 + Math.random() * 900000)}`;
   const str = String(id);
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -69,7 +70,7 @@ export const generateLessonCode = (id = '') => {
     hash |= 0;
   }
   const positiveNum = Math.abs(hash) % 900000 + 100000;
-  return `AULA-2026-${positiveNum}`;
+  return `${prefix}-2026-${positiveNum}`;
 };
 
 // HELPER: OBTENER EL PORCENTAJE QUE EL PROFESOR GANA (MOSTRAR SÓLO GANHO DO PROFESSOR)
@@ -1237,7 +1238,7 @@ const isFakeMockTutor = (t) => {
         count++;
         const s = baseSlots[sIdx];
         const bId = `booking-${Date.now()}-w${week}-s${sIdx}-${count}`;
-        const lCode = generateLessonCode(bId);
+        const lCode = generateLessonCode(bId, isTrialBooking);
 
         const dayFormatted = (numWeeks > 1 && !isTrialBooking) 
           ? `${s.day || day} (Semana ${week})` 
@@ -1282,7 +1283,7 @@ const isFakeMockTutor = (t) => {
 
     setBookings(prev => [...createdBookings, ...prev]);
 
-    // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase
+    // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase de forma sincrona
     try {
       const targetBookingsForDb = isTrialBooking ? createdBookings.slice(0, 1) : createdBookings;
       const dbPayload = targetBookingsForDb.map(b => ({
@@ -1304,24 +1305,20 @@ const isFakeMockTutor = (t) => {
         status: b.status || 'confirmed'
       }));
 
-      supabase.from('aulas').insert(dbPayload).then(({ error }) => {
-        if (error) {
-          console.error('❌ Error inserting booking into aulas table:', error);
-          const minPayload = createdBookings.map(b => ({
-            lesson_code: b.lesson_code,
-            student_name: b.studentName || 'Aluno',
-            tutor_name: b.tutorName || 'Prof',
-            day: b.day || '',
-            time: b.time || ''
-          }));
-          supabase.from('aulas').insert(minPayload).then(({ error: minErr }) => {
-            if (minErr) console.error('❌ Supabase minimal insert error:', minErr);
-            else console.log('✅ Supabase minimal insert succeeded!');
-          });
-        } else {
-          console.log('✅ Supabase aulas insert succeeded!', dbPayload);
-        }
-      }).catch(err => console.error('Supabase createBooking insert catch:', err));
+      const { data: insertedData, error: insertErr } = await supabase.from('aulas').insert(dbPayload).select();
+      if (insertErr) {
+        console.error('❌ Error inserting booking into aulas table:', insertErr);
+        const minPayload = createdBookings.map(b => ({
+          lesson_code: b.lesson_code,
+          student_name: b.studentName || 'Aluno',
+          tutor_name: b.tutorName || 'Prof',
+          day: b.day || '',
+          time: b.time || ''
+        }));
+        await supabase.from('aulas').insert(minPayload);
+      } else {
+        console.log('✅ Supabase aulas insert succeeded!', insertedData);
+      }
     } catch (e) {
       console.error('createBooking DB sync catch:', e);
     }
