@@ -734,24 +734,54 @@ const isFakeMockTutor = (t) => {
   }, [tierRates]);
 
   const maxFreeTrials = 3;
-  const remainingFreeTrials = Math.max(0, maxFreeTrials - (usedTrials || []).length);
+
+  // Modificado: El alumno solo desbloquea 3 aulas gratis SI ya completó la 1ª aula experimental paga
+  const hasCompletedFirstTrial = useMemo(() => {
+    return (bookings || []).some(b => {
+      const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
+      const isCompleted = b.status === 'concluida' || b.status === 'completed';
+      return isTrial && isCompleted;
+    });
+  }, [bookings]);
+
+  // Contamos cuantas clases gratis de garantía ha consumido el alumno (en total)
+  const freeTrialsCount = useMemo(() => {
+    return (bookings || []).filter(b => {
+      const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
+      const isFree = b.totalAmount === 0 || (b.planName && b.planName.toLowerCase().includes('grátis'));
+      return isTrial && isFree;
+    }).length;
+  }, [bookings]);
+
+  const remainingFreeTrials = hasCompletedFirstTrial ? Math.max(0, maxFreeTrials - freeTrialsCount) : 0;
 
   const getTrialEligibility = (tutorId) => {
     const hasUsedWithThisTutor = (usedTrials || []).includes(tutorId);
-    const trialsCount = (usedTrials || []).length;
-    const remaining = Math.max(0, maxFreeTrials - trialsCount);
 
     if (hasUsedWithThisTutor) {
       return {
         allowed: false,
         isFree: false,
-        remaining,
+        remaining: remainingFreeTrials,
         reason: 'already_used_with_tutor',
         message: 'Você já utilizou sua Aula Experimental única com este professor. Escolha um plano de assinatura de 30 dias para continuar.'
       };
     }
 
-    if (trialsCount >= maxFreeTrials) {
+    // Regla: Si el alumno AÚN NO ha completado su 1ª Aula Experimental paga (comprada),
+    // la 1ª aula experimental se cobra con valor promocional de descuento (PAGA, NO GRATIS).
+    if (!hasCompletedFirstTrial) {
+      return {
+        allowed: true,
+        isFree: false,
+        remaining: 0,
+        reason: 'first_paid_trial',
+        message: '1ª Aula Experimental Comprada (Valor Promocional com Desconto). Se não gostar após a conclusão, você ganha 3 Aulas Experimentais Gratuitas de Garantia de Satisfação!'
+      };
+    }
+
+    // Si ya completó la 1ª y ya usó las 3 gratis de garantía:
+    if (freeTrialsCount >= maxFreeTrials) {
       return {
         allowed: false,
         isFree: false,
@@ -761,12 +791,13 @@ const isFakeMockTutor = (t) => {
       };
     }
 
+    // Si ya completó la 1ª aula experimental paga y le quedan de las 3 gratis:
     return {
       allowed: true,
       isFree: true,
-      remaining,
+      remaining: remainingFreeTrials,
       reason: 'free_guarantee',
-      message: `Garantia de Satisfação Lexy: Esta Aula Experimental é 100% GRÁTIS! (Restam ${remaining} de 3 aulas gratuitas)`
+      message: `Garantia de Satisfação Lexy: Esta Aula Experimental é 100% GRÁTIS! (Restam ${remainingFreeTrials} de ${maxFreeTrials} aulas gratuitas)`
     };
   };
 

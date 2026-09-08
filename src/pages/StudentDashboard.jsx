@@ -560,36 +560,33 @@ export default function StudentDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
             </div>
 
-            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) */}
-            <div className="bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0">
-                  <Gift className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black text-amber-300 uppercase tracking-wide">Garantia de Satisfação Lexy</h3>
-                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
-                      {remainingFreeTrials} de {maxFreeTrials || 3} Grátis
-                    </span>
+            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) - Só exibe quando desbloqueadas após a 1ª aula concluída */}
+            {remainingFreeTrials > 0 && (
+              <div className="bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0">
+                    <Gift className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-300 mt-0.5">
-                    {remainingFreeTrials > 0
-                      ? `Você tem ${remainingFreeTrials} aula(s) experimental(is) GRATUITA(S) disponível(is) para testar novos professores.`
-                      : `Você atingiu o limite de 3 aulas experimentais gratuitas. Assine um plano mensal para continuar estudando.`
-                    }
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-black text-amber-300 uppercase tracking-wide">Garantia de Satisfação Lexy</h3>
+                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {remainingFreeTrials} de {maxFreeTrials || 3} Grátis Desbloqueadas
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Sua 1ª aula foi concluída! Você tem <strong>{remainingFreeTrials} aula(s) experimental(is) GRATUITA(S)</strong> disponível(is) para testar novos professores.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              {remainingFreeTrials > 0 && (
                 <button
                   onClick={() => navigate('/explore')}
                   className="bg-gradient-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow transition-all shrink-0 cursor-pointer"
                 >
                   Usar Aula Grátis 🎁
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Modal de Boas-Vindas se ativo */}
             {showWelcome && (
