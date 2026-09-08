@@ -122,6 +122,34 @@ export default function AdminDashboard() {
 
   const [pendingPayouts, setPendingPayouts] = useState([]);
 
+  useEffect(() => {
+    async function fetchPayouts() {
+      const { data, error } = await supabase.from('payout_requests').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        const mappedPayouts = data.map(p => {
+          const tutorObj = tutors.find(t => t.id === p.tutor_id) || {};
+          return {
+            id: p.id,
+            tutorName: tutorObj.name || tutorObj.full_name || 'Tutor',
+            tutorEmail: tutorObj.email || '',
+            tutorAvatar: tutorObj.avatar || tutorObj.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+            date: new Date(p.created_at).toLocaleDateString(),
+            requestedAmount: Number(p.amount),
+            netAmount: Number(p.net_amount),
+            method: p.method,
+            pixKey: p.pix_key,
+            status: p.status,
+            teacherEarnPercent: 80
+          };
+        });
+        setPendingPayouts(mappedPayouts);
+      }
+    }
+    if (tutors && tutors.length > 0) {
+      fetchPayouts();
+    }
+  }, [tutors]);
+
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -189,8 +217,17 @@ export default function AdminDashboard() {
     setTimeout(() => setAnnSuccessMsg(''), 3000);
   };
 
-  const handleApprovePayout = (id) => {
-    setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
+  const handleApprovePayout = async (id) => {
+    try {
+      const { error } = await supabase.from('payout_requests').update({ status: 'approved' }).eq('id', id);
+      if (!error) {
+        setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
+      } else {
+        console.error('Error approving payout:', error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // LER AVALIAÇÕES E FEEDBACKS (SUPABASE + LOCALSTORAGE - RETENÇÃO DE 30 DIAS)

@@ -333,17 +333,17 @@ const isFakeMockTutor = (t) => {
   });
 
   // Suscripciones
-  const [subscriptions, setSubscriptions] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error cargando suscripciones de 28 días', e);
+  const [subscriptions, setSubscriptions] = useState([]);
+
+  useEffect(() => {
+    async function fetchSubscriptions() {
+      const { data, error } = await supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        setSubscriptions(data);
       }
     }
-    return [];
-  });
+    fetchSubscriptions();
+  }, []);
 
   const isFakeBooking = (b) => {
     if (!b || !b.id) return true;
@@ -610,9 +610,7 @@ const isFakeMockTutor = (t) => {
     localStorage.setItem(LOCAL_STORAGE_KEY_TRIALS, JSON.stringify(usedTrials));
   }, [usedTrials]);
 
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(subscriptions));
-  }, [subscriptions]);
+
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(bookings));
