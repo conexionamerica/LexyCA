@@ -7,7 +7,7 @@ const MarketplaceContext = createContext(undefined);
 const LOCAL_STORAGE_KEY_TUTORS = 'lexy_market_tutors_v2';
 const LOCAL_STORAGE_KEY_BOOKINGS = 'lexy_market_bookings_v2';
 const LOCAL_STORAGE_KEY_STUDENT = 'lexy_market_student_v2';
-const LOCAL_STORAGE_KEY_TRIALS = 'lexy_market_used_trials_v2';
+
 const LOCAL_STORAGE_KEY_SUBSCRIPTIONS = 'lexy_market_subscriptions_v2';
 const LOCAL_STORAGE_KEY_FEE = 'lexy_market_platform_fee_v2';
 const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'lexy_market_announcements_v2';
@@ -331,17 +331,9 @@ const isFakeMockTutor = (t) => {
   });
 
   // Trials
-  const [usedTrials, setUsedTrials] = useState(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TRIALS);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error cargando historial de aulas experimentales', e);
-      }
-    }
-    return [];
-  });
+  const [usedTrials, setUsedTrials] = useState([]);
+
+
 
   // Suscripciones
   const [subscriptions, setSubscriptions] = useState([]);
@@ -618,8 +610,23 @@ const isFakeMockTutor = (t) => {
   }, [student]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY_TRIALS, JSON.stringify(usedTrials));
-  }, [usedTrials]);
+    let active = true;
+    async function fetchUsedTrials() {
+      if (!student?.id) return;
+      const { data, error } = await supabase
+        .from('used_trials')
+        .select('tutor_id')
+        .eq('student_id', student.id);
+      
+      if (!error && data && active) {
+        setUsedTrials(data.map(t => t.tutor_id));
+      }
+    }
+    fetchUsedTrials();
+    return () => { active = false; };
+  }, [student?.id]);
+
+
 
 
 
@@ -1092,6 +1099,14 @@ const isFakeMockTutor = (t) => {
 
     if (isTrialBooking) {
       setUsedTrials(prev => [...prev, tutorId]);
+      // Sincronizar trial usado con Supabase
+      if (effectiveStudentId) {
+        supabase.from('used_trials')
+          .insert({ student_id: effectiveStudentId, tutor_id: tutorId })
+          .then(({ error }) => {
+            if (error) console.error('Erro ao salvar trial na Supabase:', error);
+          });
+      }
     }
 
     if (!isTrialBooking && (bookingType === 'package' || bookingType === 'subscription')) {

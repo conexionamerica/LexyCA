@@ -376,3 +376,26 @@ CREATE POLICY "Allow everyone to send messages"
     ON public.direct_messages FOR INSERT
     WITH CHECK (true);
 
+
+-- =================================================================================================
+-- TRIALS: Consumo de Aulas Experimentais
+-- =================================================================================================
+CREATE TABLE IF NOT EXISTS public.used_trials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    student_id TEXT NOT NULL,
+    tutor_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(student_id, tutor_id)
+);
+
+-- Enable RLS for used_trials
+ALTER TABLE public.used_trials ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow everyone to read used trials"
+    ON public.used_trials FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow everyone to insert used trials"
+    ON public.used_trials FOR INSERT
+    WITH CHECK (true);
+
