@@ -1326,13 +1326,27 @@ const isFakeMockTutor = (t) => {
     return { success: true, booking: createdBookings[0] };
   };
 
-  const updateBookingStatus = (bookingId, newStatus) => {
+  const updateBookingStatus = async (bookingId, newStatus) => {
+    if (!bookingId) return;
+    const cleanSearchId = String(bookingId).trim().toLowerCase();
+
     setBookings(prev => prev.map(b => {
-      if (b.id === bookingId) {
+      if (
+        String(b.id || '').trim().toLowerCase() === cleanSearchId || 
+        String(b.lesson_code || '').trim().toLowerCase() === cleanSearchId
+      ) {
         return { ...b, status: newStatus, updatedAt: new Date().toISOString() };
       }
       return b;
     }));
+
+    try {
+      await supabase.from('aulas')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .or(`id.eq.${bookingId},lesson_code.eq.${bookingId}`);
+    } catch (e) {
+      console.warn('Erro ao atualizar status na Supabase:', e);
+    }
   };
 
   const completeBooking = (bookingId) => {
