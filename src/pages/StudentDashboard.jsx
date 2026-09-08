@@ -303,8 +303,7 @@ export default function StudentDashboard() {
   const rescheduleTargetTutor = useMemo(() => {
     if (!selectedBookingForReschedule) return null;
     const bTutorId = String(selectedBookingForReschedule.tutorId || selectedBookingForReschedule.tutor_id || '').toLowerCase();
-    const bTutorEmail = String(selectedBookingForReschedule.tutorEmail || '').toLowerCase();
-    return tutors.find(t => String(t.id).toLowerCase() === bTutorId || (t.email && String(t.email).toLowerCase() === bTutorEmail)) || tutors[0];
+    return tutors.find(t => String(t.id).toLowerCase() === bTutorId || (t.email && String(t.email).toLowerCase() === bTutorEmail)) || null;
   }, [selectedBookingForReschedule, tutors]);
 
   // Função para buscar os slots verdadeiramente LIVRES do professor no dia

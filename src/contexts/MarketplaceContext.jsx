@@ -340,7 +340,14 @@ const isFakeMockTutor = (t) => {
 
   useEffect(() => {
     async function fetchSubscriptions() {
-      const { data, error } = await supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+      // 🔒 AISLAMIENTO: Solo descargar las suscripciones del usuario autenticado
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const userId = currentSession?.user?.id;
+      let query = supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+      if (userId) {
+        query = query.eq('student_id', userId);
+      }
+      const { data, error } = await query;
       if (!error && data) {
         setSubscriptions(data);
       }
@@ -427,11 +434,25 @@ const isFakeMockTutor = (t) => {
       try {
         let localBookings = [];
         try {
-          const saved = localStorage.getItem(LOCAL_STORAGE_KEY_BOOKINGS);
+          // 🔒 AISLAMIENTO: Cargar solo bookings locales del usuario actual
+          const { data: { session: lsSession } } = await supabase.auth.getSession();
+          const lsUserId = lsSession?.user?.id || 'anon';
+          const userBookingsKey = `${LOCAL_STORAGE_KEY_BOOKINGS}_${lsUserId}`;
+          const saved = localStorage.getItem(userBookingsKey);
           if (saved) localBookings = JSON.parse(saved);
         } catch (e) {}
 
-        const { data, error } = await supabase.from('aulas').select('*');
+        // 🔒 AISLAMIENTO: Solo descargar las aulas del usuario autenticado
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const userEmail = currentSession?.user?.email || '';
+        const userId = currentSession?.user?.id || '';
+        let query = supabase.from('aulas').select('*');
+        if (userEmail && userId) {
+          query = query.or(`student_email.eq.${userEmail},student_id.eq.${userId},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail},tutor_id.eq.${userId}`);
+        } else if (userEmail) {
+          query = query.or(`student_email.eq.${userEmail},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail}`);
+        }
+        const { data, error } = await query;
 
         if (!error && data && active) {
           const filteredData = data.filter(dbApt => {
@@ -495,7 +516,10 @@ const isFakeMockTutor = (t) => {
 
           const finalBookings = Array.from(mergedMap.values());
           setBookings(finalBookings);
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(finalBookings));
+          // 🔒 AISLAMIENTO: Guardar bookings en localStorage con key del usuario
+          const { data: { session: saveSession } } = await supabase.auth.getSession();
+          const saveUserId = saveSession?.user?.id || 'anon';
+          localStorage.setItem(`${LOCAL_STORAGE_KEY_BOOKINGS}_${saveUserId}`, JSON.stringify(finalBookings));
         } else if (active && localBookings.length > 0) {
           setBookings(localBookings);
         }
@@ -893,6 +917,8 @@ const isFakeMockTutor = (t) => {
     try {
       const dbPayload = generatedBookings.map(b => ({
         lesson_code: b.lesson_code,
+        student_id: b.studentId || null,
+        tutor_id: b.tutorId || null,
         student_name: b.studentName || 'Aluno Lexy',
         student_email: b.studentEmail || '',
         student_matricula: b.studentMatricula || '',
@@ -1202,6 +1228,8 @@ const isFakeMockTutor = (t) => {
       const targetBookingsForDb = isTrialBooking ? createdBookings.slice(0, 1) : createdBookings;
       const dbPayload = targetBookingsForDb.map(b => ({
         lesson_code: b.lesson_code,
+        student_id: b.studentId || null,
+        tutor_id: b.tutorId || null,
         student_name: b.studentName || 'Aluno Lexy',
         student_email: b.studentEmail || '',
         student_matricula: b.studentMatricula || '',

@@ -478,3 +478,30 @@ BEGIN
 END;
 $$$ LANGUAGE plpgsql SECURITY DEFINER;
 
+
+-- =================================================================================================
+-- FIX AULAS RLS & PROFILE ADDRESS FIELDS
+-- =================================================================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address_number TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS postal_code TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS complement TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS province TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS city TEXT;
+
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS student_id UUID REFERENCES public.profiles(id);
+ALTER TABLE public.aulas ADD COLUMN IF NOT EXISTS tutor_id UUID REFERENCES public.profiles(id);
+
+DROP POLICY IF EXISTS "Aulas public view" ON public.aulas;
+CREATE POLICY "Aulas secure view" ON public.aulas FOR SELECT USING (
+  student_id = auth.uid() OR 
+  tutor_id = auth.uid() OR 
+  student_email = (auth.jwt() ->> 'email') OR
+  tutor_email = (auth.jwt() ->> 'email') OR
+  teacher_email = (auth.jwt() ->> 'email') OR
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
+
+UPDATE public.aulas SET student_id = profiles.id FROM public.profiles WHERE public.aulas.student_email = profiles.email AND public.aulas.student_id IS NULL;
+UPDATE public.aulas SET tutor_id = profiles.id FROM public.profiles WHERE (public.aulas.tutor_email = profiles.email OR public.aulas.teacher_email = profiles.email) AND public.aulas.tutor_id IS NULL;
+

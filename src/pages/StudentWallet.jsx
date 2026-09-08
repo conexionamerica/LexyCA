@@ -63,7 +63,9 @@ export default function StudentWallet() {
 
   // Histórico de transações pertencendo EXCLUSIVAMENTE ao aluno autenticado
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem('lexy_wallet_history');
+    // 🔒 AISLAMIENTO: Cargar historial exclusivo del usuario autenticado
+    const userId = profile?.id || '';
+    const saved = userId ? localStorage.getItem(`lexy_wallet_history_${userId}`) : null;
     if (saved) {
       try {
         const parsed = JSON.parse(saved);

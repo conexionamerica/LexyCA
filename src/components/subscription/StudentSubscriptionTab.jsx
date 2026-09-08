@@ -86,7 +86,7 @@ export default function StudentSubscriptionTab() {
       const match = tutors.find(t => String(t.id).toLowerCase() === String(lastBooking.tutorId).toLowerCase());
       if (match) return match;
     }
-    return tutors.find(t => t.status === 'approved') || tutors[0];
+    return null;
   }, [tutors, activeSub, lastBooking, searchParams]);
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
@@ -188,19 +188,30 @@ export default function StudentSubscriptionTab() {
   const totalCycleAmount = Number((tutorHourlyRate * totalContractedHours).toFixed(2));
 
   const userHistory = useMemo(() => {
-    const rawHistory = JSON.parse(localStorage.getItem('lexy_wallet_history') || '[]');
-    if (!profile) return rawHistory;
+    if (!profile) return [];
     const pId = String(profile.id || '').toLowerCase();
     const pEmail = String(profile.email || '').toLowerCase();
+    const pMat = String(profile.matricula_code || '').toLowerCase();
+
+    if (Array.isArray(profile.wallet_history) && profile.wallet_history.length > 0) {
+      return profile.wallet_history;
+    }
+
+    const userKey = profile.id ? `lexy_wallet_history_${profile.id}` : null;
+    const rawUserHistory = userKey ? JSON.parse(localStorage.getItem(userKey) || 'null') : null;
+    const rawHistory = rawUserHistory || JSON.parse(localStorage.getItem('lexy_wallet_history') || '[]');
 
     return rawHistory.filter(h => {
       const hStudentId = String(h.studentId || h.userId || '').toLowerCase();
       const hStudentEmail = String(h.studentEmail || h.userEmail || '').toLowerCase();
+      const hStudentMat = String(h.studentMatricula || '').toLowerCase();
 
-      if (hStudentId || hStudentEmail) {
-        return (pId && hStudentId === pId) || (pEmail && hStudentEmail === pEmail);
+      if (hStudentId || hStudentEmail || hStudentMat) {
+        return (pId && hStudentId === pId) || 
+               (pEmail && hStudentEmail === pEmail) || 
+               (pMat && hStudentMat === pMat);
       }
-      return true;
+      return false;
     });
   }, [profile]);
 
@@ -346,36 +357,56 @@ export default function StudentSubscriptionTab() {
       </div>
 
       {!activeSub ? (
-        <div className="space-y-6">
-          
-          {/* Banner do Professor Selecionado */}
-          <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <img 
-                  src={targetTutor?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
-                  alt={targetTutor?.name}
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md shrink-0 ring-4 ring-cyan-500/20" 
-                />
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold uppercase tracking-wider mb-1">
-                    <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Professor Selecionado</span>
+        !targetTutor ? (
+          <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-8 sm:p-12 text-center space-y-5 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-inner">
+              <UserCheck className="w-8 h-8" />
+            </div>
+            <div className="space-y-2 max-w-lg mx-auto">
+              <h3 className="text-xl font-extrabold text-white">Nenhum Professor Selecionado</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Para assinar um pacote recorrente de 30 dias, escolha primeiro o seu professor no catálogo. Cada professor define sua tarifa por hora individualmente.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/dashboard/student?tab=catalogo')}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-xs px-6 py-3.5 rounded-xl shadow-lg shadow-cyan-500/20 transition-all inline-flex items-center gap-2 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4 text-slate-950" />
+              <span>Explorar Catálogo e Escolher Professor</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            
+            {/* Banner do Professor Selecionado */}
+            <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={targetTutor?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
+                    alt={targetTutor?.name}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md shrink-0 ring-4 ring-cyan-500/20" 
+                  />
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold uppercase tracking-wider mb-1">
+                      <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Professor Selecionado</span>
+                    </div>
+                    <h3 className="text-xl font-extrabold text-white">{targetTutor?.name}</h3>
+                    <p className="text-xs text-slate-300">{targetTutor?.subject || 'Idiomas'} • Tarifa por hora: <strong className="text-emerald-400 font-bold text-sm">R$ {tutorHourlyRate}.00 / hora</strong></p>
                   </div>
-                  <h3 className="text-xl font-extrabold text-white">{targetTutor?.name}</h3>
-                  <p className="text-xs text-slate-300">{targetTutor?.subject || 'Idiomas'} • Tarifa por hora: <strong className="text-emerald-400 font-bold text-sm">R$ {tutorHourlyRate}.00 / hora</strong></p>
+                </div>
+
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-2.5 text-right shadow-sm">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Status da Assinatura</span>
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Sem Assinatura Recorrente Ativa
+                  </span>
                 </div>
               </div>
-
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl px-4 py-2.5 text-right shadow-sm">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Status da Assinatura</span>
-                <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Sem Assinatura Recorrente Ativa
-                </span>
-              </div>
             </div>
-          </div>
 
           {/* SEÇÃO PRINCIPAL DE PACOTES DE AULAS RECORRENTES (30 DIAS) */}
           <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
@@ -522,6 +553,7 @@ export default function StudentSubscriptionTab() {
 
           </div>
         </div>
+        )
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 space-y-4">

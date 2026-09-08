@@ -233,7 +233,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
-  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
+  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, postalCode, address, addressNumber, complement, province, city, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const normalizedRole = role === 'professor' || role === 'tutor' ? 'teacher' : (role || 'student');
@@ -248,6 +248,12 @@ export const AuthProvider = ({ children }) => {
             phone: phone || '',
             documentNumber: documentNumber || '',
             residenceCountry: residenceCountry || 'Brasil 🇧🇷',
+            postalCode: postalCode || '',
+            address: address || '',
+            addressNumber: addressNumber || '',
+            complement: complement || '',
+            province: province || '',
+            city: city || '',
             hourlyRate: hourlyRate || 20,
             study_language: study_language || '',
             language_level: language_level || '',
@@ -288,6 +294,12 @@ export const AuthProvider = ({ children }) => {
           phone: phone || '',
           document_number: documentNumber || '',
           residence_country: residenceCountry || 'Brasil 🇧🇷',
+          postal_code: postalCode || '',
+          address: address || '',
+          address_number: addressNumber || '',
+          complement: complement || '',
+          province: province || '',
+          city: city || '',
           hourly_rate: hourlyRate || 20,
           subject_taught: subject_taught || '',
           headline: headline || '',
@@ -347,6 +359,15 @@ export const AuthProvider = ({ children }) => {
       console.warn('Error en supabase signOut:', e);
     }
     setProfile(null);
+    // 🔒 AISLAMIENTO TOTAL: Purgar TODOS los datos del usuario del localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('lexy_') || key.startsWith('lexy_market_'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     localStorage.removeItem(LOCAL_STORAGE_KEY_AUTH);
   };
 
@@ -463,7 +484,10 @@ export const AuthProvider = ({ children }) => {
       const updatedHistory = [newTx, ...currentHistory];
       const updated = { ...prev, wallet_history: updatedHistory };
       localStorage.setItem(LOCAL_STORAGE_KEY_AUTH, JSON.stringify(updated));
-      localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
+      // 🔒 AISLAMIENTO: Guardar historial con key del usuario
+      if (prev.id) {
+        localStorage.setItem(`lexy_wallet_history_${prev.id}`, JSON.stringify(updatedHistory));
+      }
       return updated;
     });
 
