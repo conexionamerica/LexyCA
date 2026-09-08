@@ -1275,13 +1275,20 @@ const isFakeMockTutor = (t) => {
 
     // Persistir as aulas (incluindo aulas experimentais / trial e paquetes) no Supabase de forma sincrona
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const sessionUserId = currentSession?.user?.id;
+      const sessionUserEmail = currentSession?.user?.email;
+
+      const finalStudentId = sessionUserId || (effectiveStudentId && effectiveStudentId.includes('-') && effectiveStudentId.length > 20 ? effectiveStudentId : null);
+      const finalTutorId = tutorId && tutorId.includes('-') && tutorId.length > 20 ? tutorId : null;
+
       const targetBookingsForDb = isTrialBooking ? createdBookings.slice(0, 1) : createdBookings;
       const dbPayload = targetBookingsForDb.map(b => ({
         lesson_code: b.lesson_code,
-        student_id: b.studentId || null,
-        tutor_id: b.tutorId || null,
+        student_id: finalStudentId,
+        tutor_id: finalTutorId,
         student_name: b.studentName || 'Aluno Lexy',
-        student_email: b.studentEmail || '',
+        student_email: sessionUserEmail || b.studentEmail || '',
         student_matricula: b.studentMatricula || '',
         tutor_name: b.tutorName || 'Professor Lexy',
         teacher_name: b.tutorName || 'Professor Lexy',
@@ -1298,14 +1305,13 @@ const isFakeMockTutor = (t) => {
       const { data: insertedData, error: insertErr } = await supabase.from('aulas').insert(dbPayload).select();
       if (insertErr) {
         console.error('❌ Error inserting booking into aulas table:', insertErr);
-        const minPayload = createdBookings.map(b => ({
-          lesson_code: b.lesson_code,
-          student_name: b.studentName || 'Aluno',
-          tutor_name: b.tutorName || 'Prof',
-          day: b.day || '',
-          time: b.time || ''
+        // Fallback sem IDs se houver incompatibilidade de formato UUID
+        const fallbackPayload = dbPayload.map(item => ({
+          ...item,
+          student_id: sessionUserId || null,
+          tutor_id: null
         }));
-        await supabase.from('aulas').insert(minPayload);
+        await supabase.from('aulas').insert(fallbackPayload);
       } else {
         console.log('✅ Supabase aulas insert succeeded!', insertedData);
       }
