@@ -245,9 +245,6 @@ export default function StudentDashboard() {
       if (pEmail && bStudentEmail && bStudentEmail === pEmail) return true;
       if (pMat && bStudentMat && bStudentMat === pMat) return true;
 
-      // Fallback: Se o booking não tem student_email nem student_id explicitamente e o aluno está logado
-      if (!bStudentId && !bStudentEmail) return true;
-
       return false;
     });
   }, [bookings, profile, student]);

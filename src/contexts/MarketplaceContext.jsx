@@ -501,40 +501,15 @@ const isFakeMockTutor = (t) => {
             createdAt: dbApt.created_at || new Date().toISOString()
           }));
 
-          // Mesclar aulas remotas do Supabase com aulas criadas localmente para não sumir ao atualizar a página
-          const mergedMap = new Map();
-          (localBookings || []).forEach(b => {
-            if (b && (b.id || b.lesson_code)) {
-              mergedMap.set(b.id || b.lesson_code, b);
-            }
-          });
-          fetchedBookings.forEach(b => {
-            if (b && (b.id || b.lesson_code)) {
-              const local = mergedMap.get(b.id || b.lesson_code);
-              if (local) {
-                mergedMap.set(b.id || b.lesson_code, {
-                  ...local,
-                  ...b,
-                  studentId: b.studentId || local.studentId,
-                  studentEmail: b.studentEmail || local.studentEmail,
-                  studentName: b.studentName || local.studentName,
-                  studentMatricula: b.studentMatricula || local.studentMatricula,
-                });
-              } else {
-                mergedMap.set(b.id || b.lesson_code, b);
-              }
-            }
-          });
-
-          const finalBookings = Array.from(mergedMap.values());
-          setBookings(finalBookings);
+          // Cargar exclusivamente los datos reales de Supabase
+          setBookings(fetchedBookings);
           
-          // Guardar em chave isolada do usuário e também na chave global de backup
+          // Actualizar localStorage como cache secundario sincronizado
           const saveUserId = userId || 'anon';
-          localStorage.setItem(`${LOCAL_STORAGE_KEY_BOOKINGS}_${saveUserId}`, JSON.stringify(finalBookings));
-          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(finalBookings));
-        } else if (active && localBookings.length > 0) {
-          setBookings(localBookings);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY_BOOKINGS}_${saveUserId}`, JSON.stringify(fetchedBookings));
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(fetchedBookings));
+        } else if (active && (!data || data.length === 0)) {
+          setBookings([]);
         }
       } catch (err) {
         console.warn('Error syncing aulas from Supabase:', err);
