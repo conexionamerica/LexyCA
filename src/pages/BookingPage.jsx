@@ -14,7 +14,7 @@ export default function BookingPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tutors, student, bookings, canBookTrial, createBooking, packageDiscounts, getTutorPackageDiscount, teacherAvailability } = useMarketplace();
+  const { tutors, student, bookings, canBookTrial, getTrialEligibility, createBooking, packageDiscounts, getTutorPackageDiscount, teacherAvailability } = useMarketplace();
   const { profile } = useAuth();
 
   const tutor = tutors.find(t => t.id === id) || tutors[0];
@@ -39,8 +39,10 @@ export default function BookingPage() {
     );
   }
 
-  // Verificar si el alumno YA usó la aula experimental única con este profesor
-  const isTrialAllowed = canBookTrial(tutor.id);
+  // Verificar la elegibilidad de aula experimental com Garantia de Satisfação
+  const trialEligibility = getTrialEligibility ? getTrialEligibility(tutor.id) : { allowed: canBookTrial(tutor.id), isFree: false, message: '', remainingFreeTrials: 0 };
+  const isTrialAllowed = trialEligibility.allowed;
+  const isFreeTrial = trialEligibility.isFree;
 
   const [bookingType, setBookingType] = useState('trial'); // 'trial' - Aula Experimental Única
   const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8 aulas / 30 dias (2 aulas/semana)
@@ -115,7 +117,8 @@ export default function BookingPage() {
   const daysWithFreeSlots = ALL_WEEK_DAYS.filter(day => getFreeSlotsForDay(day).length > 0);
 
   const hourlyRate = Number(tutor?.hourlyRate || tutor?.hourly_rate || tutor?.rate || 20);
-  const trialRate = Number((hourlyRate * 0.5).toFixed(2));
+  const baseTrialRate = Number((hourlyRate * 0.5).toFixed(2));
+  const trialRate = isFreeTrial ? 0 : baseTrialRate;
 
   const pkgHours = selectedPackage?.hours || selectedPackage?.lessonsCount || 4;
   const pkgDiscount = getTutorPackageDiscount ? getTutorPackageDiscount(packageDiscounts, tutor?.id, selectedPackage?.id) : 0;
@@ -168,6 +171,11 @@ export default function BookingPage() {
     setErrorMessage('');
     setInsufficientBalanceError(null);
 
+    if (!isTrialAllowed) {
+      setErrorMessage(trialEligibility.message || 'Você não pode agendar esta aula experimental.');
+      return;
+    }
+
     const primarySlot = selectedSlots[0];
 
     if (!primarySlot?.day || !primarySlot?.time) {
@@ -175,7 +183,12 @@ export default function BookingPage() {
       return;
     }
 
-    setIsAsaasModalOpen(true);
+    if (isFreeTrial) {
+      // Se for grátis pela Garantia de Satisfação, agendar diretamente sem abrir modal do Asaas
+      handleAsaasBookingPaymentSuccess({ transactionId: `free_guarantee_${Date.now()}` });
+    } else {
+      setIsAsaasModalOpen(true);
+    }
   };
 
   const handleAsaasBookingPaymentSuccess = async (paymentResult) => {
@@ -183,7 +196,7 @@ export default function BookingPage() {
     const primarySlot = selectedSlots[0];
     if (!primarySlot?.day || !primarySlot?.time) return;
 
-    // Forçar compra única de Aula Experimental (1 sola clase, 0 suscripciones, pago único)
+    // Forçar compra de Aula Experimental (1 sola clase, 0 suscripciones, pago único o gratis)
     await createBooking({
       tutorId: tutor.id,
       day: primarySlot.day,
@@ -191,7 +204,7 @@ export default function BookingPage() {
       allSlots: [primarySlot],
       bookingType: 'trial',
       planHours: 1,
-      planName: 'Aula Experimental de Idiomas (45 min)',
+      planName: isFreeTrial ? 'Aula Experimental Grátis (Garantia de Satisfação)' : 'Aula Experimental de Idiomas (45 min)',
       totalAmount: trialRate,
       bypassWallet: true,
       paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
@@ -213,31 +226,29 @@ export default function BookingPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold text-white">¡Aulas Reservadas com Sucesso!</h2>
+            <h2 className="text-3xl font-extrabold text-white">¡Aula Reservada com Sucesso!</h2>
             <p className="text-sm text-slate-300">
-              Sua contratação com <strong className="text-cyan-300">{tutor.name}</strong> foi confirmada via Asaas e os horários foram bloqueados na agenda do professor.
+              Sua aula experimental com <strong className="text-cyan-300">{tutor.name}</strong> foi confirmada e os horários foram bloqueados na agenda do professor.
             </p>
           </div>
 
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 text-left text-xs space-y-2.5">
             <div className="flex justify-between py-1 border-b border-slate-800">
               <span className="text-slate-400 font-medium">Modalidade:</span>
-              <strong className="text-white font-bold">{bookingType === 'trial' ? 'Aula Experimental (45 min)' : `Assinatura de 30 Dias (${selectedPackage.hours} Aulas / ${neededSlotsCount}x por semana)`}</strong>
+              <strong className="text-white font-bold">{isFreeTrial ? 'Aula Experimental GRÁTIS (Garantia de Satisfação)' : 'Aula Experimental (45 min)'}</strong>
             </div>
             
             <div className="py-2 border-b border-slate-800 space-y-1">
-              <span className="text-slate-400 font-medium block">Horários Semanais Reservados:</span>
-              {selectedSlots.slice(0, neededSlotsCount).map((slot, idx) => (
-                <div key={idx} className="flex justify-between font-bold text-cyan-300">
-                  <span>Aula {idx + 1}:</span>
-                  <span>{slot.day} às {slot.time}</span>
-                </div>
-              ))}
+              <span className="text-slate-400 font-medium block">Horário Reservado:</span>
+              <div className="flex justify-between font-bold text-cyan-300">
+                <span>Aula 1:</span>
+                <span>{selectedSlots[0]?.day} às {selectedSlots[0]?.time}</span>
+              </div>
             </div>
 
             <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400 font-medium">Valor Pago via Asaas:</span>
-              <strong className="text-emerald-400 font-black text-sm">R$ {totalAmount}</strong>
+              <span className="text-slate-400 font-medium">Valor Pago:</span>
+              <strong className="text-emerald-400 font-black text-sm">{isFreeTrial ? 'GRÁTIS (R$ 0,00)' : `R$ ${totalAmount.toFixed(2)}`}</strong>
             </div>
           </div>
 
@@ -275,6 +286,60 @@ export default function BookingPage() {
         Voltar para o perfil de {tutor.name}
       </button>
 
+      {/* Banner de Garantia de Satisfação */}
+      {isTrialAllowed && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-cyan-500/15 to-emerald-500/15 border border-amber-500/40 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center shrink-0">
+              <Gift className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-300 uppercase tracking-wide">Garantia de Satisfação Lexy</span>
+                {isFreeTrial && (
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                    AULA GRÁTIS
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                {isFreeTrial 
+                  ? `Se você pagou sua 1ª aula e não gostou, você tem até 3 aulas experimentais 100% GRATUITAS para testar outros tutores! Restam ${trialEligibility.remainingFreeTrials} de 3 aulas grátis.`
+                  : `Se você não gostar desta primeira aula, nossa Garantia de Satisfação dá a você até 3 Aulas Experimentais GRATUITAS para testar novos professores.`
+                }
+              </p>
+            </div>
+          </div>
+          {isFreeTrial && (
+            <div className="bg-emerald-500/20 border border-emerald-400/40 px-4 py-2 rounded-2xl text-center shrink-0">
+              <span className="text-[10px] text-emerald-300 uppercase font-black block">Economia Total</span>
+              <span className="text-lg font-black text-emerald-400">R$ {baseTrialRate.toFixed(2)} OFF</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Warning se não permitido */}
+      {!isTrialAllowed && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-extrabold text-white">Agendamento de Aula Experimental Não Disponível</h3>
+          <p className="text-xs text-slate-300 max-w-md mx-auto">
+            {trialEligibility.message}
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => navigate(`/tutor/${tutor.id}`)}
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl cursor-pointer"
+            >
+              Ver Planos Mensais com {tutor.name}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error genérico */}
       {errorMessage && (
         <div className="bg-rose-500/20 border border-rose-500 text-rose-300 text-xs font-bold p-4 rounded-2xl flex items-center gap-2">
@@ -283,157 +348,186 @@ export default function BookingPage() {
         </div>
       )}
 
-      <div className="glass-panel rounded-3xl p-6 sm:p-10 space-y-8 border border-cyan-500/30">
-        
-        {/* Encabezado del Profesor */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-          <div className="flex items-center gap-4">
-            <img src={tutor.avatar} alt={tutor.name} className="w-16 h-16 rounded-2xl object-cover border border-cyan-400" />
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-xs font-black uppercase tracking-wider mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Aula Experimental de Idiomas (45 min)</span>
+      {isTrialAllowed && (
+        <div className="glass-panel rounded-3xl p-6 sm:p-10 space-y-8 border border-cyan-500/30">
+          
+          {/* Encabezado del Profesor */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div className="flex items-center gap-4">
+              <img src={tutor.avatar} alt={tutor.name} className="w-16 h-16 rounded-2xl object-cover border border-cyan-400" />
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-xs font-black uppercase tracking-wider mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Aula Experimental de Idiomas (45 min)</span>
+                </div>
+                <h1 className="text-2xl font-extrabold text-white">Reservar Aula com {tutor.name}</h1>
+                <p className="text-xs text-slate-400 mt-0.5">{tutor.subject} • {tutor.flag} {tutor.country}</p>
               </div>
-              <h1 className="text-2xl font-extrabold text-white">Reservar Aula com {tutor.name}</h1>
-              <p className="text-xs text-slate-400 mt-0.5">{tutor.subject} • {tutor.flag} {tutor.country}</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-right">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor Único da Aula</span>
+              {isFreeTrial ? (
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-xs text-slate-500 line-through">R$ {baseTrialRate.toFixed(2)}</span>
+                  <span className="text-xl font-black text-emerald-400 uppercase">GRÁTIS</span>
+                </div>
+              ) : (
+                <span className="text-xl font-black text-emerald-400">R$ {trialRate.toFixed(2)}</span>
+              )}
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Valor Único da Aula de Teste</span>
-            <span className="text-xl font-black text-emerald-400">R$ {trialRate.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* PASO 1: SELECCIONAR DIA Y HORARIO LIBRE DO PROFESOR */}
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
-              1. Selecione o Dia e Horário Disponível na Agenda Nativa do Professor
-            </label>
-            <span className="text-xs font-extrabold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30">
-              Duração: 30 minutos
-            </span>
-          </div>
-
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 font-black text-xs flex items-center justify-center">
-                #1
-              </div>
-              <span className="font-extrabold text-white text-xs">Dia e Horário Escolhido:</span>
+          {/* PASO 1: SELECCIONAR DIA Y HORARIO LIBRE DO PROFESOR */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+                1. Selecione o Dia e Horário Disponível na Agenda Nativa do Professor
+              </label>
+              <span className="text-xs font-extrabold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30">
+                Duração: 45 minutos
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-              {/* Selector de Día */}
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-cyan-400" />
-                <select
-                  value={selectedSlots[0]?.day || ''}
-                  onChange={(e) => handleSlotChange(0, 'day', e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
-                >
-                  <option value="">Selecione o Dia</option>
-                  {daysWithFreeSlots.length === 0 ? (
-                    <option value="" disabled>⚠️ Nenhum dia com vagas livres</option>
-                  ) : (
-                    daysWithFreeSlots.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))
-                  )}
-                </select>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 font-black text-xs flex items-center justify-center">
+                  #1
+                </div>
+                <span className="font-extrabold text-white text-xs">Dia e Horário Escolhido:</span>
               </div>
 
-              {/* Selector de Horario Livre */}
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <select
-                  value={selectedSlots[0]?.time || ''}
-                  onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
-                  className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
-                >
-                  <option value="">Selecione o Horário</option>
-                  {(() => {
-                    const chosenDay = selectedSlots[0]?.day;
-                    if (!chosenDay) return null;
+              <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                {/* Selector de Día */}
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <select
+                    value={selectedSlots[0]?.day || ''}
+                    onChange={(e) => handleSlotChange(0, 'day', e.target.value)}
+                    className="bg-slate-950 border border-slate-800 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
+                  >
+                    <option value="">Selecione o Dia</option>
+                    {daysWithFreeSlots.length === 0 ? (
+                      <option value="" disabled>⚠️ Nenhum dia com vagas livres</option>
+                    ) : (
+                      daysWithFreeSlots.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
 
-                    const freeTimes = getFreeSlotsForDay(chosenDay);
-                    if (freeTimes.length === 0) {
-                      return <option value="" disabled>Sem horários livres neste dia</option>;
-                    }
+                {/* Selector de Horario Livre */}
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <select
+                    value={selectedSlots[0]?.time || ''}
+                    onChange={(e) => handleSlotChange(0, 'time', e.target.value)}
+                    className="bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-cyan-400"
+                  >
+                    <option value="">Selecione o Horário</option>
+                    {(() => {
+                      const chosenDay = selectedSlots[0]?.day;
+                      if (!chosenDay) return null;
 
-                    return freeTimes.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ));
-                  })()}
-                </select>
+                      const freeTimes = getFreeSlotsForDay(chosenDay);
+                      if (freeTimes.length === 0) {
+                        return <option value="" disabled>Sem horários livres neste dia</option>;
+                      }
+
+                      return freeTimes.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ));
+                    })()}
+                  </select>
+                </div>
               </div>
             </div>
+
+            {daysWithFreeSlots.length === 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 flex items-center gap-3 animate-fade-in">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>
+                  O professor <strong>{tutor?.name}</strong> não possui horários com status <strong className="text-emerald-400 uppercase font-black">LIVRE</strong> disponíveis na agenda no momento. Por favor aguarde a atualização de horários do tutor ou selecione outro professor.
+                </span>
+              </div>
+            )}
           </div>
 
-          {daysWithFreeSlots.length === 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 flex items-center gap-3 animate-fade-in">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          {/* PASO 2: FORMAS DE PAGAMENTO / CONFIRMAÇÃO */}
+          {!isFreeTrial ? (
+            <div className="space-y-3 pt-2">
+              <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
+                2. Escolha a Forma de Pagamento Único (Asaas Pagamentos)
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-white text-xs">Cartão de Crédito</h4>
+                    <p className="text-[11px] text-slate-400">Aprovação instantânea via Asaas</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-white text-xs">PIX Brasil 🇧🇷</h4>
+                    <p className="text-[11px] text-slate-400">QR Code e Chave Copia e Cola instantâneo</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3 text-xs text-emerald-300">
+              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
               <span>
-                O professor <strong>{tutor?.name}</strong> não possui horários com status <strong className="text-emerald-400 uppercase font-black">LIVRE</strong> disponíveis na agenda no momento. Por favor aguarde a atualização de horários do tutor ou selecione outro professor.
+                Esta aula é <strong>100% GRATUITA (R$ 0,00)</strong> devido à sua Garantia de Satisfação Lexy. Nenhum dado bancário ou cartão é necessário.
               </span>
             </div>
           )}
-        </div>
 
-        {/* PASO 2: FORMAS DE PAGAMENTO HABILITADAS (CARTÃO E PIX ASAAS) */}
-        <div className="space-y-3 pt-2">
-          <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block">
-            2. Escolha a Forma de Pagamento Único (Asaas Pagamentos)
-          </label>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-white text-xs">Cartão de Crédito</h4>
-                <p className="text-[11px] text-slate-400">Aprovação instantânea via Asaas</p>
-              </div>
+          {/* Botón Principal de Pago / Confirmação */}
+          <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <span className="text-xs text-slate-400 block font-medium">Valor Total da Aula Experimental:</span>
+              {isFreeTrial ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500 line-through">R$ {baseTrialRate.toFixed(2)}</span>
+                  <span className="text-3xl font-black text-emerald-400">R$ 0,00</span>
+                </div>
+              ) : (
+                <span className="text-3xl font-black text-emerald-400">R$ {trialRate.toFixed(2)}</span>
+              )}
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-white text-xs">PIX Brasil 🇧🇷</h4>
-                <p className="text-[11px] text-slate-400">QR Code e Chave Copia e Cola instantâneo</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Botón Principal de Pago */}
-        <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <span className="text-xs text-slate-400 block font-medium">Valor Total da Aula Experimental:</span>
-            <span className="text-3xl font-black text-emerald-400">R$ {trialRate.toFixed(2)}</span>
+            <button
+              type="button"
+              onClick={handleConfirmBooking}
+              className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Lock className="w-4 h-4" />
+              <span>
+                {isFreeTrial 
+                  ? 'Confirmar Agendamento Grátis (R$ 0,00) 🎁' 
+                  : `Pagar R$ ${trialRate.toFixed(2)} e Confirmar Agendamento ⚡`}
+              </span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleConfirmBooking}
-            className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <Lock className="w-4 h-4" />
-            <span>Pagar R$ {trialRate.toFixed(2)} e Confirmar Agendamento ⚡</span>
-          </button>
         </div>
-
-      </div>
+      )}
 
       <AsaasCheckoutModal
         isOpen={isAsaasModalOpen}
         onClose={() => setIsAsaasModalOpen(false)}
         amount={trialRate}
-        description={`Aula Experimental (30 min) - ${tutor?.name || 'Professor Lexy'}`}
+        description={`Aula Experimental (45 min) - ${tutor?.name || 'Professor Lexy'}`}
         isRecurring={false}
         lessonsCount={1}
         customerInfo={{

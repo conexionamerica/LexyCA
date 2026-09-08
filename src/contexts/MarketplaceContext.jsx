@@ -720,8 +720,45 @@ const isFakeMockTutor = (t) => {
     localStorage.setItem(LOCAL_STORAGE_KEY_TIER_RATES, JSON.stringify(tierRates));
   }, [tierRates]);
 
+  const maxFreeTrials = 3;
+  const remainingFreeTrials = Math.max(0, maxFreeTrials - (usedTrials || []).length);
+
+  const getTrialEligibility = (tutorId) => {
+    const hasUsedWithThisTutor = (usedTrials || []).includes(tutorId);
+    const trialsCount = (usedTrials || []).length;
+    const remaining = Math.max(0, maxFreeTrials - trialsCount);
+
+    if (hasUsedWithThisTutor) {
+      return {
+        allowed: false,
+        isFree: false,
+        remaining,
+        reason: 'already_used_with_tutor',
+        message: 'Você já utilizou sua Aula Experimental única com este professor. Escolha um plano de assinatura de 30 dias para continuar.'
+      };
+    }
+
+    if (trialsCount >= maxFreeTrials) {
+      return {
+        allowed: false,
+        isFree: false,
+        remaining: 0,
+        reason: 'limit_reached',
+        message: 'Você já utilizou suas 3 Aulas Experimentais Gratuitas da Garantia de Satisfação Lexy. Escolha um plano de assinatura de 30 dias para agendar mais aulas.'
+      };
+    }
+
+    return {
+      allowed: true,
+      isFree: true,
+      remaining,
+      reason: 'free_guarantee',
+      message: `Garantia de Satisfação Lexy: Esta Aula Experimental é 100% GRÁTIS! (Restam ${remaining} de 3 aulas gratuitas)`
+    };
+  };
+
   const canBookTrial = (tutorId) => {
-    return !usedTrials.includes(tutorId);
+    return getTrialEligibility(tutorId).allowed;
   };
 
   const registerTutor = (tutorData) => {
@@ -1510,6 +1547,9 @@ const isFakeMockTutor = (t) => {
       acceptBookingRequest,
       rejectBookingRequest,
       canBookTrial,
+      getTrialEligibility,
+      maxFreeTrials,
+      remainingFreeTrials,
       registerTutor,
       approveTutor,
       rejectTutor,

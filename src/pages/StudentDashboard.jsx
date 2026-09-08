@@ -8,7 +8,7 @@ import {
   Search, Star, CheckCircle2, Award, Heart, Plus, Sparkles, 
   BookOpen, ChevronRight, Wallet, UserCheck, ShieldCheck, 
   RefreshCw, AlertTriangle, FileText, User, X, Check, Megaphone, Send, Filter, LogOut, ArrowUpDown,
-  Camera, Save, Upload, Zap, Clock, MapPin
+  Camera, Save, Upload, Zap, Clock, MapPin, Gift
 } from 'lucide-react';
 import StudentSubscriptionTab from '../components/subscription/StudentSubscriptionTab';
 import { formatPhone, validatePhone } from '../lib/phoneValidator';
@@ -19,7 +19,8 @@ export default function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
     student, tutors, bookings, completeBooking, 
-    announcements, directChatMessages, sendDirectMessage, subscriptions, teacherAvailability 
+    announcements, directChatMessages, sendDirectMessage, subscriptions, teacherAvailability,
+    getTrialEligibility, remainingFreeTrials, maxFreeTrials
   } = useMarketplace();
   const { profile, signOut, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
@@ -556,6 +557,37 @@ export default function StudentDashboard() {
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
+            </div>
+
+            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0">
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black text-amber-300 uppercase tracking-wide">Garantia de Satisfação Lexy</h3>
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {remainingFreeTrials} de {maxFreeTrials || 3} Grátis
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {remainingFreeTrials > 0
+                      ? `Você tem ${remainingFreeTrials} aula(s) experimental(is) GRATUITA(S) disponível(is) para testar novos professores.`
+                      : `Você atingiu o limite de 3 aulas experimentais gratuitas. Assine um plano mensal para continuar estudando.`
+                    }
+                  </p>
+                </div>
+              </div>
+              {remainingFreeTrials > 0 && (
+                <button
+                  onClick={() => navigate('/explore')}
+                  className="bg-gradient-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow transition-all shrink-0 cursor-pointer"
+                >
+                  Usar Aula Grátis 🎁
+                </button>
+              )}
             </div>
 
             {/* Modal de Boas-Vindas se ativo */}

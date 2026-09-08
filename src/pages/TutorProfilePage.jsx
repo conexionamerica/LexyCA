@@ -12,7 +12,7 @@ import BookingAuthModal from '../components/modals/BookingAuthModal';
 export default function TutorProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tutors } = useMarketplace();
+  const { tutors, getTrialEligibility } = useMarketplace();
   const { profile } = useAuth();
 
   // Buscar tutor por ID
@@ -278,23 +278,43 @@ export default function TutorProfilePage() {
             
             {/* Precio Destacado */}
             <div className="space-y-1">
-              <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula Experimental (30 min)</span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-bold text-slate-400">R$</span>
-                <span className="text-4xl font-black text-white">{tutor.trialRate}</span>
-                <span className="bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded ml-auto">
-                  50% de Desconto
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">Preço regular por hora: <strong>R$ {tutor.hourlyRate}/h</strong></p>
+              <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Aula Experimental (45 min)</span>
+              {(() => {
+                const eligibility = getTrialEligibility ? getTrialEligibility(tutor.id) : { allowed: true, isFree: false };
+                if (eligibility.isFree) {
+                  return (
+                    <div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black text-emerald-400">GRÁTIS</span>
+                        <span className="text-xs text-slate-500 line-through">R$ {tutor.trialRate}</span>
+                      </div>
+                      <div className="mt-1 inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        🎁 Garantia de Satisfação ({eligibility.remainingFreeTrials} restantes)
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-bold text-slate-400">R$</span>
+                      <span className="text-4xl font-black text-white">{tutor.trialRate}</span>
+                      <span className="bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded ml-auto">
+                        50% de Desconto
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+              <p className="text-[11px] text-slate-400 pt-1">Preço regular por hora: <strong>R$ {tutor.hourlyRate}/h</strong></p>
             </div>
 
             {/* Garantía Preply */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
               <div className="text-xs">
-                <strong className="text-white block font-bold">100% Garantia de Satisfação</strong>
-                <span className="text-slate-400 text-[11px]">Se não gostar da aula de teste, troque de tutor gratuitamente ou receba 100% de reembolso.</span>
+                <strong className="text-white block font-bold">Garantia de Satisfação Lexy</strong>
+                <span className="text-slate-400 text-[11px]">Se não gostar da sua aula, oferecemos até 3 Aulas Experimentais GRATUITAS para testar outros professores.</span>
               </div>
             </div>
 
