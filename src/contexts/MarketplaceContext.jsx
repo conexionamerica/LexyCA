@@ -1019,7 +1019,7 @@ const isFakeMockTutor = (t) => {
     return { success: true, status: 'canceled' };
   };
 
-  const createBooking = ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
+  const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
 
@@ -1065,25 +1065,29 @@ const isFakeMockTutor = (t) => {
         };
       }
 
-      // Descontar saldo de horas de aula
+      // Descontar saldo de horas de aula usando RPC seguro en Supabase
       if (!isTrialBooking) {
-        const newBalance = Math.max(0, Number(((student?.walletBalance || 0) - totalContractedHours).toFixed(2)));
-        setStudent(prev => {
-          const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
-          return {
-            ...base,
-            walletBalance: newBalance
-          };
-        });
-        
-        // Sincronizar deduction con la base de datos Supabase
         if (effectiveStudentId) {
-          supabase.from('profiles')
-            .update({ wallet_balance: newBalance })
-            .eq('id', effectiveStudentId)
-            .then(({ error }) => {
-              if (error) console.error('Erro ao deduzir saldo no Supabase:', error);
-            });
+          const { error: deductError } = await supabase.rpc('deduct_wallet_balance', { cost: totalContractedHours });
+          
+          if (deductError) {
+            console.error('Erro ao deduzir saldo no Supabase:', deductError);
+            return { 
+              success: false, 
+              error: 'insufficient_funds', 
+              required: totalContractedHours
+            };
+          }
+
+          // Atualizar o estado local com o valor deduzido
+          const newBalance = Math.max(0, Number(((student?.walletBalance || 0) - totalContractedHours).toFixed(2)));
+          setStudent(prev => {
+            const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
+            return {
+              ...base,
+              walletBalance: newBalance
+            };
+          });
         }
       }
     } else {

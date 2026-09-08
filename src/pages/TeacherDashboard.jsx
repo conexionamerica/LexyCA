@@ -615,30 +615,25 @@ export default function TeacherDashboard() {
   const handleRequestPayout = async (e) => {
     e.preventDefault();
     if (payoutAmount > earnedBalance || payoutAmount < 10) return;
-    if (!profile?.id) return;
-
-    const netValueToReceive = Number((payoutAmount * (currentEarnPercent / 100)).toFixed(2));
-    const newBalance = Number((earnedBalance - payoutAmount).toFixed(2));
-
     try {
-      // 1. Deduct from DB
-      await supabase.from('profiles').update({ earned_balance: newBalance, wallet_balance: newBalance }).eq('id', profile.id);
-      
-      // 2. Insert Request
-      const { data: newReq, error } = await supabase.from('payout_requests').insert([{
-        tutor_id: profile.id,
-        amount: Number(payoutAmount),
-        net_amount: netValueToReceive,
-        method: payoutMethod,
-        pix_key: pixKey,
-        status: 'pending'
-      }]).select().single();
+      // Usar la funcin RPC segura en el backend
+      const { data: newReq, error } = await supabase.rpc('request_tutor_payout', {
+        payout_amount: Number(payoutAmount),
+        payout_method: payoutMethod,
+        target_pix_key: pixKey
+      });
 
-      if (!error && newReq) {
-        setEarnedBalance(newBalance);
+      if (error) {
+        console.error('Error from RPC payout:', error);
+        throw error;
+      }
+
+      if (newReq) {
+        const netValueToReceive = newReq.net_amount;
+        setEarnedBalance(Number((earnedBalance - payoutAmount).toFixed(2)));
         setPayoutRequests(prev => [newReq, ...prev]);
         setIsPayoutModalOpen(false);
-        setPayoutSuccessMsg(`⌛ Solicitação de resgate de R$ ${payoutAmount} enviada à administração! Você receberá R$ ${netValueToReceive} em até 24h.`);
+        setPayoutSuccessMsg(`✅ Solicitação de resgate enviada! Você receberá R$ ${netValueToReceive} em até 24h.`);
         setTimeout(() => setPayoutSuccessMsg(''), 6000);
       }
     } catch (err) {

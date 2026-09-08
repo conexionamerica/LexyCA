@@ -178,13 +178,13 @@ export default function BookingPage() {
     setIsAsaasModalOpen(true);
   };
 
-  const handleAsaasBookingPaymentSuccess = (paymentResult) => {
+  const handleAsaasBookingPaymentSuccess = async (paymentResult) => {
     setIsAsaasModalOpen(false);
     const primarySlot = selectedSlots[0];
     if (!primarySlot?.day || !primarySlot?.time) return;
 
     // Forçar compra única de Aula Experimental (1 sola clase, 0 suscripciones, pago único)
-    createBooking({
+    await createBooking({
       tutorId: tutor.id,
       day: primarySlot.day,
       time: primarySlot.time,

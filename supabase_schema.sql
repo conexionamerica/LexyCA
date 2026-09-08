@@ -399,3 +399,82 @@ CREATE POLICY "Allow everyone to insert used trials"
     ON public.used_trials FOR INSERT
     WITH CHECK (true);
 
+
+-- =================================================================================================
+-- BLINDAJE FINANCIERO (Manejo Seguro de Saldos y Retiros)
+-- =================================================================================================
+
+-- 1. Disparador (Trigger) para evitar modificaciones libres a los saldos
+CREATE OR REPLACE FUNCTION protect_profile_balances()
+RETURNS trigger AS $$$
+BEGIN
+  -- Si estamos usando un RPC autorizado que haya seteado la variable, dejamos pasar el update
+  IF current_setting('lexy.bypass_rls', true) = 'true' THEN
+    RETURN NEW;
+  END IF;
+  
+  -- Si el admin desde el panel de Supabase o un usuario malicioso intenta editar esto, se ignora
+  NEW.wallet_balance = OLD.wallet_balance;
+  NEW.earned_balance = OLD.earned_balance;
+  NEW.total_lessons = OLD.total_lessons;
+  RETURN NEW;
+END;
+$$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS protect_profile_balances_trigger ON public.profiles;
+CREATE TRIGGER protect_profile_balances_trigger
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION protect_profile_balances();
+
+-- 2. Función RPC para descontar saldo al agendar clases
+CREATE OR REPLACE FUNCTION deduct_wallet_balance(cost NUMERIC)
+RETURNS void AS $$$
+BEGIN
+  -- Habilitar el bypass para que el trigger deje pasar la operacin
+  PERFORM set_config('lexy.bypass_rls', 'true', true);
+  
+  UPDATE public.profiles 
+  SET wallet_balance = wallet_balance - cost 
+  WHERE id = auth.uid() AND wallet_balance >= cost;
+  
+  IF NOT FOUND THEN 
+    RAISE EXCEPTION 'Saldo insuficiente ou usurio no encontrado'; 
+  END IF;
+END;
+$$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Función RPC para que un tutor solicite pagos
+CREATE OR REPLACE FUNCTION request_tutor_payout(payout_amount NUMERIC, payout_method TEXT, target_pix_key TEXT)
+RETURNS JSONB AS $$$
+DECLARE
+  current_earned NUMERIC;
+  net_value NUMERIC;
+  platform_fee_percent NUMERIC := 25; -- Comisin fija de la plataforma del 25% (El tutor recibe 75%)
+  new_req_id UUID;
+BEGIN
+  -- Verificar cunto dinero tiene el profesor realmente
+  SELECT earned_balance INTO current_earned FROM public.profiles WHERE id = auth.uid();
+  
+  IF current_earned IS NULL OR payout_amount > current_earned OR payout_amount < 10 THEN
+    RAISE EXCEPTION 'Saldo invlido ou insuficiente para o resgate solicitado';
+  END IF;
+
+  -- Calcular cunto se le pagar netamente (Tutor se queda con el 75%)
+  net_value := ROUND(payout_amount * ((100 - platform_fee_percent) / 100.0), 2);
+  
+  -- Habilitar el bypass para descontar el saldo
+  PERFORM set_config('lexy.bypass_rls', 'true', true);
+  
+  UPDATE public.profiles 
+  SET earned_balance = earned_balance - payout_amount 
+  WHERE id = auth.uid();
+
+  -- Insertar el registro (el admin ver este registro y le pagar net_value)
+  INSERT INTO public.payout_requests (tutor_id, amount, net_amount, method, pix_key, status)
+  VALUES (auth.uid(), payout_amount, net_value, payout_method, target_pix_key, 'pending')
+  RETURNING id INTO new_req_id;
+
+  RETURN jsonb_build_object('id', new_req_id, 'amount', payout_amount, 'net_amount', net_value, 'status', 'pending');
+END;
+$$$ LANGUAGE plpgsql SECURITY DEFINER;
+

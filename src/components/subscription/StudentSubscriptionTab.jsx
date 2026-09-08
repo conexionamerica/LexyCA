@@ -234,14 +234,14 @@ export default function StudentSubscriptionTab() {
     setTimeout(() => setActionNotice(''), 6000);
   };
 
-  const handleAsaasSubscriptionPaymentSuccess = (paymentResult) => {
+  const handleAsaasSubscriptionPaymentSuccess = async (paymentResult) => {
     setIsAsaasModalOpen(false);
     setIsSubscribeModalOpen(false);
 
     const activeSlots = weeklySlots.slice(0, selectedLessonsPerWeek);
     const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
-    createBooking({
+    await createBooking({
       tutorId: targetTutor.id,
       day: primarySlot.day,
       time: primarySlot.time,
