@@ -315,3 +315,37 @@ CREATE POLICY "Public webrtc signals insert" ON public.webrtc_signals FOR INSERT
 CREATE POLICY "Public webrtc signals delete" ON public.webrtc_signals FOR DELETE USING (true);
 
 
+
+-- =============================================
+-- 14. Payout Requests (Retirada de Ganancias)
+-- =============================================
+ALTER TABLE public.tutors ADD COLUMN IF NOT EXISTS earned_balance NUMERIC DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS public.payout_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tutor_id UUID REFERENCES public.tutors(id),
+  amount NUMERIC NOT NULL,
+  net_amount NUMERIC NOT NULL,
+  method TEXT NOT NULL,
+  pix_key TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tutors can view own payouts" ON public.payout_requests;
+DROP POLICY IF EXISTS "Tutors can insert payouts" ON public.payout_requests;
+DROP POLICY IF EXISTS "Admin can view all payouts" ON public.payout_requests;
+DROP POLICY IF EXISTS "Admin can update payouts" ON public.payout_requests;
+
+CREATE POLICY "Tutors can view own payouts" ON public.payout_requests FOR SELECT USING (auth.uid() = tutor_id);
+CREATE POLICY "Tutors can insert payouts" ON public.payout_requests FOR INSERT WITH CHECK (auth.uid() = tutor_id);
+CREATE POLICY "Admin can view all payouts" ON public.payout_requests FOR SELECT USING (true);
+CREATE POLICY "Admin can update payouts" ON public.payout_requests FOR UPDATE USING (true);
+
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS earned_balance NUMERIC DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS total_lessons INT DEFAULT 0;
+

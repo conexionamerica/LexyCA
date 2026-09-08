@@ -228,15 +228,27 @@ export default function TeacherDashboard() {
 
   const nextTier = getNextTierInfo(totalLessons);
   const [earnedBalance, setEarnedBalance] = useState(() => {
-    return Number(tutor.earnedBalance || tutor.earned_balance || (profile?.id ? localStorage.getItem(`lexy_earned_balance_${profile.id}`) : null) || 0.00);
+    return Number(tutor.earnedBalance || tutor.earned_balance || profile?.earned_balance || 0.00);
   });
 
   useEffect(() => {
-    if (tutor) {
-      const b = Number(tutor.earnedBalance || tutor.earned_balance || (profile?.id ? localStorage.getItem(`lexy_earned_balance_${profile.id}`) : null) || 0);
+    if (tutor || profile) {
+      const b = Number(tutor.earnedBalance || tutor.earned_balance || profile?.earned_balance || 0);
       setEarnedBalance(b);
     }
-  }, [tutor?.earnedBalance, tutor?.earned_balance, profile?.id]);
+  }, [tutor?.earnedBalance, tutor?.earned_balance, profile?.earned_balance]);
+
+  const [payoutRequests, setPayoutRequests] = useState([]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      supabase.from('payout_requests').select('*').eq('tutor_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+        if (!error && data) {
+          setPayoutRequests(data);
+        }
+      });
+    }
+  }, [profile?.id]);
 
   const [hourlyRate, setHourlyRate] = useState(tutor.hourlyRate || 23);
   const [meetUrl, setMeetUrl] = useState(tutor.meetUrl || 'https://meet.google.com/abc-defg-hij');
@@ -282,7 +294,7 @@ export default function TeacherDashboard() {
   const [payoutAmount, setPayoutAmount] = useState(100);
   const [payoutMethod, setPayoutMethod] = useState('PIX Brasil 🇧🇷');
   const [pixKey, setPixKey] = useState(profile?.pixKey || tutor?.pixKey || '');
-  const [payoutRequests, setPayoutRequests] = useState([]);
+
   const [payoutSuccessMsg, setPayoutSuccessMsg] = useState('');
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
@@ -600,42 +612,41 @@ export default function TeacherDashboard() {
     setTeacherChatMessage('');
   };
 
-  const handleRequestPayout = (e) => {
+  const handleRequestPayout = async (e) => {
     e.preventDefault();
     if (payoutAmount > earnedBalance || payoutAmount < 10) return;
+    if (!profile?.id) return;
 
     const netValueToReceive = Number((payoutAmount * (currentEarnPercent / 100)).toFixed(2));
+    const newBalance = Number((earnedBalance - payoutAmount).toFixed(2));
 
-    const newReq = {
-      id: `pay-${Date.now()}`,
-      date: new Date().toLocaleDateString(),
-      amount: Number(payoutAmount),
-      netAmount: netValueToReceive,
-      method: payoutMethod,
-      pixKey,
-      status: 'pending',
-      requestedAt: new Date().toLocaleString()
-    };
+    try {
+      // 1. Deduct from DB
+      await supabase.from('profiles').update({ earned_balance: newBalance, wallet_balance: newBalance }).eq('id', profile.id);
+      
+      // 2. Insert Request
+      const { data: newReq, error } = await supabase.from('payout_requests').insert([{
+        tutor_id: profile.id,
+        amount: Number(payoutAmount),
+        net_amount: netValueToReceive,
+        method: payoutMethod,
+        pix_key: pixKey,
+        status: 'pending'
+      }]).select().single();
 
-    setPayoutRequests(prev => [newReq, ...prev]);
-    setIsPayoutModalOpen(false);
-    setPayoutSuccessMsg(`⌛ Solicitação de resgate de $${payoutAmount} USD enviada à administração! Você receberá $${netValueToReceive} USD em até 24h.`);
-    setTimeout(() => setPayoutSuccessMsg(''), 6000);
-  };
-
-  const handleSimulateAdminApprove = (reqId) => {
-    setPayoutRequests(prev => prev.map(r => {
-      if (r.id === reqId && r.status === 'pending') {
-        setEarnedBalance(current => Math.max(0, current - r.amount));
-        return {
-          ...r,
-          status: 'approved',
-          processedAt: new Date().toLocaleString()
-        };
+      if (!error && newReq) {
+        setEarnedBalance(newBalance);
+        setPayoutRequests(prev => [newReq, ...prev]);
+        setIsPayoutModalOpen(false);
+        setPayoutSuccessMsg(`⌛ Solicitação de resgate de R$ ${payoutAmount} enviada à administração! Você receberá R$ ${netValueToReceive} em até 24h.`);
+        setTimeout(() => setPayoutSuccessMsg(''), 6000);
       }
-      return r;
-    }));
+    } catch (err) {
+      console.error('Error requesting payout:', err);
+    }
   };
+
+
 
   const [earningsHistory, setEarningsHistory] = useState([]);
 
@@ -886,7 +897,7 @@ export default function TeacherDashboard() {
     
     completeBooking(nextBooking.id);
 
-    setPayoutSuccessMsg(`🎉 Aula Concluída & Feedback Obrigatório Enviado! Tempo contabilizado: ${durationMins} min. +$${netEarningsNextClass} USD adicionados ao seu Saldo Payout!`);
+    setPayoutSuccessMsg(`✅ Aula Concluída & Feedback Obrigatório Enviado! Tempo contabilizado: ${durationMins} min. +R$ ${netEarningsNextClass} adicionados ao seu Saldo Payout!`);
     setTimeout(() => setPayoutSuccessMsg(''), 6000);
   };
 
@@ -1031,7 +1042,7 @@ export default function TeacherDashboard() {
                       )}
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-                      Repasse: <strong className="text-emerald-400">${netEarningsNextClass} USD</strong> ({classEarnPercent}%)
+                      Repasse: <strong className="text-emerald-400">R$ {netEarningsNextClass}</strong> ({classEarnPercent}%)
                     </span>
                   </div>
 
@@ -2306,12 +2317,6 @@ export default function TeacherDashboard() {
                             <span className="bg-amber-500/20 text-amber-300 font-bold text-xs px-3 py-1.5 rounded-xl border border-amber-500/40 animate-pulse flex items-center gap-1">
                               ⌛ Em Análise
                             </span>
-                            <button
-                              onClick={() => handleSimulateAdminApprove(req.id)}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-xl shadow cursor-pointer transition-all"
-                            >
-                              Aprovar (Adm)
-                            </button>
                           </div>
                         )}
                       </div>
@@ -2741,7 +2746,7 @@ export default function TeacherDashboard() {
                   <span className="text-slate-400 block">Sua Margem de Repasse ({classEarnPercent}%):</span>
                   <span className="text-[10px] text-amber-300">Nível Atual: {totalLessons} aulas ministradas</span>
                 </div>
-                <strong className="text-emerald-400 font-black text-sm">+${netEarningsNextClass} USD</strong>
+                <strong className="text-emerald-400 font-black text-sm">+R$ {netEarningsNextClass}</strong>
               </div>
 
               <div className="flex gap-2 pt-2">

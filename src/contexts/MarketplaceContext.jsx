@@ -1001,13 +1001,24 @@ const isFakeMockTutor = (t) => {
 
       // Descontar saldo de horas de aula
       if (!isTrialBooking) {
+        const newBalance = Math.max(0, Number(((student?.walletBalance || 0) - totalContractedHours).toFixed(2)));
         setStudent(prev => {
           const base = prev || { id: 'student-user', name: 'Aluno Lexy', email: 'aluno@lexy.com', walletBalance: 0 };
           return {
             ...base,
-            walletBalance: Math.max(0, Number(((base.walletBalance || 0) - totalContractedHours).toFixed(2)))
+            walletBalance: newBalance
           };
         });
+        
+        // Sincronizar deduction con la base de datos Supabase
+        if (effectiveStudentId) {
+          supabase.from('profiles')
+            .update({ wallet_balance: newBalance })
+            .eq('id', effectiveStudentId)
+            .then(({ error }) => {
+              if (error) console.error('Erro ao deduzir saldo no Supabase:', error);
+            });
+        }
       }
     } else {
       // Se pagamento foi aprovado via Stone (bypassWallet = true): Liberar Horas Contratadas

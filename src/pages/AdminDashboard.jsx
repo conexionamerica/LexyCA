@@ -830,7 +830,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <span className="block text-[10px] text-slate-400 uppercase font-bold">Tarifa</span>
-                      <span className="text-xs font-bold text-white">${t.hourlyRate} USD/h</span>
+                      <span className="text-xs font-bold text-white">R$ {t.hourlyRate}/h</span>
                     </div>
                     <div>
                       <span className="block text-[10px] text-slate-400 uppercase font-bold">Especialidades</span>
@@ -1011,9 +1011,9 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="py-3.5 px-4 font-medium text-slate-300">{p.date}</td>
-                        <td className="py-3.5 px-4 font-bold text-slate-300">${p.requestedAmount.toFixed(2)} USD</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-300">R$ {p.requestedAmount.toFixed(2)}</td>
                         <td className="py-3.5 px-4 font-bold text-cyan-300">{earnRate}% Repasse</td>
-                        <td className="py-3.5 px-4 font-black text-emerald-400 text-sm">${netToPay.toFixed(2)} USD</td>
+                        <td className="py-3.5 px-4 font-black text-emerald-400 text-sm">R$ {netToPay.toFixed(2)}</td>
                         <td className="py-3.5 px-4">
                           <span className="block font-semibold text-white">{p.method}</span>
                           <span className="text-[10px] text-cyan-300 font-mono font-bold">{p.pixKey}</span>
