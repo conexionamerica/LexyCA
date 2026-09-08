@@ -116,35 +116,36 @@ export default function ClassroomPage({ routeBookingId }) {
     }
   }, [isUserTeacher, currentBooking, tutor]);
 
-  // ID Unívoco e Normalizado de Sala Vinculada (Garante 100% que QUALQUER aula entre o Aluno pc@hdhd.com e o Professor hjfjyfuyjf@hgdthd.com caia na MESMA sala privada compartilhada)
+  // ID Unívoco e Normalizado de Sala Vinculada (Garante 100% que Aluno e Professor entrem na MESMA sala virtual compartilhada)
   const normalizedRoomKey = useMemo(() => {
-    // Extrair identificador único do aluno (por ID, e-mail ou perfil)
+    // 1. Priorizar o ID/Código da aula vindo da URL (effectiveBookingId) ou da reserva para ser 100% determinístico entre ambos os participantes
+    const rawId = currentBooking?.lesson_code || currentBooking?.id || effectiveBookingId || bookingId;
+    if (rawId && String(rawId).trim() !== '' && String(rawId).toLowerCase() !== 'main') {
+      const cleanId = String(rawId).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanId) {
+        return `lexy_room_${cleanId}`;
+      }
+    }
+
+    // 2. Se ambos os e-mails/IDs existirem explicitamente na reserva, criar chave de par unificada
     const studentIdentifier = String(
       currentBooking?.studentEmail || currentBooking?.student_email || 
-      currentBooking?.studentId || currentBooking?.student_id || 
-      currentBooking?.studentName || 
-      (!isUserTeacher ? (profile?.email || profile?.name) : '') ||
-      'pchdhdcom'
+      currentBooking?.studentId || currentBooking?.student_id
     ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // Extrair identificador único do professor (por ID, e-mail ou perfil)
     const tutorIdentifier = String(
       currentBooking?.tutorEmail || currentBooking?.tutor_email || 
-      currentBooking?.tutorId || currentBooking?.tutor_id || 
-      currentBooking?.tutorName || tutor?.email || tutor?.name || 
-      (isUserTeacher ? (profile?.email || profile?.name) : '') ||
-      'hjfjyfuyjfhgdthdcom'
+      currentBooking?.tutorId || currentBooking?.tutor_id
     ).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 
     if (studentIdentifier && tutorIdentifier) {
       const sortedPair = [studentIdentifier, tutorIdentifier].sort().join('_with_');
-      console.log(`[Lexy Room Sync] Sala unificada para o par Aluno x Professor: lexy_pair_${sortedPair}`);
       return `lexy_pair_${sortedPair}`;
     }
 
     const cleanParam = String(bookingId || 'main').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     return `lexy_room_${cleanParam}`;
-  }, [currentBooking, bookingId, tutor, profile, isUserTeacher]);
+  }, [currentBooking, effectiveBookingId, bookingId]);
 
   // ID Unificado e Normalizado de Código de Aula para Validação de Presença
   const cleanLessonCode = useMemo(() => {
@@ -868,7 +869,7 @@ export default function ClassroomPage({ routeBookingId }) {
     window.addEventListener('online', handleWindowOnline);
     window.addEventListener('offline', handleWindowOffline);
 
-    // ── SINALIZAÇÃO VIA SUPABASE DATABASE REST API (funciona cross-device!) ──
+    // ── SINALIZAÇÃO HÍBRIDA VIA SUPABASE REALTIME WEBSOCKET (0 LATÊNCIA, CROSS-DEVICE, SEM DEPENDÊNCIA DE TABELA) ──
     const SIGNAL_TABLE = 'webrtc_signals';
     let iceCandidateQueue = [];
     let pollInterval = null;
@@ -878,47 +879,57 @@ export default function ClassroomPage({ routeBookingId }) {
     let isPolling = false;
     let lastProcessedId = 0;
 
-    // Função para enviar sinal via Supabase REST API (INSERT na tabela)
+    // Configurar canal WebSocket Supabase Realtime para troca instantânea de sinais entre dispositivos
+    const realtimeChannel = supabase.channel(`webrtc_room_${normalizedRoomKey}`, {
+      config: { broadcast: { self: false, ack: false } }
+    });
+    channelRef.current = realtimeChannel;
+
+    realtimeChannel
+      .on('broadcast', { event: 'webrtc_signal' }, (evt) => {
+        const data = evt.payload;
+        if (!data) return;
+        if (data.sender_role === myRole && data.sender_name === myName) return; // ignorar mensagens próprias
+        addDebugLog(`📡 [WebSocket Signal] ${data.signal_type} recebido de ${data.sender_name || data.sender_role}`);
+        handleSignalData(data.signal_type, data.payload);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          addDebugLog(`⚡ Realtime WebSocket ativado para a sala ${normalizedRoomKey}!`);
+        }
+      });
+
+    // Função para enviar sinal via WebSocket + Fallback REST silencioso
     const sendSignal = async (signalType, payload) => {
-      try {
-        const { error } = await supabase.from(SIGNAL_TABLE).insert({
-          room_key: normalizedRoomKey,
-          sender_role: myRole,
-          sender_name: myName,
-          signal_type: signalType,
-          payload: JSON.stringify(payload),
-          created_at: new Date().toISOString()
-        });
-        if (error) {
-          // Se a tabela não existe, loga e continua
-          if (error.code === '42P01' || error.message?.includes('does not exist')) {
-            addDebugLog('⚠️ Tabela webrtc_signals não existe no Supabase. Criando...');
-            await createSignalTable();
-            // Tentar novamente
-            await supabase.from(SIGNAL_TABLE).insert({
+      // 1. Transmitir via Supabase Realtime WebSocket Broadcast (instantâneo, sem necessidade de tabela SQL)
+      if (channelRef.current) {
+        try {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'webrtc_signal',
+            payload: {
               room_key: normalizedRoomKey,
               sender_role: myRole,
               sender_name: myName,
               signal_type: signalType,
-              payload: JSON.stringify(payload),
-              created_at: new Date().toISOString()
-            });
-          } else {
-            console.warn('[Signal] Erro ao enviar sinal:', error.message);
-            addDebugLog(`⚠️ Erro envio sinal: ${error.message}`);
-          }
-        }
-      } catch (e) {
-        console.warn('[Signal] Exceção ao enviar:', e);
+              payload: payload
+            }
+          }).catch(() => {});
+        } catch (e) {}
       }
-    };
 
-    // Função para criar a tabela de sinalização via RPC ou REST
-    const createSignalTable = async () => {
+      // 2. Tentar persistência no banco via Supabase REST API (se a tabela webrtc_signals existir)
       try {
-        await supabase.rpc('create_webrtc_signals_table');
+        await supabase.from(SIGNAL_TABLE).insert({
+          room_key: normalizedRoomKey,
+          sender_role: myRole,
+          sender_name: myName,
+          signal_type: signalType,
+          payload: typeof payload === 'string' ? payload : JSON.stringify(payload),
+          created_at: new Date().toISOString()
+        });
       } catch (e) {
-        addDebugLog('ℹ️ Criação automática não disponível. Crie a tabela manualmente no Supabase.');
+        // Ignorar silenciosamente caso a tabela ainda não exista no banco
       }
     };
 
@@ -1232,6 +1243,10 @@ export default function ClassroomPage({ routeBookingId }) {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (peerCheckInterval) clearInterval(peerCheckInterval);
       if (iceRestartTimeout) clearTimeout(iceRestartTimeout);
+      if (channelRef.current) {
+        try { supabase.removeChannel(channelRef.current); } catch (e) {}
+        channelRef.current = null;
+      }
       if (pcRef.current) {
         if (pcRef.current._resendCleanup) pcRef.current._resendCleanup();
         pcRef.current.close();

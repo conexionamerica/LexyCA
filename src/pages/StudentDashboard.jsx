@@ -439,25 +439,58 @@ export default function StudentDashboard() {
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
   const [lexySpaceDateFilter, setLexySpaceDateFilter] = useState('todas'); // 'hoje' | 'amanha' | 'todas'
 
-  // Helper para categorizar aulas em Hoje, Amanhã ou Outras
-  const getBookingDayCategory = (dayStr, dateStr) => {
-    const rawStr = String(dayStr || dateStr || '').toLowerCase();
-    
-    const weekDaysPt = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
+  // Helper para categorizar aulas em Hoje, Amanhã ou Outras (Suporta ISO YYYY-MM-DD, BR DD/MM/YYYY e Nomes de Dias)
+  const getBookingDayCategory = (dayStr, dateStr, isoDateStr) => {
+    const rawStr = String(dayStr || dateStr || isoDateStr || '').trim();
+    if (!rawStr) return 'outros';
+
+    const lower = rawStr.toLowerCase();
+    if (lower.includes('hoje')) return 'hoje';
+    if (lower.includes('amanhã') || lower.includes('amanha')) return 'amanha';
+
     const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
     
+    const todayIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+
+    // 1. Matchear formato ISO YYYY-MM-DD
+    const isoMatch = rawStr.match(/\d{4}-\d{2}-\d{2}/);
+    if (isoMatch) {
+      const datePart = isoMatch[0];
+      if (datePart === todayIso) return 'hoje';
+      if (datePart === tomorrowIso) return 'amanha';
+      return 'outros';
+    }
+
+    // 2. Matchear formato brasileiro DD/MM/YYYY
+    const brMatch = rawStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (brMatch) {
+      const datePart = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+      if (datePart === todayIso) return 'hoje';
+      if (datePart === tomorrowIso) return 'amanha';
+      return 'outros';
+    }
+
+    // 3. Fallback para nomes de dias da semana (Português / Espanhol)
+    const weekDaysPt = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
+    const weekDaysEs = ['domingo', 'lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes', 'sábado', 'sabado'];
+
     const todayIndex = now.getDay();
     const tomorrowIndex = (todayIndex + 1) % 7;
 
-    const todayName = weekDaysPt[todayIndex === 0 ? 0 : todayIndex === 6 ? 7 : todayIndex];
-    const tomorrowName = weekDaysPt[tomorrowIndex === 0 ? 0 : tomorrowIndex === 6 ? 7 : tomorrowIndex];
+    const todayNames = [weekDaysPt[todayIndex], weekDaysEs[todayIndex], 'hoje', 'hoy'];
+    const tomorrowNames = [weekDaysPt[tomorrowIndex], weekDaysEs[tomorrowIndex], 'amanhã', 'amanha', 'mañana', 'manana'];
 
-    const cleanInput = rawStr.replace('-feira', '').trim();
+    const cleanInput = lower.replace('-feira', '').trim();
 
-    if (cleanInput.includes('hoje') || (todayName && cleanInput.includes(todayName))) {
+    if (todayNames.some(name => name && cleanInput.includes(name))) {
       return 'hoje';
     }
-    if (cleanInput.includes('amanhã') || cleanInput.includes('amanha') || (tomorrowName && cleanInput.includes(tomorrowName))) {
+    if (tomorrowNames.some(name => name && cleanInput.includes(name))) {
       return 'amanha';
     }
 
@@ -468,15 +501,15 @@ export default function StudentDashboard() {
   const lexySpaceBookings = useMemo(() => {
     return myBookingsList.filter(b => {
       if (b.status === 'canceled') return false;
-      const cat = getBookingDayCategory(b.day, b.date);
+      const cat = getBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr);
       if (lexySpaceDateFilter === 'hoje') return cat === 'hoje';
       if (lexySpaceDateFilter === 'amanha') return cat === 'amanha';
       return true;
     });
   }, [myBookingsList, lexySpaceDateFilter]);
 
-  const countHoje = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date) === 'hoje').length, [myBookingsList]);
-  const countAmanha = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date) === 'amanha').length, [myBookingsList]);
+  const countHoje = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr) === 'hoje').length, [myBookingsList]);
+  const countAmanha = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled' && getBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr) === 'amanha').length, [myBookingsList]);
   const countTodas = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled').length, [myBookingsList]);
 
   const filteredBookingsList = useMemo(() => {
