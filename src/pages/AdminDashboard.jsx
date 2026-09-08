@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMarketplace } from '../contexts/MarketplaceContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { processAsaasTransfer } from '../lib/asaasPaymentService';
 import { 
   ShieldCheck, Users, DollarSign, CheckCircle2, Clock, 
   Award, Sparkles, Lock, Mail, Eye, EyeOff, AlertCircle, Wallet, ArrowRight, Check, 
@@ -217,16 +218,39 @@ export default function AdminDashboard() {
     setTimeout(() => setAnnSuccessMsg(''), 3000);
   };
 
-  const handleApprovePayout = async (id) => {
+  const [isTransferring, setIsTransferring] = useState(null);
+  const [transferError, setTransferError] = useState(null); // { id, msg }
+
+  const handleApprovePayout = async (id, netAmount, pixKey) => {
+    setIsTransferring(id);
+    setTransferError(null);
     try {
+      // 1. Iniciar transferência no Asaas
+      const transferRes = await processAsaasTransfer({
+        amount: netAmount,
+        pixKey: pixKey,
+        description: 'Repasse Lexy Idiomas'
+      });
+
+      if (!transferRes.success) {
+        setTransferError({ id, msg: transferRes.error || 'Erro na integração com Asaas' });
+        setIsTransferring(null);
+        return;
+      }
+
+      // 2. Atualizar no banco de dados
       const { error } = await supabase.from('payout_requests').update({ status: 'approved' }).eq('id', id);
       if (!error) {
         setPendingPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'approved' } : p));
       } else {
-        console.error('Error approving payout:', error);
+        console.error('Error approving payout in DB:', error);
+        setTransferError({ id, msg: 'Transferência no Asaas ocorreu, mas erro ao salvar no banco local.' });
       }
     } catch (err) {
       console.error(err);
+      setTransferError({ id, msg: 'Erro inesperado na transferência.' });
+    } finally {
+      setIsTransferring(null);
     }
   };
 
@@ -1068,19 +1092,28 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           {p.status !== 'approved' && (
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => handleApprovePayout(p.id)}
-                                className="px-4 py-1.5 rounded-xl font-black bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 transition-all text-xs"
-                              >
-                                Aprovar
-                              </button>
-                              <button
-                                onClick={() => {}}
-                                className="px-3 py-1.5 rounded-xl font-extrabold bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg transition-all text-xs"
-                              >
-                                Rejeitar
-                              </button>
+                            <div className="flex flex-col gap-2 items-end">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApprovePayout(p.id, p.netAmount, p.pixKey)}
+                                  disabled={isTransferring === p.id}
+                                  className={`px-4 py-1.5 rounded-xl font-black shadow-lg transition-all text-xs ${isTransferring === p.id ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 shadow-emerald-500/20'}`}
+                                >
+                                  {isTransferring === p.id ? 'Processando Asaas...' : 'Aprovar'}
+                                </button>
+                                <button
+                                  onClick={() => {}}
+                                  disabled={isTransferring === p.id}
+                                  className="px-3 py-1.5 rounded-xl font-extrabold bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg transition-all text-xs disabled:opacity-50"
+                                >
+                                  Rejeitar
+                                </button>
+                              </div>
+                              {transferError && transferError.id === p.id && (
+                                <span className="text-xs text-rose-500 font-bold bg-rose-500/10 px-2 py-1 rounded">
+                                  {transferError.msg}
+                                </span>
+                              )}
                             </div>
                           )}
                         </td>

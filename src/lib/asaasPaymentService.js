@@ -138,3 +138,39 @@ export const issueAsaasInvoice = async (invoiceData) => {
     };
   }
 };
+
+/**
+ * Request an automatic PIX transfer to a tutor
+ */
+export const processAsaasTransfer = async (transferData) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-transfer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: transferData.amount,
+        pixKey: transferData.pixKey,
+        description: transferData.description
+      })
+    });
+
+    const data = await apiRes.json();
+    if (apiRes.ok && data.success) {
+      return data;
+    } else {
+      return {
+        success: false,
+        error: data.error || 'Erro ao processar transferência no Asaas.',
+        details: data
+      };
+    }
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-transfer:', err);
+    return {
+      success: false,
+      error: 'Falha de conexão com o servidor Asaas para transferência.'
+    };
+  }
+};
