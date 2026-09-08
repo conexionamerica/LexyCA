@@ -464,11 +464,15 @@ const isFakeMockTutor = (t) => {
         const userEmail = currentSession?.user?.email || '';
         const userId = currentSession?.user?.id || '';
         let query = supabase.from('aulas').select('*');
-        if (userEmail && userId) {
-          query = query.or(`student_email.eq.${userEmail},student_id.eq.${userId},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail},tutor_id.eq.${userId}`);
+        
+        if (userId && userEmail) {
+          query = query.or(`student_id.eq.${userId},student_email.eq.${userEmail},tutor_id.eq.${userId},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail}`);
+        } else if (userId) {
+          query = query.or(`student_id.eq.${userId},tutor_id.eq.${userId}`);
         } else if (userEmail) {
           query = query.or(`student_email.eq.${userEmail},tutor_email.eq.${userEmail},teacher_email.eq.${userEmail}`);
         }
+        
         const { data, error } = await query;
 
         if (!error && data && active) {
@@ -533,10 +537,11 @@ const isFakeMockTutor = (t) => {
 
           const finalBookings = Array.from(mergedMap.values());
           setBookings(finalBookings);
-          // 🔒 AISLAMIENTO: Guardar bookings en localStorage con key del usuario
-          const { data: { session: saveSession } } = await supabase.auth.getSession();
-          const saveUserId = saveSession?.user?.id || 'anon';
+          
+          // Guardar em chave isolada do usuário e também na chave global de backup
+          const saveUserId = userId || 'anon';
           localStorage.setItem(`${LOCAL_STORAGE_KEY_BOOKINGS}_${saveUserId}`, JSON.stringify(finalBookings));
+          localStorage.setItem(LOCAL_STORAGE_KEY_BOOKINGS, JSON.stringify(finalBookings));
         } else if (active && localBookings.length > 0) {
           setBookings(localBookings);
         }
