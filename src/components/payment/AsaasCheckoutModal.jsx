@@ -517,79 +517,7 @@ export default function AsaasCheckoutModal({
                   </button>
                 </div>
 
-                {/* ENDEREÇO DE COBRANÇA PARA EMISSÃO DE NOTA FISCAL (NFS-E) */}
-                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold text-slate-300 flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Endereço de Faturamento (NFS-e)
-                    </span>
-                    {fetchingCep && <span className="text-[10px] text-amber-400 font-bold animate-pulse">Buscando CEP...</span>}
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">CEP *</label>
-                      <input
-                        type="text"
-                        maxLength={9}
-                        value={cepInput}
-                        onChange={handleCepChange}
-                        placeholder="00000-000"
-                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-mono font-bold outline-none focus:border-emerald-400"
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Rua / Logradouro *</label>
-                      <input
-                        type="text"
-                        value={addressInput}
-                        onChange={(e) => setAddressInput(e.target.value)}
-                        placeholder="Ex: Av. Paulista"
-                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Número *</label>
-                      <input
-                        type="text"
-                        value={addressNumberInput}
-                        onChange={(e) => setAddressNumberInput(e.target.value)}
-                        placeholder="100"
-                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Bairro *</label>
-                      <input
-                        type="text"
-                        value={provinceInput}
-                        onChange={(e) => setProvinceInput(e.target.value)}
-                        placeholder="Bairro"
-                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 block mb-0.5">Cidade - UF *</label>
-                      <input
-                        type="text"
-                        value={cityInput ? `${cityInput}${stateInput ? ' - ' + stateInput : ''}` : ''}
-                        onChange={(e) => {
-                          const parts = e.target.value.split('-');
-                          setCityInput(parts[0]?.trim() || '');
-                          if (parts[1]) setStateInput(parts[1].trim());
-                        }}
-                        placeholder="São Paulo - SP"
-                        className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-2 py-1.5 text-xs font-medium outline-none focus:border-emerald-400"
-                      />
-                    </div>
-                  </div>
-                </div>
 
             {errorMsg && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-xl space-y-1.5 animate-fade-in">
