@@ -729,7 +729,7 @@ const isFakeMockTutor = (t) => {
       hourlyRate: 20
     };
     const now = new Date();
-    const cycleEndDate = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+    const cycleEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const hoursToCredit = Number(planHours) || 8;
 
     const effectiveStudentId = studentId || student?.id || 'student-user';

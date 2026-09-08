@@ -8,7 +8,6 @@ import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AsaasCheckoutModal from '../payment/AsaasCheckoutModal';
-import { pauseStoneSubscription, resumeStoneSubscription, cancelStoneSubscription } from '../../lib/stonePaymentService';
 
 export default function StudentSubscriptionTab() {
   const navigate = useNavigate();
@@ -54,7 +53,7 @@ export default function StudentSubscriptionTab() {
 
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [selectedLessonsPerWeek, setSelectedLessonsPerWeek] = useState(2);
-  const [isStoneModalOpen, setIsStoneModalOpen] = useState(false);
+  const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
 
   React.useEffect(() => {
     if (searchParams.get('subscribe') === 'true') {
@@ -163,11 +162,12 @@ export default function StudentSubscriptionTab() {
     return freeDays.length > 0 ? freeDays : ALL_WEEK_DAYS;
   }, [targetTutor, teacherAvailability, bookings]);
 
+  // ASIGNACIÓN DINÁMICA DE HORARIOS LIVRES (SIN FALLBACK FALSO '09:00')
   const [weeklySlots, setWeeklySlots] = useState(() => {
     return Array.from({ length: 4 }, (_, idx) => {
       const day = availableDays[idx % availableDays.length] || 'Segunda-feira';
       const freeTimes = getFreeSlotsForDay(day);
-      return { day, time: freeTimes[0] || '09:00' };
+      return { day, time: freeTimes[0] || '' };
     });
   });
 
@@ -176,7 +176,7 @@ export default function StudentSubscriptionTab() {
       const copy = [...prev];
       if (field === 'day') {
         const freeTimes = getFreeSlotsForDay(value);
-        copy[index] = { day: value, time: freeTimes[0] || '09:00' };
+        copy[index] = { day: value, time: freeTimes[0] || '' };
       } else {
         copy[index] = { ...copy[index], time: value };
       }
@@ -208,64 +208,38 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
     setIsPauseModalOpen(false);
 
-    const stoneRes = await pauseStoneSubscription({
-      subscriptionId: activeSub.id,
-      pauseDays: 20
-    });
-
-    if (stoneRes.success) {
-      await pauseSubscription(activeSub.id, 20);
-      setActiveSubState(prev => prev ? { ...prev, status: 'paused' } : null);
-      setActionNotice('⏸️ Assinatura pausada com sucesso na Stone Pagamentos S.A. por 20 dias!');
-      setTimeout(() => setActionNotice(''), 5000);
-    } else {
-      alert('Erro ao processar pausa de assinatura na Stone S.A.');
-    }
+    await pauseSubscription(activeSub.id, 20);
+    setActiveSubState(prev => prev ? { ...prev, status: 'paused' } : null);
+    setActionNotice('⏸️ Assinatura pausada com sucesso via Asaas por 20 dias!');
+    setTimeout(() => setActionNotice(''), 5000);
   };
 
   const handleConfirmResume = async () => {
     if (!activeSub) return;
 
-    const stoneRes = await resumeStoneSubscription({
-      subscriptionId: activeSub.id
-    });
-
-    if (stoneRes.success) {
-      await resumeSubscription(activeSub.id);
-      setActiveSubState(prev => prev ? { ...prev, status: 'active' } : null);
-      setActionNotice('⚡ Assinatura reativada com sucesso na Stone Pagamentos S.A.!');
-      setTimeout(() => setActionNotice(''), 5000);
-    } else {
-      alert('Erro ao reativar assinatura na Stone S.A.');
-    }
+    await resumeSubscription(activeSub.id);
+    setActiveSubState(prev => prev ? { ...prev, status: 'active' } : null);
+    setActionNotice('⚡ Assinatura reativada com sucesso via Asaas!');
+    setTimeout(() => setActionNotice(''), 5000);
   };
 
   const handleConfirmCancel = async () => {
     if (!activeSub) return;
 
-    const stoneRes = await cancelStoneSubscription({
-      subscriptionId: activeSub.id,
-      reason: `${cancelReason}: ${cancelComment}`
-    });
-
-    if (stoneRes.success) {
-      await cancelSubscription(activeSub.id, cancelReason);
-      setActiveSubState(prev => prev ? { ...prev, status: 'canceled' } : null);
-      setIsCancelModalOpen(false);
-      setCancelStep(1);
-      setActionNotice('ℹ️ Renovação automática cancelada na Stone Pagamentos S.A. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
-      setTimeout(() => setActionNotice(''), 6000);
-    } else {
-      alert('Erro ao agendar cancelamento de renovação na Stone Pagamentos S.A.');
-    }
+    await cancelSubscription(activeSub.id, cancelReason);
+    setActiveSubState(prev => prev ? { ...prev, status: 'canceled' } : null);
+    setIsCancelModalOpen(false);
+    setCancelStep(1);
+    setActionNotice('ℹ️ Renovação automática cancelada via Asaas. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
+    setTimeout(() => setActionNotice(''), 6000);
   };
 
-  const handleStoneSubscriptionPaymentSuccess = (paymentResult) => {
-    setIsStoneModalOpen(false);
+  const handleAsaasSubscriptionPaymentSuccess = (paymentResult) => {
+    setIsAsaasModalOpen(false);
     setIsSubscribeModalOpen(false);
 
     const activeSlots = weeklySlots.slice(0, selectedLessonsPerWeek);
-    const primarySlot = activeSlots[0];
+    const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
     createBooking({
       tutorId: targetTutor.id,
@@ -298,7 +272,7 @@ export default function StudentSubscriptionTab() {
     const updatedHistory = [newTx, ...userHistory];
     localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
 
-    setActionNotice(`🎉 Assinatura ativada com sucesso! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
+    setActionNotice(`🎉 Assinatura ativada com sucesso via Asaas! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
     setTimeout(() => setActionNotice(''), 8000);
   };
 
@@ -341,7 +315,7 @@ export default function StudentSubscriptionTab() {
 
   const formattedNextDate = activeSub?.nextBillingDate
     ? new Date(activeSub.nextBillingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    : '23/09/2026';
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -479,7 +453,7 @@ export default function StudentSubscriptionTab() {
               })}
             </div>
 
-            {/* SELEÇÃO DE HORÁRIOS DA AGENDA SEMANAL DO PROFESSOR */}
+            {/* SELEÇÃO DE HORÁRIOS DA AGENDA SEMANAL DO PROFESSOR (HORÁRIOS LIVRES VALIDADOS) */}
             <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-5 space-y-4">
               <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-cyan-400" />
@@ -488,7 +462,10 @@ export default function StudentSubscriptionTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Array.from({ length: selectedLessonsPerWeek }).map((_, idx) => {
-                  const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda-feira', time: '09:00' };
+                  const currentSlot = weeklySlots[idx] || { 
+                    day: availableDays[0] || 'Segunda-feira', 
+                    time: getFreeSlotsForDay(availableDays[0] || 'Segunda-feira')[0] || '' 
+                  };
                   const availableTimes = getFreeSlotsForDay(currentSlot.day);
 
                   return (
@@ -516,7 +493,7 @@ export default function StudentSubscriptionTab() {
                               <option key={t} value={t}>{t}</option>
                             ))
                           ) : (
-                            <option value="">Sem horário livre neste dia</option>
+                            <option value="" disabled>⚠️ Sem horário livre neste dia</option>
                           )}
                         </select>
                       </div>
@@ -526,7 +503,7 @@ export default function StudentSubscriptionTab() {
               </div>
             </div>
 
-            {/* BARRA DE BOTÃO FINAL DE ASSINATURA STONE */}
+            {/* BARRA DE BOTÃO FINAL DE ASSINATURA ASAAS */}
             <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs text-slate-400 font-medium block">Total do Ciclo de 30 Dias ({selectedLessonsPerWeek * 4} aulas):</span>
@@ -535,7 +512,7 @@ export default function StudentSubscriptionTab() {
 
               <button
                 type="button"
-                onClick={() => setIsStoneModalOpen(true)}
+                onClick={() => setIsAsaasModalOpen(true)}
                 className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-xl shadow-emerald-500/20 transition-all cursor-pointer transform hover:scale-[1.02] flex items-center justify-center gap-2"
               >
                 <Lock className="w-5 h-5 fill-slate-950" />
@@ -555,7 +532,7 @@ export default function StudentSubscriptionTab() {
                   {activeSub.status === 'active' && (
                     <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Assinatura Ativa (Ciclo 28 Dias)
+                      Assinatura Ativa (Ciclo 30 Dias)
                     </span>
                   )}
                   {activeSub.status === 'paused' && (
@@ -589,7 +566,7 @@ export default function StudentSubscriptionTab() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-white text-base truncate">{targetTutor.name}</h3>
                     <span className="bg-emerald-500/10 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                      {activeSub.planName || 'Assinatura de 28 Dias'}
+                      {activeSub.planName || 'Assinatura de 30 Dias'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">Tarifa do Professor: <strong className="text-emerald-400">R$ {tutorHourlyRate}.00 / hora</strong></p>
@@ -604,19 +581,19 @@ export default function StudentSubscriptionTab() {
                 <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3.5 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Frequência Semanal</span>
                   <p className="text-sm font-bold text-white">{activeSub.lessonsPerWeek || 2} aulas / semana</p>
-                  <p className="text-[11px] text-slate-400">{activeSub.planHours || 8} aulas no ciclo de 28 dias</p>
+                  <p className="text-[11px] text-slate-400">{activeSub.planHours || 8} aulas no ciclo de 30 dias</p>
                 </div>
 
                 <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3.5 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Valor do Ciclo</span>
                   <p className="text-sm font-bold text-emerald-400">R$ {Number(activeSub.monthlyPrice || 360).toFixed(2)}</p>
-                  <p className="text-[11px] text-slate-400">Cobrado a cada 28 dias</p>
+                  <p className="text-[11px] text-slate-400">Cobrado a cada 30 dias</p>
                 </div>
 
                 <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3.5 space-y-1">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Próxima Renovação</span>
                   <p className="text-sm font-bold text-cyan-300">{formattedNextDate}</p>
-                  <p className="text-[11px] text-slate-400">Cobrança automática Stone S.A.</p>
+                  <p className="text-[11px] text-slate-400">Cobrança automática Asaas</p>
                 </div>
               </div>
 
@@ -645,7 +622,7 @@ export default function StudentSubscriptionTab() {
                   <div className="flex items-center justify-between gap-3 w-full">
                     <span className="text-xs text-amber-300 font-medium flex items-center gap-1.5">
                       <PauseCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                      Cobranças suspensas na Stone Pagamentos. Horários preservados!
+                      Cobranças suspensas na plataforma Asaas. Horários preservados!
                     </span>
 
                     <button
@@ -747,7 +724,7 @@ export default function StudentSubscriptionTab() {
                   <PauseCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Pausar Assinatura na Stone S.A.</h3>
+                  <h3 className="text-base font-extrabold text-white">Pausar Assinatura no Asaas</h3>
                   <p className="text-[11px] text-slate-400">Suspensão de cobranças automáticas por até 20 dias</p>
                 </div>
               </div>
@@ -757,7 +734,7 @@ export default function StudentSubscriptionTab() {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 border border-slate-800 rounded-2xl p-4">
-              Ao confirmar, a cobrança recorrente na Stone Pagamentos S.A. será <strong className="text-amber-300">pausada por até 20 dias</strong>. Seus horários semanais com seu professor permanecem reservados. Você poderá reativar a qualquer momento.
+              Ao confirmar, a cobrança recorrente no <strong className="text-amber-300">Asaas Pagamentos</strong> será pausada por até 20 dias. Seus horários semanais com seu professor permanecem reservados. Você poderá reativar a qualquer momento.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -775,7 +752,7 @@ export default function StudentSubscriptionTab() {
                 className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <PauseCircle className="w-4 h-4 fill-slate-950 text-slate-950" />
-                <span>Confirmar Pausa na Stone S.A.</span>
+                <span>Confirmar Pausa no Asaas</span>
               </button>
             </div>
           </div>
@@ -813,7 +790,7 @@ export default function StudentSubscriptionTab() {
                     💡 Recomendação Lexy: Que tal Pausar em vez de Cancelar?
                   </span>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Ao cancelar, você <strong className="text-rose-400">perderá a reserva semanal fixa</strong> com seu professor {targetTutor?.name}. Se você vai viajar ou precisa de um descanso, pode <strong>pausar os cobros na Stone por até 20 dias</strong> mantendo seu horário garantido.
+                    Ao cancelar, você <strong className="text-rose-400">perderá a reserva semanal fixa</strong> com seu professor {targetTutor?.name}. Se você vai viajar ou precisa de um descanso, pode <strong>pausar os cobros no Asaas por até 20 dias</strong> mantendo seu horário garantido.
                   </p>
                 </div>
 
@@ -824,7 +801,7 @@ export default function StudentSubscriptionTab() {
                     className="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-5 rounded-xl shadow-lg border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <PauseCircle className="w-4 h-4 fill-slate-950 text-slate-950" />
-                    <span>Pausar por até 20 Dias na Stone (Manter Horário)</span>
+                    <span>Pausar por até 20 Dias no Asaas (Manter Horário)</span>
                   </button>
 
                   <button
@@ -904,7 +881,7 @@ export default function StudentSubscriptionTab() {
                 <div className="bg-slate-900 border border-rose-500/40 rounded-2xl p-4 space-y-2">
                   <h4 className="font-extrabold text-white text-sm">Confirmação de Cancelamento de Renovação</h4>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Sua cobrança automática recorrente na <strong className="text-white">Stone Pagamentos S.A.</strong> será cancelada. 
+                    Sua cobrança automática recorrente no <strong className="text-white">Asaas Pagamentos</strong> será cancelada. 
                   </p>
                   <p className="text-xs text-emerald-400 font-bold bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
                     ✓ Você continuará com acesso a todas as aulas pagas do seu ciclo atual de 30 dias até o encerramento do período vigente.
@@ -992,7 +969,10 @@ export default function StudentSubscriptionTab() {
 
               <div className="space-y-2.5">
                 {Array.from({ length: selectedLessonsPerWeek }).map((_, idx) => {
-                  const currentSlot = weeklySlots[idx] || { day: availableDays[0] || 'Segunda-feira', time: '09:00' };
+                  const currentSlot = weeklySlots[idx] || { 
+                    day: availableDays[0] || 'Segunda-feira', 
+                    time: getFreeSlotsForDay(availableDays[0] || 'Segunda-feira')[0] || '' 
+                  };
                   const availableTimes = getFreeSlotsForDay(currentSlot.day);
 
                   return (
@@ -1020,7 +1000,7 @@ export default function StudentSubscriptionTab() {
                               <option key={t} value={t}>{t}</option>
                             ))
                           ) : (
-                            <option value="">Sem horário livre neste dia</option>
+                            <option value="" disabled>⚠️ Sem horário livre neste dia</option>
                           )}
                         </select>
                       </div>
@@ -1038,7 +1018,7 @@ export default function StudentSubscriptionTab() {
 
               <button
                 type="button"
-                onClick={() => setIsStoneModalOpen(true)}
+                onClick={() => setIsAsaasModalOpen(true)}
                 className="bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-xs px-6 py-3.5 rounded-xl shadow-lg shadow-cyan-500/25 transition-all cursor-pointer flex items-center gap-2"
               >
                 <Lock className="w-4 h-4 fill-slate-950" />
@@ -1051,8 +1031,8 @@ export default function StudentSubscriptionTab() {
       )}
 
       <AsaasCheckoutModal
-        isOpen={isStoneModalOpen}
-        onClose={() => setIsStoneModalOpen(false)}
+        isOpen={isAsaasModalOpen}
+        onClose={() => setIsAsaasModalOpen(false)}
         amount={totalCycleAmount}
         description={`Assinatura Recorrente de 30 Dias (${selectedLessonsPerWeek}x/sem) - ${targetTutor?.name}`}
         isRecurring={true}
@@ -1060,10 +1040,10 @@ export default function StudentSubscriptionTab() {
         customerInfo={{
           name: profile?.full_name || 'Aluno Lexy',
           email: profile?.email || 'aluno@lexy.com',
-          document: profile?.documentNumber || '603.198.610-82',
+          document: profile?.documentNumber || '',
           phone: profile?.phone || ''
         }}
-        onSuccess={handleStoneSubscriptionPaymentSuccess}
+        onSuccess={handleAsaasSubscriptionPaymentSuccess}
       />
 
     </div>
