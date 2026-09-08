@@ -277,9 +277,6 @@ export default function OnboardingFlow() {
     setErrorMessage('');
 
     try {
-      const newTutor = registerTutor(formData);
-      setCreatedTutorId(newTutor.id);
-
       const result = await signUpWithSupabase({
         name: formData.full_name,
         email: formData.email,
@@ -291,6 +288,8 @@ export default function OnboardingFlow() {
       });
 
       if (result.success) {
+        const newTutor = registerTutor(formData);
+        setCreatedTutorId(newTutor.id);
         setIsSuccess(true);
       } else {
         setErrorMessage(result.error || '❌ Erro ao criar conta. Tente novamente.');

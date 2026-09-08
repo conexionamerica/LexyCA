@@ -164,29 +164,24 @@ export default function BookingPage() {
     : Number((hourlyRate * pkgHours * (1 - pkgDiscount / 100)).toFixed(2));
 
   const handleConfirmBooking = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setErrorMessage('');
     setInsufficientBalanceError(null);
-    setIsProcessing(true);
 
-    const activeSlots = selectedSlots.slice(0, neededSlotsCount);
-    const primarySlot = activeSlots[0];
+    const primarySlot = selectedSlots[0];
 
     if (!primarySlot?.day || !primarySlot?.time) {
-      setIsProcessing(false);
       setErrorMessage('Por favor, selecione um dia e um horário para realizar o agendamento.');
       return;
     }
 
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsAsaasModalOpen(true);
-    }, 400);
+    setIsAsaasModalOpen(true);
   };
 
   const handleAsaasBookingPaymentSuccess = (paymentResult) => {
     setIsAsaasModalOpen(false);
-    const primarySlot = selectedSlots[0] || { day: 'Segunda-feira', time: '10:00' };
+    const primarySlot = selectedSlots[0];
+    if (!primarySlot?.day || !primarySlot?.time) return;
 
     // Forçar compra única de Aula Experimental (1 sola clase, 0 suscripciones, pago único)
     createBooking({
@@ -424,7 +419,7 @@ export default function BookingPage() {
 
           <button
             type="button"
-            onClick={() => setIsAsaasModalOpen(true)}
+            onClick={handleConfirmBooking}
             className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 font-black text-sm px-8 py-4 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Lock className="w-4 h-4" />

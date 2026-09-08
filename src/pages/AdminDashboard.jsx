@@ -7,7 +7,6 @@ import {
   Award, Sparkles, Lock, Mail, Eye, EyeOff, AlertCircle, Wallet, ArrowRight, Check, 
   Megaphone, Trash2, Settings, Save, AlertTriangle, Calendar, Percent, Search, User, Video
 } from 'lucide-react';
-import { getStoneConfig, saveStoneConfig } from '../lib/stonePaymentService';
 
 export default function AdminDashboard() {
   const { 
@@ -41,16 +40,6 @@ export default function AdminDashboard() {
   
   const [recommendedRate, setRecommendedRate] = useState(localStorage.getItem('lexy_recommended_rate') || 12);
   const [isRateSaved, setIsRateSaved] = useState(false);
-
-  const [stoneForm, setStoneForm] = useState(() => getStoneConfig());
-  const [isStoneSaved, setIsStoneSaved] = useState(false);
-
-  const handleSaveStoneConfig = (e) => {
-    e.preventDefault();
-    saveStoneConfig(stoneForm);
-    setIsStoneSaved(true);
-    setTimeout(() => setIsStoneSaved(false), 3000);
-  };
 
   const handleTargetChange = (targetId) => {
     setSelectedDiscountTarget(targetId);
