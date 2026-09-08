@@ -293,6 +293,7 @@ export const AuthProvider = ({ children }) => {
           role: normalizedRole,
           phone: phone || '',
           document_number: documentNumber || '',
+          cpf: documentNumber || '',
           residence_country: residenceCountry || 'Brasil 🇧🇷',
           postal_code: postalCode || '',
           address: address || '',
@@ -300,6 +301,10 @@ export const AuthProvider = ({ children }) => {
           complement: complement || '',
           province: province || '',
           city: city || '',
+          state: state || '',
+          study_language: study_language || '',
+          language_level: language_level || '',
+          study_motivation: study_motivation || '',
           hourly_rate: hourlyRate || 20,
           subject_taught: subject_taught || '',
           headline: headline || '',
@@ -317,14 +322,23 @@ export const AuthProvider = ({ children }) => {
         role: role || 'student',
         phone: phone || '',
         documentNumber: documentNumber || '',
+        cpf: documentNumber || '',
         residenceCountry: residenceCountry || 'Brasil 🇧🇷',
+        postalCode: postalCode || '',
+        address: address || '',
+        addressNumber: addressNumber || '',
+        complement: complement || '',
+        province: province || '',
+        city: city || '',
+        state: state || '',
         study_language: study_language || '',
         language_level: language_level || '',
         study_motivation: study_motivation || '',
         avatar_url: role === 'teacher' 
           ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        hourly_rate: hourlyRate || 20
+        hourly_rate: hourlyRate || 20,
+        matricula_code: generateMatriculaCode(userId, cleanEmail)
       };
 
       setProfile(userProfile);
