@@ -120,19 +120,40 @@ export default function StudentWallet() {
     return Array.from(uniqueMap.values());
   }, [history, profile, bookings]);
 
-  const userCalculatedLessons = userHistory.reduce((acc, item) => {
-    const val = parseFloat(item.lessons) || (parseFloat(item.amount) / 50) || 0;
-    if (item.type === 'recharge' || item.type === 'refund' || val > 0) {
-      return acc + Math.abs(val);
+  const getItemLessonsCount = (item) => {
+    if (!item) return 0;
+    if (item.lessons !== undefined && item.lessons !== null && !isNaN(Number(item.lessons))) {
+      return Number(item.lessons);
     }
-    return acc - Math.abs(val);
+    // Mapear preços exatos de planos Lexy (200 -> 4, 360 -> 8, 504 -> 12, 640 -> 16)
+    const amount = Math.abs(parseFloat(item.amount) || 0);
+    if (amount === 200) return 4;
+    if (amount === 360) return 8;
+    if (amount === 504) return 12;
+    if (amount === 640) return 16;
+
+    // Se for agendamento individual ou aula experimental
+    if (item.type === 'payment') return 1;
+
+    return Math.round(amount / 45) || 1;
+  };
+
+  const userCalculatedLessons = userHistory.reduce((acc, item) => {
+    const val = getItemLessonsCount(item);
+    if (item.type === 'recharge' || item.type === 'refund') {
+      return acc + val;
+    }
+    if (item.type === 'payment') {
+      return acc - val;
+    }
+    return acc + val;
   }, 0);
 
   const currentLessons = Math.max(0, userCalculatedLessons);
   
-  const usedLessons = Math.round((userHistory
+  const usedLessons = userHistory
     .filter(h => h.type === 'payment')
-    .reduce((sum, h) => sum + Math.abs(h.amount), 0)) / 50);
+    .reduce((sum, h) => sum + getItemLessonsCount(h), 0);
 
   const completedLessonsCount = userHistory
     .filter(h => h.type === 'payment' && h.status === 'Concluído').length;

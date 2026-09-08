@@ -236,6 +236,7 @@ export const AuthProvider = ({ children }) => {
   const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
+      const normalizedRole = role === 'professor' || role === 'tutor' ? 'teacher' : (role || 'student');
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: password,
@@ -243,7 +244,7 @@ export const AuthProvider = ({ children }) => {
           data: {
             name: name,
             full_name: name,
-            role: role || 'student',
+            role: normalizedRole,
             phone: phone || '',
             documentNumber: documentNumber || '',
             residenceCountry: residenceCountry || 'Brasil 🇧🇷',
@@ -283,7 +284,7 @@ export const AuthProvider = ({ children }) => {
           id: userId,
           full_name: name,
           email: cleanEmail,
-          role: role || 'student',
+          role: normalizedRole,
           phone: phone || '',
           document_number: documentNumber || '',
           residence_country: residenceCountry || 'Brasil 🇧🇷',

@@ -356,15 +356,30 @@ const isFakeMockTutor = (t) => {
     return false;
   };
 
+  const getTutorFreeSlotsList = (tutorObj) => {
+    const schedule = tutorObj?.weeklySchedule || tutorObj?.availability || {};
+    const slots = [];
+    Object.keys(schedule).forEach(day => {
+      const times = schedule[day];
+      if (Array.isArray(times) && times.length > 0) {
+        times.forEach(time => {
+          slots.push({ day, time });
+        });
+      }
+    });
+    if (slots.length > 0) return slots;
+    return [
+      { day: 'Segunda-feira', time: '10:00' },
+      { day: 'Quarta-feira', time: '16:00' }
+    ];
+  };
+
   const getDefaultCycleBookings = (tutorObj, planHoursVal = 8) => {
     const tutor = tutorObj || (tutors && tutors.length > 0 ? tutors[0] : null);
     if (!tutor) return [];
 
     const planHours = Number(planHoursVal) || 8;
-    const baseSlots = [
-      { day: 'Segunda-feira', time: '10:00' },
-      { day: 'Quarta-feira', time: '16:00' }
-    ];
+    const baseSlots = getTutorFreeSlotsList(tutor);
 
     const generated = [];
     const numSlots = baseSlots.length;
@@ -387,7 +402,7 @@ const isFakeMockTutor = (t) => {
           tutorAvatar: tutor.avatar,
           tutorSubject: tutor.subject || 'Idioma',
           studentId: student?.id || 'student-user',
-          day: `${s.day} (Semana ${week})`,
+          day: s.day,
           time: s.time,
           bookingType: 'subscription',
           amount: tutor.hourlyRate || 20,
@@ -768,11 +783,8 @@ const isFakeMockTutor = (t) => {
       };
     });
 
-    // Gerar a agenda completa de aulas para o ciclo de 28 dias (ex: 8 aulas)
-    const baseSlots = [
-      { day: 'Segunda-feira', time: '10:00' },
-      { day: 'Quarta-feira', time: '16:00' }
-    ];
+    // Gerar a agenda de aulas para o ciclo com base na disponibilidade real do professor
+    const baseSlots = getTutorFreeSlotsList(tutor);
 
     const generatedBookings = [];
     const numSlots = baseSlots.length;
@@ -799,7 +811,7 @@ const isFakeMockTutor = (t) => {
           studentEmail: effectiveStudentEmail,
           studentName: effectiveStudentName,
           studentMatricula: effectiveStudentMatricula,
-          day: `${s.day} (Semana ${week})`,
+          day: s.day,
           time: s.time,
           bookingType: 'subscription',
           amount: tutor.hourlyRate || 20,

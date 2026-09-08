@@ -24,7 +24,7 @@ export default function TeacherDashboard() {
 
   // Função para navegar de forma direta e segura à Sala Virtual WebRTC
   const handleJoinClassroom = (booking) => {
-    const roomKey = booking?.lesson_code || booking?.id || 'lexy_pair_aluno0209gmailcom_with_laptopgmailcom';
+    const roomKey = booking?.lesson_code || booking?.id || 'main';
     navigate(`/classroom/${roomKey}`);
   };
 
@@ -121,24 +121,58 @@ export default function TeacherDashboard() {
 
   const [teacherLexyDateFilter, setTeacherLexyDateFilter] = useState('todas'); // 'hoje' | 'amanha' | 'todas'
 
-  const getTeacherBookingDayCategory = (dayStr, dateStr) => {
-    const rawStr = String(dayStr || dateStr || '').toLowerCase();
-    
-    const weekDaysPt = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
+  // Helper para categorizar aulas no painel do professor (Suporta ISO YYYY-MM-DD, BR DD/MM/YYYY e Nomes de Dias)
+  const getTeacherBookingDayCategory = (dayStr, dateStr, isoDateStr) => {
+    const rawStr = String(dayStr || dateStr || isoDateStr || '').trim();
+    if (!rawStr) return 'outros';
+
+    const lower = rawStr.toLowerCase();
+    if (lower.includes('hoje')) return 'hoje';
+    if (lower.includes('amanhã') || lower.includes('amanha')) return 'amanha';
+
     const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
     
+    const todayIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+
+    // 1. Matchear formato ISO YYYY-MM-DD
+    const isoMatch = rawStr.match(/\d{4}-\d{2}-\d{2}/);
+    if (isoMatch) {
+      const datePart = isoMatch[0];
+      if (datePart === todayIso) return 'hoje';
+      if (datePart === tomorrowIso) return 'amanha';
+      return 'outros';
+    }
+
+    // 2. Matchear formato brasileiro DD/MM/YYYY
+    const brMatch = rawStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (brMatch) {
+      const datePart = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+      if (datePart === todayIso) return 'hoje';
+      if (datePart === tomorrowIso) return 'amanha';
+      return 'outros';
+    }
+
+    // 3. Fallback para nomes de dias da semana (Português / Espanhol)
+    const weekDaysPt = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
+    const weekDaysEs = ['domingo', 'lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes', 'sábado', 'sabado'];
+
     const todayIndex = now.getDay();
     const tomorrowIndex = (todayIndex + 1) % 7;
 
-    const todayName = weekDaysPt[todayIndex === 0 ? 0 : todayIndex === 6 ? 7 : todayIndex];
-    const tomorrowName = weekDaysPt[tomorrowIndex === 0 ? 0 : tomorrowIndex === 6 ? 7 : tomorrowIndex];
+    const todayNames = [weekDaysPt[todayIndex], weekDaysEs[todayIndex], 'hoje', 'hoy'];
+    const tomorrowNames = [weekDaysPt[tomorrowIndex], weekDaysEs[tomorrowIndex], 'amanhã', 'amanha', 'mañana', 'manana'];
 
-    const cleanInput = rawStr.replace('-feira', '').trim();
+    const cleanInput = lower.replace('-feira', '').trim();
 
-    if (cleanInput.includes('hoje') || (todayName && cleanInput.includes(todayName))) {
+    if (todayNames.some(name => name && cleanInput.includes(name))) {
       return 'hoje';
     }
-    if (cleanInput.includes('amanhã') || cleanInput.includes('amanha') || (tomorrowName && cleanInput.includes(tomorrowName))) {
+    if (tomorrowNames.some(name => name && cleanInput.includes(name))) {
       return 'amanha';
     }
 
@@ -148,15 +182,15 @@ export default function TeacherDashboard() {
   const teacherLexyBookings = React.useMemo(() => {
     return myTeacherBookings.filter(b => {
       if (b.status === 'canceled') return false;
-      const cat = getTeacherBookingDayCategory(b.day, b.date);
+      const cat = getTeacherBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr);
       if (teacherLexyDateFilter === 'hoje') return cat === 'hoje';
       if (teacherLexyDateFilter === 'amanha') return cat === 'amanha';
       return true;
     });
   }, [myTeacherBookings, teacherLexyDateFilter]);
 
-  const countTeacherHoje = React.useMemo(() => myTeacherBookings.filter(b => b.status !== 'canceled' && getTeacherBookingDayCategory(b.day, b.date) === 'hoje').length, [myTeacherBookings]);
-  const countTeacherAmanha = React.useMemo(() => myTeacherBookings.filter(b => b.status !== 'canceled' && getTeacherBookingDayCategory(b.day, b.date) === 'amanha').length, [myTeacherBookings]);
+  const countTeacherHoje = React.useMemo(() => myTeacherBookings.filter(b => b.status !== 'canceled' && getTeacherBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr) === 'hoje').length, [myTeacherBookings]);
+  const countTeacherAmanha = React.useMemo(() => myTeacherBookings.filter(b => b.status !== 'canceled' && getTeacherBookingDayCategory(b.day, b.date || b.isoDateStr || b.dateStr) === 'amanha').length, [myTeacherBookings]);
   const countTeacherTodas = React.useMemo(() => myTeacherBookings.filter(b => b.status !== 'canceled').length, [myTeacherBookings]);
 
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState(() => {
