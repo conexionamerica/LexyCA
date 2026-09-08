@@ -233,7 +233,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── REGISTRAR NUEVO USUARIO REAL EN SUPABASE AUTH ──
-  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, postalCode, address, addressNumber, complement, province, city, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
+  const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, postalCode, address, addressNumber, complement, province, city, state, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const normalizedRole = role === 'professor' || role === 'tutor' ? 'teacher' : (role || 'student');
@@ -254,6 +254,7 @@ export const AuthProvider = ({ children }) => {
             complement: complement || '',
             province: province || '',
             city: city || '',
+            state: state || '',
             hourlyRate: hourlyRate || 20,
             study_language: study_language || '',
             language_level: language_level || '',
