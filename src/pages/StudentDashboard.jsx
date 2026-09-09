@@ -592,7 +592,7 @@ export default function StudentDashboard() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-0.5">
-                      Sua 1ª aula foi concluída! Você tem <strong>{remainingFreeTrials} aula(s) experimental(is) GRATUITA(S)</strong> disponível(is) para testar novos professores.
+                      Garantia Ativa! Você tem <strong>{remainingFreeTrials} aula(s) experimental(is) GRATUITA(S)</strong> para agendar e conhecer outros professores.
                     </p>
                   </div>
                 </div>
