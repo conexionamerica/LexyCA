@@ -702,55 +702,111 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* ANÚNCIO DESTACADO DE INCENTIVO A ASSINATURA DE PACOTE DE AULAS RECORRENTES (MULTISUSCRIPCIÓN / MULTIPROFESORES EXPERIMENTALES) */}
+            {/* ANÚNCIO ULTRA-CONVERSIÓN DE INCENTIVO A ASSINATURA (PREMIUM PROMO CARD DE ALTA PERSUASÃO) */}
             {trialBooking && !hasSubscribedPackage && !isTrialBannerDismissed && (
-              <div className="bg-gradient-to-r from-amber-950/70 via-slate-900 to-cyan-950/70 border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl shadow-amber-950/40 space-y-4 relative overflow-hidden animate-fade-in glow-amber">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0 shadow-inner">
-                      <Sparkles className="w-6 h-6 text-amber-400 animate-pulse" />
-                    </div>
-                    <div>
-                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider mb-1">
-                        <Zap className="w-3 h-3 fill-amber-300" />
-                        <span>Gostou da sua Aula Experimental? • Assinatura Recorrente</span>
-                      </div>
-                      <h3 className="text-base sm:text-lg font-black text-white">
-                        Assine um Plano de 30 Dias e Aproveite os Descontos!
-                      </h3>
-                    </div>
+              <div className="relative rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-amber-950/80 via-slate-950 to-emerald-950/70 border-2 border-amber-400/70 shadow-2xl shadow-amber-500/20 overflow-hidden animate-fade-in space-y-5 backdrop-blur-xl">
+                
+                {/* Glow decorativo de fundo */}
+                <div className="absolute -top-24 -right-24 w-60 h-60 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute -bottom-24 -left-24 w-60 h-60 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                {/* Badge Superior de Urgência & Desconto Exclusivo */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/30 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1 animate-pulse">
+                      <Zap className="w-3 h-3 fill-slate-950" />
+                      OFERTA EXCLUSIVA PÓS-EXPERIMENTAÇÃO
+                    </span>
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                      🔥 Até 20% OFF nos Planos Mensais
+                    </span>
                   </div>
 
                   <button
                     onClick={() => setIsTrialBannerDismissed(true)}
-                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors cursor-pointer shrink-0"
+                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/80 transition-colors cursor-pointer shrink-0"
                     title="Fechar anúncio"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-4.5 h-4.5" />
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                  Se você gostou da sua aula experimental, garanta seu horário fixo e acompanhamento contínuo no idioma! Nossos pacotes de aulas possuem cobrança recorrente <strong className="text-amber-300 font-bold">a cada 30 dias</strong> com renovação automática e descontos exclusivos por aula.
-                </p>
-
-                <div className="pt-1 flex flex-col sm:flex-row items-center gap-3">
-                  <button
-                    onClick={() => setIsSelectTutorModalOpen(true)}
-                    className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-6 rounded-xl shadow-lg shadow-amber-500/25 border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
-                  >
-                    <Zap className="w-4 h-4 fill-current text-slate-950" />
-                    <span>Ver Pacotes de Aulas Recorrentes (30 Dias) e Assinar</span>
-                  </button>
-
-                  <button
-                    onClick={() => setSearchParams({ tab: 'catalogo' })}
-                    className="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 text-slate-300 font-bold text-xs py-3.5 px-5 rounded-xl border border-slate-700/80 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Search className="w-4 h-4 text-cyan-400" />
-                    <span>Explorar Outros Professores</span>
-                  </button>
+                {/* Bloco de Título Impactante e Valor */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center shrink-0 shadow-lg ring-4 ring-amber-400/20">
+                      <Sparkles className="w-7 h-7 fill-slate-950 text-slate-950" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-lg sm:text-xl font-black text-white tracking-tight leading-tight">
+                        Gostou da sua Aula Experimental? Continue sua Fluência Sem Interrupções! 🚀
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl font-medium">
+                        Garanta agora seu <strong className="text-amber-300 font-bold">horário semanal fixo</strong> com seu professor favorito! Nossos pacotes de 30 dias contam com renovação automática, cancelamento a qualquer momento e <strong className="text-emerald-400 font-bold">garantia total de satisfação</strong>.
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* 3 Pilares de Vantagens (Diferenciais Irresistíveis) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-3 flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-white block">Horário Fixo Reservado</span>
+                      <span className="text-[10px] text-slate-400">Garanta sua vaga na agenda do tutor</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-3 flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-white block">Evolução Acelerada</span>
+                      <span className="text-[10px] text-slate-400">Metodologia 100% conversacional</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-3 flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-white block">Sem Fidelidade Presa</span>
+                      <span className="text-[10px] text-slate-400">Pause ou cancele quando quiser</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chamadas para Ação (CTAs Destacadas) */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-800/80">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                    <Clock className="w-4 h-4 text-amber-400 shrink-0 animate-spin-slow" />
+                    <span>Planos de 30 Dias a partir de R$ 80,00/mês</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => setIsSelectTutorModalOpen(true)}
+                      className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-xs py-3.5 px-7 rounded-xl shadow-xl shadow-amber-500/30 border border-amber-300/50 transition-all cursor-pointer transform hover:scale-105 flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
+                      <span>Escolher Professor e Assinar Plano ⚡</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSearchParams({ tab: 'catalogo' })}
+                      className="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 text-slate-300 font-bold text-xs py-3.5 px-5 rounded-xl border border-slate-700/80 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <Search className="w-4 h-4 text-cyan-400" />
+                      <span>Ver Outros Professores</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
             )}
 
