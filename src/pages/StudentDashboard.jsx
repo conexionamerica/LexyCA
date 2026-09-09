@@ -578,26 +578,7 @@ export default function StudentDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
             </div>
 
-            {/* Botão Dev/Teste para Simular o Fim dos 3 Meses */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs">
-              <span className="text-slate-400 text-[11px] font-medium flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Simulação do Cooldown: <strong>{simulate3MonthsPassed ? '⚡ 3 Meses Passados (Benefício Reativado)' : '⏳ Aguardando 3 Meses'}</strong></span>
-              </span>
-              <button
-                type="button"
-                onClick={toggleSimulate3Months}
-                className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer border ${
-                  simulate3MonthsPassed 
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
-                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
-                }`}
-              >
-                {simulate3MonthsPassed ? '🔄 Resetar Simulação' : '🚀 Simular +3 Meses Agora'}
-              </button>
-            </div>
-
-            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) - Anúncio de 3 Meses */}
+            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) - Exibe apenas quando ativas no ciclo ou renovadas após 3 meses */}
             {remainingFreeTrials > 0 && (
               <div className="bg-gradient-to-r from-amber-500/20 via-emerald-500/15 to-cyan-500/20 border-2 border-amber-400/60 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl animate-fade-in relative overflow-hidden">
                 <div className="absolute top-0 right-0 bg-amber-400 text-slate-950 font-black text-[9px] px-3 py-0.5 rounded-bl-xl uppercase tracking-wider">
