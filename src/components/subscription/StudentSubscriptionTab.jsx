@@ -75,7 +75,12 @@ export default function StudentSubscriptionTab() {
   const targetTutor = useMemo(() => {
     const paramTutorId = searchParams.get('tutorId');
     if (paramTutorId) {
-      const match = tutors.find(t => String(t.id).toLowerCase() === String(paramTutorId).toLowerCase());
+      const cleanParam = String(paramTutorId).toLowerCase();
+      const match = tutors.find(t => 
+        String(t.id).toLowerCase() === cleanParam || 
+        String(t.name).toLowerCase() === cleanParam ||
+        String(t.name).toLowerCase().includes(cleanParam)
+      );
       if (match) return match;
     }
     if (activeSub) {
@@ -83,10 +88,13 @@ export default function StudentSubscriptionTab() {
       if (match) return match;
     }
     if (lastBooking) {
-      const match = tutors.find(t => String(t.id).toLowerCase() === String(lastBooking.tutorId).toLowerCase());
+      const match = tutors.find(t => 
+        String(t.id).toLowerCase() === String(lastBooking.tutorId).toLowerCase() ||
+        String(t.name).toLowerCase() === String(lastBooking.tutorName).toLowerCase()
+      );
       if (match) return match;
     }
-    return null;
+    return tutors[0] || null;
   }, [tutors, activeSub, lastBooking, searchParams]);
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
