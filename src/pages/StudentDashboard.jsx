@@ -600,10 +600,10 @@ export default function StudentDashboard() {
                   Estamos muito felizes em ter você aqui. Escolha seu professor no catálogo e comece a estudar com garantia total de satisfação.
                 </p>
                 <button
-                  onClick={() => setSearchParams({ tab: 'carteira' })}
-                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs px-3.5 rounded-lg shadow-sm cursor-pointer"
+                  onClick={() => navigate('/explore')}
+                  className="h-8 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 rounded-lg shadow-md hover:shadow-cyan-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  + Recarregar Créditos Lexy
+                  <span>🔍 Encontrar Meu Professor</span>
                 </button>
               </div>
             )}
