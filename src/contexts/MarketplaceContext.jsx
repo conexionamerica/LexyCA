@@ -384,7 +384,11 @@ const isFakeMockTutor = (t) => {
           })();
 
           const mapped = data.map(sub => {
-            const localMatch = savedLocal.find(l => String(l.id).toLowerCase() === String(sub.id).toLowerCase());
+            const localMatch = savedLocal.find(l => 
+              String(l.id).toLowerCase() === String(sub.id).toLowerCase() ||
+              (l.studentEmail && String(l.studentEmail).toLowerCase() === String(sub.student_email || sub.studentEmail).toLowerCase()) ||
+              (l.tutorName && String(l.tutorName).toLowerCase() === String(sub.tutor_name || sub.tutorName).toLowerCase())
+            );
             const finalStatus = (localMatch && localMatch.status && localMatch.status !== 'active') 
               ? localMatch.status 
               : (sub.status || 'active');
@@ -1118,8 +1122,10 @@ const isFakeMockTutor = (t) => {
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      const updatedList = prev.map(s => {
+      let matched = false;
+      const updatedList = (prev || []).map(s => {
         if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
+          matched = true;
           return {
             ...s,
             status: 'paused',
@@ -1130,6 +1136,17 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+
+      if (!matched && updatedList.length > 0) {
+        updatedList[0] = {
+          ...updatedList[0],
+          status: 'paused',
+          pausedUntil,
+          nextBillingDate: pausedUntil,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
       } catch (e) {}
@@ -1138,17 +1155,18 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
+      const studentEmail = student?.email || profile?.email || '';
+      let query = supabase.from('subscriptions').update({
+        status: 'paused',
+        paused_until: pausedUntil,
+        next_billing_date: pausedUntil,
+        updated_at: new Date().toISOString()
+      });
+
       if (subscriptionId) {
-        await supabase
-          .from('subscriptions')
-          .update({
-            status: 'paused',
-            paused_until: pausedUntil,
-            next_billing_date: pausedUntil,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
+        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
       }
+      await query;
     } catch (err) {
       console.warn('Erro ao atualizar pausa no Supabase:', err);
     }
@@ -1166,8 +1184,10 @@ const isFakeMockTutor = (t) => {
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      const updatedList = prev.map(s => {
+      let matched = false;
+      const updatedList = (prev || []).map(s => {
         if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
+          matched = true;
           return {
             ...s,
             status: 'active',
@@ -1177,6 +1197,16 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+
+      if (!matched && updatedList.length > 0) {
+        updatedList[0] = {
+          ...updatedList[0],
+          status: 'active',
+          pausedUntil: null,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
       } catch (e) {}
@@ -1185,16 +1215,17 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
+      const studentEmail = student?.email || profile?.email || '';
+      let query = supabase.from('subscriptions').update({
+        status: 'active',
+        paused_until: null,
+        updated_at: new Date().toISOString()
+      });
+
       if (subscriptionId) {
-        await supabase
-          .from('subscriptions')
-          .update({
-            status: 'active',
-            paused_until: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
+        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
       }
+      await query;
     } catch (err) {
       console.warn('Erro ao atualizar reativação no Supabase:', err);
     }
@@ -1212,8 +1243,10 @@ const isFakeMockTutor = (t) => {
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      const updatedList = prev.map(s => {
+      let matched = false;
+      const updatedList = (prev || []).map(s => {
         if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
+          matched = true;
           return {
             ...s,
             status: 'canceled',
@@ -1223,6 +1256,16 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+
+      if (!matched && updatedList.length > 0) {
+        updatedList[0] = {
+          ...updatedList[0],
+          status: 'canceled',
+          cancelReason: reason,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
       } catch (e) {}
@@ -1231,16 +1274,17 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
+      const studentEmail = student?.email || profile?.email || '';
+      let query = supabase.from('subscriptions').update({
+        status: 'canceled',
+        cancel_reason: reason,
+        updated_at: new Date().toISOString()
+      });
+
       if (subscriptionId) {
-        await supabase
-          .from('subscriptions')
-          .update({
-            status: 'canceled',
-            cancel_reason: reason,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
+        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
       }
+      await query;
     } catch (err) {
       console.warn('Erro ao atualizar cancelamento no Supabase:', err);
     }

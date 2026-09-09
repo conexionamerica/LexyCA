@@ -40,8 +40,20 @@ export default function StudentSubscriptionTab() {
     });
   }, [subscriptions, profile]);
 
-  const [activeSubState, setActiveSubState] = useState(null);
-  const activeSub = activeSubState || userSubscriptions[0] || null;
+  const [activeSubState, setActiveSubState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lexy_active_sub_override_v1');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const activeSub = useMemo(() => {
+    if (activeSubState) return activeSubState;
+    if (userSubscriptions && userSubscriptions.length > 0) return userSubscriptions[0];
+    return null;
+  }, [activeSubState, userSubscriptions]);
 
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -230,13 +242,19 @@ export default function StudentSubscriptionTab() {
     const pauseDaysCount = Number(pauseDays || 20);
     const pausedUntilDate = new Date(Date.now() + pauseDaysCount * 24 * 60 * 60 * 1000).toISOString();
 
-    await pauseSubscription(activeSub.id, pauseDaysCount);
-    setActiveSubState({
+    const updatedSub = {
       ...activeSub,
       status: 'paused',
       pausedUntil: pausedUntilDate,
       nextBillingDate: pausedUntilDate
-    });
+    };
+
+    await pauseSubscription(activeSub.id, pauseDaysCount);
+    setActiveSubState(updatedSub);
+    try {
+      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
+    } catch (e) {}
+
     setActionNotice(`⏸️ Assinatura pausada com sucesso via Asaas por ${pauseDaysCount} dias!`);
     setTimeout(() => setActionNotice(''), 5000);
   };
@@ -244,12 +262,18 @@ export default function StudentSubscriptionTab() {
   const handleConfirmResume = async () => {
     if (!activeSub) return;
 
-    await resumeSubscription(activeSub.id);
-    setActiveSubState({
+    const updatedSub = {
       ...activeSub,
       status: 'active',
       pausedUntil: null
-    });
+    };
+
+    await resumeSubscription(activeSub.id);
+    setActiveSubState(updatedSub);
+    try {
+      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
+    } catch (e) {}
+
     setActionNotice('⚡ Assinatura reativada com sucesso via Asaas!');
     setTimeout(() => setActionNotice(''), 5000);
   };
@@ -257,12 +281,18 @@ export default function StudentSubscriptionTab() {
   const handleConfirmCancel = async () => {
     if (!activeSub) return;
 
-    await cancelSubscription(activeSub.id, cancelReason);
-    setActiveSubState({
+    const updatedSub = {
       ...activeSub,
       status: 'canceled',
       cancelReason
-    });
+    };
+
+    await cancelSubscription(activeSub.id, cancelReason);
+    setActiveSubState(updatedSub);
+    try {
+      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
+    } catch (e) {}
+
     setIsCancelModalOpen(false);
     setCancelStep(1);
     setActionNotice('ℹ️ Renovação automática cancelada via Asaas. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
