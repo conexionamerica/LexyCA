@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { pauseAsaasSubscription, resumeAsaasSubscription, cancelAsaasSubscription } from '../lib/asaasPaymentService';
 import { mockTutors as initialMockTutors } from '../data/mockTutors';
 
 const MarketplaceContext = createContext(undefined);
@@ -1097,24 +1098,44 @@ const isFakeMockTutor = (t) => {
   const pauseSubscription = async (subscriptionId, days = 20) => {
     const pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === subscriptionId) {
-        return {
-          ...s,
-          status: 'paused',
-          pausedUntil,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return s;
-    }));
+    // 1. Enviar solicitação de pausa para a API do Asaas
+    try {
+      await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+    } catch (asaasErr) {
+      console.warn('⚠️ Aviso ao pausar assinatura na API Asaas:', asaasErr);
+    }
 
+    // 2. Atualizar estado local do React
+    let updatedList = [];
+    setSubscriptions(prev => {
+      updatedList = prev.map(s => {
+        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+          return {
+            ...s,
+            status: 'paused',
+            pausedUntil,
+            nextBillingDate: pausedUntil,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return s;
+      });
+      return updatedList;
+    });
+
+    // 3. Atualizar cache no LocalStorage para resistir ao F5
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+    } catch (e) {}
+
+    // 4. Persistir no Supabase
     try {
       await supabase
         .from('subscriptions')
         .update({
           status: 'paused',
           paused_until: pausedUntil,
+          next_billing_date: pausedUntil,
           updated_at: new Date().toISOString()
         })
         .eq('id', subscriptionId);
@@ -1126,18 +1147,36 @@ const isFakeMockTutor = (t) => {
   };
 
   const resumeSubscription = async (subscriptionId) => {
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === subscriptionId) {
-        return {
-          ...s,
-          status: 'active',
-          pausedUntil: null,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return s;
-    }));
+    // 1. Enviar solicitação de reativação para a API do Asaas
+    try {
+      await resumeAsaasSubscription({ subscriptionId });
+    } catch (asaasErr) {
+      console.warn('⚠️ Aviso ao reativar assinatura na API Asaas:', asaasErr);
+    }
 
+    // 2. Atualizar estado local do React
+    let updatedList = [];
+    setSubscriptions(prev => {
+      updatedList = prev.map(s => {
+        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+          return {
+            ...s,
+            status: 'active',
+            pausedUntil: null,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return s;
+      });
+      return updatedList;
+    });
+
+    // 3. Atualizar cache no LocalStorage
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+    } catch (e) {}
+
+    // 4. Persistir no Supabase
     try {
       await supabase
         .from('subscriptions')
@@ -1155,18 +1194,36 @@ const isFakeMockTutor = (t) => {
   };
 
   const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === subscriptionId) {
-        return {
-          ...s,
-          status: 'canceled',
-          cancelReason: reason,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return s;
-    }));
+    // 1. Enviar solicitação de cancelamento para a API do Asaas
+    try {
+      await cancelAsaasSubscription({ subscriptionId, reason });
+    } catch (asaasErr) {
+      console.warn('⚠️ Aviso ao cancelar assinatura na API Asaas:', asaasErr);
+    }
 
+    // 2. Atualizar estado local do React
+    let updatedList = [];
+    setSubscriptions(prev => {
+      updatedList = prev.map(s => {
+        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+          return {
+            ...s,
+            status: 'canceled',
+            cancelReason: reason,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return s;
+      });
+      return updatedList;
+    });
+
+    // 3. Atualizar cache no LocalStorage
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+    } catch (e) {}
+
+    // 4. Persistir no Supabase
     try {
       await supabase
         .from('subscriptions')

@@ -166,3 +166,58 @@ export const processAsaasTransfer = async (transferData) => {
     };
   }
 };
+
+/**
+ * Pausa uma Assinatura no Asaas (por até 20 dias)
+ */
+export const pauseAsaasSubscription = async ({ subscriptionId, pauseDays = 20 }) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-pause-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriptionId, pauseDays })
+    });
+    const data = await apiRes.json();
+    return data;
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-pause-subscription:', err);
+    return { success: false, error: 'Falha ao pausar assinatura no Asaas.' };
+  }
+};
+
+/**
+ * Reativa uma Assinatura Pausada no Asaas
+ */
+export const resumeAsaasSubscription = async ({ subscriptionId }) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-resume-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriptionId })
+    });
+    const data = await apiRes.json();
+    return data;
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-resume-subscription:', err);
+    return { success: false, error: 'Falha ao reativar assinatura no Asaas.' };
+  }
+};
+
+/**
+ * Cancela a Renovação Automática da Assinatura no Asaas
+ */
+export const cancelAsaasSubscription = async ({ subscriptionId, reason }) => {
+  try {
+    const apiRes = await fetch('/api/payments/asaas-cancel-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriptionId, reason })
+    });
+    const data = await apiRes.json();
+    return data;
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-cancel-subscription:', err);
+    return { success: false, error: 'Falha ao cancelar assinatura no Asaas.' };
+  }
+};
+
