@@ -611,11 +611,11 @@ export default function StudentDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-black text-amber-300 uppercase tracking-wide">
-                        Parabéns! Você ganhou 3 Aulas Grátis! 🎁
+                        Parabéns! 3 Aulas Experimentais Grátis Liberadas 🎁
                       </h3>
                     </div>
                     <p className="text-xs text-slate-200 leading-relaxed max-w-xl">
-                      Parabéns, passaram-se 3 meses e seu benefício foi renovado! Você ganhou <strong>3 aulas experimentais gratuitas de 30 min</strong> para conhecer novos professores, agendar agora e continuar seus estudos!
+                      Seu benefício trimestral foi renovado com sucesso! Você tem <strong>3 aulas gratuitas de 30 min</strong> para testar novos professores nativos e acelerar sua fluência.
                     </p>
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function StudentDashboard() {
                   className="bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-xs px-5 py-3 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer transform hover:scale-105 flex items-center gap-1.5"
                 >
                   <Gift className="w-4 h-4 fill-slate-950 text-slate-950" />
-                  <span>Agenda tuas Aulas Experimentais Já 🚀</span>
+                  <span>Agendar Aulas Grátis Agora 🚀</span>
                 </button>
               </div>
             )}
