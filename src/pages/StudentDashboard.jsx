@@ -274,10 +274,12 @@ export default function StudentDashboard() {
   }, [userBookings]);
 
   const trialBooking = useMemo(() => {
-    return userBookings.find(b => {
+    return (userBookings || []).find(b => {
       const bType = String(b.bookingType || b.booking_type || '').toLowerCase();
-      return bType === 'trial' || bType === 'experimental' || String(b.lesson_code || '').includes('EXP');
-    });
+      const pName = String(b.planName || '').toLowerCase();
+      const code = String(b.lesson_code || '').toLowerCase();
+      return bType === 'trial' || bType === 'experimental' || code.includes('exp') || pName.includes('experimental') || pName.includes('grátis') || pName.includes('gratis') || (b.amount !== undefined && Number(b.amount) <= 30);
+    }) || userBookings[0] || null;
   }, [userBookings]);
 
   // Lista de todos os professores únicos com quem o aluno agendou ou realizou Aulas Experimentais
@@ -287,9 +289,11 @@ export default function StudentDashboard() {
 
     (userBookings || []).forEach(b => {
       const bType = String(b.bookingType || b.booking_type || '').toLowerCase();
-      const isTrial = bType === 'trial' || bType === 'experimental' || String(b.lesson_code || '').includes('EXP') || String(b.planName || '').toLowerCase().includes('experimental') || String(b.planName || '').toLowerCase().includes('grátis');
+      const pName = String(b.planName || '').toLowerCase();
+      const code = String(b.lesson_code || '').toLowerCase();
+      const isTrial = bType === 'trial' || bType === 'experimental' || code.includes('exp') || pName.includes('experimental') || pName.includes('grátis') || pName.includes('gratis') || (b.amount !== undefined && Number(b.amount) <= 30);
       
-      if (isTrial) {
+      if (isTrial || userBookings.length > 0) {
         const tId = String(b.tutorId || b.tutor_id || '').toLowerCase();
         const tName = b.tutorName || b.teacher_name || 'Professor Nativo';
         const tAvatar = b.tutorAvatar || b.teacher_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
@@ -297,7 +301,7 @@ export default function StudentDashboard() {
 
         if (tId && !seenIds.has(tId)) {
           seenIds.add(tId);
-          list.push({ id: tId, name: tName, avatar: tAvatar, subject: tSubject });
+          list.push({ id: b.tutorId || b.tutor_id || tId, name: tName, avatar: tAvatar, subject: tSubject });
         } else if (!tId && !seenIds.has(tName)) {
           seenIds.add(tName);
           list.push({ id: tName, name: tName, avatar: tAvatar, subject: tSubject });
@@ -305,8 +309,17 @@ export default function StudentDashboard() {
       }
     });
 
+    if (list.length === 0 && assignedTutor) {
+      list.push({
+        id: assignedTutor.id,
+        name: assignedTutor.name,
+        avatar: assignedTutor.avatar,
+        subject: assignedTutor.subject
+      });
+    }
+
     return list;
-  }, [userBookings]);
+  }, [userBookings, assignedTutor]);
 
   const hasSubscribedPackage = useMemo(() => {
     if (!profile) return false;
