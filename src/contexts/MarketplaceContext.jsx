@@ -737,8 +737,23 @@ const isFakeMockTutor = (t) => {
     return Math.max(0, studentTrialBookingsFromDb.length - 1);
   }, [studentTrialBookingsFromDb, hasCompletedFirstTrial]);
 
+  // Estado de simulação rápida para teste dos 3 meses de renovação da Garantia
+  const [simulate3MonthsPassed, setSimulate3MonthsPassed] = useState(() => {
+    return localStorage.getItem('lexy_simulated_3_months') === 'true';
+  });
+
+  const toggleSimulate3Months = () => {
+    setSimulate3MonthsPassed(prev => {
+      const next = !prev;
+      localStorage.setItem('lexy_simulated_3_months', String(next));
+      return next;
+    });
+  };
+
   // Regla de Cooldown de 3 Meses: Verificar la fecha en que se consumió la 3ª aula gratis
   const isGuaranteeInCooldown = useMemo(() => {
+    if (simulate3MonthsPassed) return false; // Se a simulação de 3 meses estiver ativa, ignora o cooldown!
+
     if (studentTrialBookingsFromDb.length < 4) return false; // 1 paga + 3 gratis = 4 en total
     
     // La 4ª aula agendada en total (índice 3) fue la 3ª aula gratis de garantía
@@ -751,14 +766,15 @@ const isFakeMockTutor = (t) => {
     // Calcular diferencia en meses
     const diffMonths = (now.getFullYear() - thirdTrialDate.getFullYear()) * 12 + (now.getMonth() - thirdTrialDate.getMonth());
     return diffMonths < 3;
-  }, [studentTrialBookingsFromDb]);
+  }, [studentTrialBookingsFromDb, simulate3MonthsPassed]);
 
   // Aulas experimentais gratuitas restantes no ciclo atual (0 se em cooldown de 3 meses ou se 1ª aula não foi concluída)
   const remainingFreeTrials = useMemo(() => {
+    if (simulate3MonthsPassed) return 3; // Se simular 3 meses passados, força 3 aulas grátis ativas!
     if (!hasCompletedFirstTrial) return 0;
     if (isGuaranteeInCooldown) return 0;
     return Math.max(0, maxFreeTrials - currentCycleFreeTrialsCount);
-  }, [hasCompletedFirstTrial, isGuaranteeInCooldown, currentCycleFreeTrialsCount]);
+  }, [hasCompletedFirstTrial, isGuaranteeInCooldown, currentCycleFreeTrialsCount, simulate3MonthsPassed]);
 
   const getTrialEligibility = (tutorId) => {
     const hasUsedWithThisTutor = (usedTrials || []).includes(tutorId);
@@ -1614,6 +1630,8 @@ const isFakeMockTutor = (t) => {
       getTrialEligibility,
       maxFreeTrials,
       remainingFreeTrials,
+      simulate3MonthsPassed,
+      toggleSimulate3Months,
       registerTutor,
       approveTutor,
       rejectTutor,

@@ -20,7 +20,8 @@ export default function StudentDashboard() {
   const { 
     student, tutors, bookings, completeBooking, 
     announcements, directChatMessages, sendDirectMessage, subscriptions, teacherAvailability,
-    getTrialEligibility, remainingFreeTrials, maxFreeTrials
+    getTrialEligibility, remainingFreeTrials, maxFreeTrials,
+    simulate3MonthsPassed, toggleSimulate3Months
   } = useMarketplace();
   const { profile, signOut, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
@@ -577,30 +578,54 @@ export default function StudentDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">{t.studentGreetingSub || "Pronto para dominar um novo idioma hoje?"}</p>
             </div>
 
-            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) - Só exibe quando desbloqueadas após a 1ª aula concluída */}
+            {/* Botão Dev/Teste para Simular o Fim dos 3 Meses */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs">
+              <span className="text-slate-400 text-[11px] font-medium flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Simulação do Cooldown: <strong>{simulate3MonthsPassed ? '⚡ 3 Meses Passados (Benefício Reativado)' : '⏳ Aguardando 3 Meses'}</strong></span>
+              </span>
+              <button
+                type="button"
+                onClick={toggleSimulate3Months}
+                className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer border ${
+                  simulate3MonthsPassed 
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+                }`}
+              >
+                {simulate3MonthsPassed ? '🔄 Resetar Simulação' : '🚀 Simular +3 Meses Agora'}
+              </button>
+            </div>
+
+            {/* Widget Garantia de Satisfação (Aulas Experimentais Gratuitas) - Anúncio de 3 Meses */}
             {remainingFreeTrials > 0 && (
-              <div className="bg-gradient-to-r from-amber-500/10 via-cyan-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0">
-                    <Gift className="w-5 h-5" />
+              <div className="bg-gradient-to-r from-amber-500/20 via-emerald-500/15 to-cyan-500/20 border-2 border-amber-400/60 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl animate-fade-in relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-amber-400 text-slate-950 font-black text-[9px] px-3 py-0.5 rounded-bl-xl uppercase tracking-wider">
+                  🎉 RENOVADO A CADA 3 MESES
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-lg ring-4 ring-amber-400/20">
+                    <Sparkles className="w-6 h-6 fill-slate-950" />
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-black text-amber-300 uppercase tracking-wide">Garantia de Satisfação Lexy</h3>
-                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">
-                        {remainingFreeTrials} de {maxFreeTrials || 3} Grátis Desbloqueadas
-                      </span>
+                      <h3 className="text-sm font-black text-amber-300 uppercase tracking-wide">
+                        Parabéns! Você ganhou 3 Aulas Grátis! 🎁
+                      </h3>
                     </div>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      Garantia Ativa! Você tem <strong>{remainingFreeTrials} aula(s) experimental(is) GRATUITA(S)</strong> para agendar e conhecer outros professores.
+                    <p className="text-xs text-slate-200 leading-relaxed max-w-xl">
+                      Parabéns, passaram-se 3 meses e seu benefício foi renovado! Você ganhou <strong>3 aulas experimentais gratuitas de 30 min</strong> para conhecer novos professores, agendar agora e continuar seus estudos!
                     </p>
                   </div>
                 </div>
+
                 <button
-                  onClick={() => navigate('/explore')}
-                  className="bg-gradient-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow transition-all shrink-0 cursor-pointer"
+                  onClick={() => navigate('/dashboard/student?tab=catalogo')}
+                  className="bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-xs px-5 py-3 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer transform hover:scale-105 flex items-center gap-1.5"
                 >
-                  Usar Aula Grátis 🎁
+                  <Gift className="w-4 h-4 fill-slate-950 text-slate-950" />
+                  <span>Agenda tuas Aulas Experimentais Já 🚀</span>
                 </button>
               </div>
             )}
