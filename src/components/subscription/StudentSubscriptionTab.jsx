@@ -21,12 +21,14 @@ export default function StudentSubscriptionTab() {
   const studentMatricula = profile?.matricula_code || 'LXY-2026-784219';
   
   const userSubscriptions = useMemo(() => {
-    if (!profile) return [];
+    if (!subscriptions || subscriptions.length === 0) return [];
+    if (!profile) return subscriptions;
+
     const pId = String(profile.id || '').toLowerCase();
     const pEmail = String(profile.email || '').toLowerCase();
     const pMat = String(profile.matricula_code || '').toLowerCase();
 
-    return (subscriptions || []).filter(sub => {
+    const filtered = (subscriptions || []).filter(sub => {
       const sStudentId = String(sub.studentId || '').toLowerCase();
       const sStudentEmail = String(sub.studentEmail || '').toLowerCase();
       const sStudentMat = String(sub.studentMatricula || '').toLowerCase();
@@ -36,8 +38,10 @@ export default function StudentSubscriptionTab() {
                (pEmail && sStudentEmail === pEmail) || 
                (pMat && sStudentMat === pMat);
       }
-      return false;
+      return true;
     });
+
+    return filtered.length > 0 ? filtered : subscriptions;
   }, [subscriptions, profile]);
 
   const [activeSubState, setActiveSubState] = useState(() => {
@@ -50,9 +54,15 @@ export default function StudentSubscriptionTab() {
   });
 
   const activeSub = useMemo(() => {
-    if (activeSubState) return activeSubState;
-    if (userSubscriptions && userSubscriptions.length > 0) return userSubscriptions[0];
-    return null;
+    if (activeSubState && activeSubState.status && activeSubState.status !== 'active') {
+      return activeSubState;
+    }
+    if (userSubscriptions && userSubscriptions.length > 0) {
+      const nonActive = userSubscriptions.find(s => s.status && s.status !== 'active');
+      if (nonActive) return nonActive;
+      return activeSubState || userSubscriptions[0];
+    }
+    return activeSubState || null;
   }, [activeSubState, userSubscriptions]);
 
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);

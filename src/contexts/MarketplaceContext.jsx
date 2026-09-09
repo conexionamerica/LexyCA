@@ -1137,18 +1137,31 @@ const isFakeMockTutor = (t) => {
         return s;
       });
 
-      if (!matched && updatedList.length > 0) {
-        updatedList[0] = {
-          ...updatedList[0],
-          status: 'paused',
-          pausedUntil,
-          nextBillingDate: pausedUntil,
-          updatedAt: new Date().toISOString()
-        };
+      if (!matched) {
+        if (updatedList.length > 0) {
+          updatedList[0] = {
+            ...updatedList[0],
+            status: 'paused',
+            pausedUntil,
+            nextBillingDate: pausedUntil,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          updatedList.push({
+            id: subscriptionId || `sub-${Date.now()}`,
+            status: 'paused',
+            pausedUntil,
+            nextBillingDate: pausedUntil,
+            updatedAt: new Date().toISOString()
+          });
+        }
       }
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+        if (updatedList[0]) {
+          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
+        }
       } catch (e) {}
       return updatedList;
     });
@@ -1198,17 +1211,29 @@ const isFakeMockTutor = (t) => {
         return s;
       });
 
-      if (!matched && updatedList.length > 0) {
-        updatedList[0] = {
-          ...updatedList[0],
-          status: 'active',
-          pausedUntil: null,
-          updatedAt: new Date().toISOString()
-        };
+      if (!matched) {
+        if (updatedList.length > 0) {
+          updatedList[0] = {
+            ...updatedList[0],
+            status: 'active',
+            pausedUntil: null,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          updatedList.push({
+            id: subscriptionId || `sub-${Date.now()}`,
+            status: 'active',
+            pausedUntil: null,
+            updatedAt: new Date().toISOString()
+          });
+        }
       }
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+        if (updatedList[0]) {
+          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
+        }
       } catch (e) {}
       return updatedList;
     });
@@ -1257,17 +1282,29 @@ const isFakeMockTutor = (t) => {
         return s;
       });
 
-      if (!matched && updatedList.length > 0) {
-        updatedList[0] = {
-          ...updatedList[0],
-          status: 'canceled',
-          cancelReason: reason,
-          updatedAt: new Date().toISOString()
-        };
+      if (!matched) {
+        if (updatedList.length > 0) {
+          updatedList[0] = {
+            ...updatedList[0],
+            status: 'canceled',
+            cancelReason: reason,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          updatedList.push({
+            id: subscriptionId || `sub-${Date.now()}`,
+            status: 'canceled',
+            cancelReason: reason,
+            updatedAt: new Date().toISOString()
+          });
+        }
       }
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+        if (updatedList[0]) {
+          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
+        }
       } catch (e) {}
       return updatedList;
     });
