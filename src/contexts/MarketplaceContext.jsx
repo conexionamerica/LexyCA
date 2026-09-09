@@ -498,6 +498,8 @@ const isFakeMockTutor = (t) => {
             bookingType: dbApt.booking_type || 'regular',
             amount: Number(dbApt.amount || dbApt.price || 0),
             status: dbApt.status || 'confirmed',
+            feedback: dbApt.feedback || dbApt.teacher_notes || dbApt.notes || dbApt.observation || '',
+            teacher_notes: dbApt.teacher_notes || dbApt.feedback || '',
             createdAt: dbApt.created_at || new Date().toISOString()
           }));
 

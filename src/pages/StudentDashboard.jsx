@@ -392,7 +392,11 @@ export default function StudentDashboard() {
   const rescheduleTargetTutor = useMemo(() => {
     if (!selectedBookingForReschedule) return null;
     const bTutorId = String(selectedBookingForReschedule.tutorId || selectedBookingForReschedule.tutor_id || '').toLowerCase();
-    return tutors.find(t => String(t.id).toLowerCase() === bTutorId || (t.email && String(t.email).toLowerCase() === bTutorEmail)) || null;
+    const bTutorEmail = String(selectedBookingForReschedule.tutorEmail || selectedBookingForReschedule.tutor_email || '').toLowerCase();
+    return tutors.find(t => 
+      (bTutorId && String(t.id).toLowerCase() === bTutorId) || 
+      (bTutorEmail && t.email && String(t.email).toLowerCase() === bTutorEmail)
+    ) || null;
   }, [selectedBookingForReschedule, tutors]);
 
   // Função para buscar os slots verdadeiramente LIVRES do professor no dia
@@ -2216,8 +2220,13 @@ export default function StudentDashboard() {
                 </h4>
                 
                 <p className="text-slate-200 leading-relaxed bg-slate-950/80 border border-slate-800 p-3.5 rounded-xl text-xs font-medium">
-                  {selectedBookingForFeedback.feedback || selectedBookingForFeedback.teacher_notes || selectedBookingForFeedback.notes || 
-                    `"Excelente participação na aula! Demonstrou grande evolução na pronúncia, boa fluidez nas frases estruturadas e excelente retenção de vocabulário. Recomendado continuar com o plano de conversação semanal."`}
+                  {selectedBookingForFeedback.feedback || selectedBookingForFeedback.teacher_notes || selectedBookingForFeedback.notes || selectedBookingForFeedback.observation ? (
+                    `"${selectedBookingForFeedback.feedback || selectedBookingForFeedback.teacher_notes || selectedBookingForFeedback.notes || selectedBookingForFeedback.observation}"`
+                  ) : (
+                    <span className="text-amber-400 font-semibold italic">
+                      ℹ️ O professor ainda não registrou as observações/feedback detalhado desta aula na base de dados. Assim que o professor salvar a avaliação no painel, ela aparecerá automaticamente aqui.
+                    </span>
+                  )}
                 </p>
               </div>
 
