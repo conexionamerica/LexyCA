@@ -604,7 +604,7 @@ export default function StudentDashboard() {
   };
 
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
-  const [lexySpaceDateFilter, setLexySpaceDateFilter] = useState('todas'); // 'hoje' | 'amanha' | 'todas'
+  const [lexySpaceDateFilter, setLexySpaceDateFilter] = useState('hoje'); // 'hoje' | 'amanha' | 'todas'
 
   // Helper para categorizar aulas em Hoje, Amanhã ou Outras (Suporta ISO YYYY-MM-DD, BR DD/MM/YYYY e Nomes de Dias)
   const getBookingDayCategory = (dayStr, dateStr, isoDateStr) => {
