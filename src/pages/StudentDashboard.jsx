@@ -300,22 +300,48 @@ export default function StudentDashboard() {
         const tAvatar = b.tutorAvatar || b.teacher_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
         const tSubject = b.tutorSubject || b.subject || 'Idiomas';
 
+        const matchingTutor = (tutors || []).find(t => 
+          String(t.id).toLowerCase() === tId || 
+          String(t.name).toLowerCase() === tName.toLowerCase() ||
+          String(t.email || '').toLowerCase() === tId
+        );
+
+        const hourlyRate = Number(matchingTutor?.hourlyRate || matchingTutor?.hourly_rate || b.hourlyRate || b.hourly_rate || 20);
+        const startingPrice = (hourlyRate * 4).toFixed(2); // Valor inicial a partir del paquete Start (4 horas)
+
         if (tId && !seenIds.has(tId)) {
           seenIds.add(tId);
-          list.push({ id: b.tutorId || b.tutor_id || tId, name: tName, avatar: tAvatar, subject: tSubject });
+          list.push({ 
+            id: b.tutorId || b.tutor_id || tId, 
+            name: tName, 
+            avatar: tAvatar, 
+            subject: tSubject,
+            hourlyRate,
+            startingPrice
+          });
         } else if (!tId && !seenIds.has(tName)) {
           seenIds.add(tName);
-          list.push({ id: tName, name: tName, avatar: tAvatar, subject: tSubject });
+          list.push({ 
+            id: tName, 
+            name: tName, 
+            avatar: tAvatar, 
+            subject: tSubject,
+            hourlyRate,
+            startingPrice
+          });
         }
       }
     });
 
     if (list.length === 0 && assignedTutor) {
+      const hourlyRate = Number(assignedTutor.hourlyRate || assignedTutor.hourly_rate || 20);
       list.push({
         id: assignedTutor.id,
         name: assignedTutor.name,
         avatar: assignedTutor.avatar,
-        subject: assignedTutor.subject
+        subject: assignedTutor.subject,
+        hourlyRate,
+        startingPrice: (hourlyRate * 4).toFixed(2)
       });
     }
 
@@ -1844,44 +1870,53 @@ export default function StudentDashboard() {
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 border border-slate-800 rounded-2xl p-3.5">
-              Selecione o professor nativo para visualizar a agenda de horários fixos e escolher o pacote de aulas recorrente de 30 dias com desconto:
-            </p>
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
+              {trialTutorsList.map((tutorObj) => {
+                const displayName = tutorObj.name && tutorObj.name.includes('@') ? tutorObj.name.split('@')[0] : (tutorObj.name || 'Professor Nativo');
+                const displaySubject = tutorObj.subject || 'Espanhol';
+                const startingPrice = tutorObj.startingPrice || '80.00';
 
-            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
-              {trialTutorsList.map((tutorObj) => (
-                <div
-                  key={tutorObj.id}
-                  className="bg-slate-900 border border-slate-800 hover:border-amber-400/80 p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all hover:bg-slate-850 shadow-md group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={tutorObj.avatar}
-                      alt={tutorObj.name}
-                      className="w-12 h-12 rounded-xl object-cover border border-amber-400/40 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <h4 className="font-extrabold text-white text-sm truncate group-hover:text-amber-300 transition-colors">
-                        {tutorObj.name}
-                      </h4>
-                      <span className="text-xs text-cyan-400 font-medium block truncate">
-                        {tutorObj.subject} • Aula Experimental Concluída
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setIsSelectTutorModalOpen(false);
-                      setSearchParams({ tab: 'meu-plano', tutorId: tutorObj.id, subscribe: 'true' });
-                    }}
-                    className="bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+                return (
+                  <div
+                    key={tutorObj.id}
+                    className="bg-slate-900 border border-slate-800/90 hover:border-amber-400/60 p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all hover:bg-slate-850 shadow-md group"
                   >
-                    <Zap className="w-4 h-4 fill-slate-950" />
-                    <span>Assinar Plano ⚡</span>
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <img
+                        src={tutorObj.avatar}
+                        alt={displayName}
+                        className="w-12 h-12 rounded-2xl object-cover border-2 border-cyan-500/30 shrink-0 shadow-sm"
+                      />
+                      <div className="min-w-0 space-y-0.5">
+                        <h4 className="font-black text-white text-sm truncate group-hover:text-amber-300 transition-colors">
+                          {displayName}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-300 font-semibold bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                            {displaySubject}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setIsSelectTutorModalOpen(false);
+                        setSearchParams({ tab: 'meu-plano', tutorId: tutorObj.id, subscribe: 'true' });
+                      }}
+                      className="bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all shrink-0 cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center transform hover:scale-[1.02]"
+                    >
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                        <span>Assinar Plano</span>
+                      </span>
+                      <span className="text-[10px] opacity-90 font-bold">
+                        A partir de R$ {startingPrice}/mês
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-3">
