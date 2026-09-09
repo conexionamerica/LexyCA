@@ -92,17 +92,25 @@ export default function StudentWallet() {
       return (pId && sId === pId) || (pEmail && sEmail === pEmail);
     });
 
-    const bookingTxList = studentBookings.map(b => ({
-      id: `tx_booking_${b.id}`,
-      studentId: profile.id,
-      studentEmail: profile.email,
-      desc: `Agendamento: ${b.tutorName || 'Professor'} (${b.day} às ${b.time})`,
-      date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
-      amount: b.amount || 20,
-      lessons: b.planHours || 1,
-      type: 'payment',
-      status: b.status === 'confirmed' ? 'Concluído' : b.status || 'Concluído'
-    }));
+    const bookingTxList = studentBookings.map(b => {
+      const isFree = b.isFree || b.is_free || b.amount === 0 || b.totalAmount === 0 || b.bookingType === 'trial' || String(b.planName || '').toLowerCase().includes('grátis') || String(b.planName || '').toLowerCase().includes('gratis');
+      const realAmount = isFree ? 0 : (b.totalAmount !== undefined ? b.totalAmount : (b.amount !== undefined ? b.amount : 20));
+      const isTrialGuaranty = isFree || (b.bookingType === 'trial');
+
+      return {
+        id: `tx_booking_${b.id}`,
+        studentId: profile.id,
+        studentEmail: profile.email,
+        desc: isTrialGuaranty
+          ? `Aula Experimental GRÁTIS (${b.tutorName || 'Professor'} - Garantia de Satisfação)`
+          : `Agendamento: ${b.tutorName || 'Professor'} (${b.day} às ${b.time})`,
+        date: b.createdAt ? new Date(b.createdAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
+        amount: realAmount,
+        lessons: b.planHours || 1,
+        type: 'payment',
+        status: b.status === 'confirmed' ? 'Concluído' : b.status || 'Concluído'
+      };
+    });
 
     const allTx = [...combinedRaw, ...bookingTxList];
 
@@ -367,9 +375,9 @@ export default function StudentWallet() {
 
                 <div className="text-right">
                   <span className={`font-mono font-semibold text-xs block ${
-                    item.type === 'recharge' ? 'text-emerald-400' : 'text-slate-300'
+                    item.amount === 0 ? 'text-amber-400' : (item.type === 'recharge' ? 'text-emerald-400' : 'text-slate-300')
                   }`}>
-                    {item.type === 'recharge' ? '+' : ''}R$ {Math.abs(item.amount).toFixed(2)}
+                    {item.amount === 0 ? 'R$ 0.00 (GRÁTIS)' : (item.type === 'recharge' ? '+R$ ' : 'R$ ') + Math.abs(item.amount || 0).toFixed(2)}
                   </span>
                   <span className="bg-slate-800 text-slate-300 text-[9px] px-1.5 py-0.5 rounded border border-slate-700/60 inline-block mt-0.5">
                     {item.status || 'Concluído'}

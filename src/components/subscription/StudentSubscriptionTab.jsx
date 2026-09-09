@@ -729,20 +729,25 @@ export default function StudentSubscriptionTab() {
           </div>
         ) : (
           <div className="divide-y divide-slate-800/60">
-            {userHistory.map((item, idx) => (
-              <div key={item.id || idx} className="py-3 flex items-center justify-between text-xs">
-                <div className="space-y-0.5">
-                  <span className="font-bold text-white block">{item.desc || 'Pagamento Lexy Platform'}</span>
-                  <span className="text-[11px] text-slate-400 font-mono">{item.date}</span>
+            {userHistory.map((item, idx) => {
+              const isFree = item.amount === 0 || String(item.desc || '').toLowerCase().includes('grátis') || String(item.desc || '').toLowerCase().includes('gratis');
+              return (
+                <div key={item.id || idx} className="py-3 flex items-center justify-between text-xs">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-white block">{item.desc || 'Pagamento Lexy Platform'}</span>
+                    <span className="text-[11px] text-slate-400 font-mono">{item.date}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className={`font-extrabold block ${isFree ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {isFree ? 'R$ 0.00 (GRÁTIS)' : `R$ ${Number(item.amount || 0).toFixed(2)}`}
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
+                      {item.status || 'Concluído'}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="font-extrabold text-emerald-400 block">R$ {Number(item.amount || 0).toFixed(2)}</span>
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
-                    {item.status || 'Concluído'}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
