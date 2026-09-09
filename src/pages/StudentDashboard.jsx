@@ -252,6 +252,26 @@ export default function StudentDashboard() {
   const [myBookingsList, setMyBookingsList] = useState(userBookings);
   const [isTrialBannerDismissed, setIsTrialBannerDismissed] = useState(false);
 
+  // Estadísticas exclusivas de Aulas del Perfil del Alumno (Leídas directamente de Supabase `aulas.status`)
+  const studentLessonStats = useMemo(() => {
+    let agendadas = 0;
+    let realizadas = 0;
+    let faltas = 0;
+
+    userBookings.forEach(b => {
+      const st = String(b.status || '').toLowerCase().trim();
+      if (st === 'confirmed' || st === 'rescheduled' || st === 'pending' || st === 'agendada' || st === 'confirmada') {
+        agendadas += 1;
+      } else if (st === 'concluida' || st === 'completed' || st === 'realizada') {
+        realizadas += 1;
+      } else if (st === 'falta' || st === 'absent' || st === 'missed') {
+        faltas += 1;
+      }
+    });
+
+    return { agendadas, realizadas, faltas };
+  }, [userBookings]);
+
   const trialBooking = useMemo(() => {
     return userBookings.find(b => {
       const bType = String(b.bookingType || b.booking_type || '').toLowerCase();
@@ -791,35 +811,39 @@ export default function StudentDashboard() {
           {/* COLUMNA LATERAL / BARRA DERECHA (span-1) */}
           <div className="space-y-4">
             
-            {/* Widget Billetera LexyPay (Estilizada e Sobria com UI Kit) */}
-            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800/60 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 flex items-center justify-center font-bold">
-                    <CreditCard className="w-3.5 h-3.5" />
+            {/* Widget de Métricas de Aulas do Aluno (Substituindo o antigo widget de Horas/Créditos) */}
+            <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/40 rounded-xl p-4">
+              <div className="grid grid-cols-3 divide-x divide-slate-800/80 text-center py-1">
+                {/* AGENDADAS */}
+                <div className="px-2 space-y-1">
+                  <div className="text-2xl font-black text-cyan-400 tracking-tight">
+                    {studentLessonStats.agendadas}
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-xs tracking-wide">LexyPay Wallet</h3>
-                    <span className="text-[10px] text-cyan-400 font-medium block">Carteira Digital</span>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    AGENDADAS
                   </div>
                 </div>
-                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  ● Ativa
-                </span>
-              </div>
 
-              <div className="flex justify-between items-baseline pt-0.5">
-                <span className="text-slate-400 text-xs">Saldo de Horas</span>
-                <span className="text-xl font-bold text-white tracking-tight">{(profile?.wallet_balance ?? student?.walletBalance ?? 0).toFixed(1)} <span className="text-xs font-medium text-cyan-400">Horas</span></span>
-              </div>
+                {/* REALIZADAS */}
+                <div className="px-2 space-y-1">
+                  <div className="text-2xl font-black text-emerald-400 tracking-tight">
+                    {studentLessonStats.realizadas}
+                  </div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    REALIZADAS
+                  </div>
+                </div>
 
-              <button
-                onClick={() => setSearchParams({ tab: 'carteira' })}
-                className="w-full bg-slate-800/80 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-medium px-4 py-2 rounded-xl text-xs transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 text-cyan-400" />
-                <span>+ Recarregar Créditos</span>
-              </button>
+                {/* FALTAS */}
+                <div className="px-2 space-y-1">
+                  <div className="text-2xl font-black text-rose-400 tracking-tight">
+                    {studentLessonStats.faltas}
+                  </div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    FALTAS
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Widget de Notificações / Anúncios Rápidos */}
