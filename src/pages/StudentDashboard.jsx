@@ -585,8 +585,8 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* Modal de Boas-Vindas se ativo */}
-            {showWelcome && (
+            {/* Modal de Boas-Vindas se ativo (somente para alunos novos que ainda NÃO agendaram nenhuma aula) */}
+            {showWelcome && userBookings.length === 0 && (
               <div className="bg-slate-900/40 backdrop-blur-md border border-cyan-500/20 rounded-xl p-4 relative overflow-hidden space-y-2">
                 <button onClick={dismissWelcome} className="absolute top-3 right-3 text-slate-400 hover:text-white cursor-pointer">
                   <X className="w-4 h-4" />
