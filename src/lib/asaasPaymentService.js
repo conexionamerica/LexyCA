@@ -16,14 +16,6 @@ export const DEFAULT_ASAAS_CONFIG = {
 };
 
 export const getAsaasConfig = () => {
-  const saved = localStorage.getItem(LOCAL_STORAGE_KEY_ASAAS_CONFIG);
-  if (saved) {
-    try {
-      return { ...DEFAULT_ASAAS_CONFIG, ...JSON.parse(saved) };
-    } catch (e) {
-      console.error('Erro ao carregar configurações do Asaas', e);
-    }
-  }
   return DEFAULT_ASAAS_CONFIG;
 };
 
