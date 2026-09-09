@@ -379,25 +379,36 @@ const isFakeMockTutor = (t) => {
       try {
         const { data, error } = await query;
         if (!error && data && data.length > 0) {
-          const mapped = data.map(sub => ({
-            id: sub.id,
-            studentId: sub.student_id || sub.studentId,
-            studentEmail: sub.student_email || sub.studentEmail,
-            studentName: sub.student_name || sub.studentName,
-            studentMatricula: sub.student_matricula || sub.studentMatricula,
-            tutorId: sub.tutor_id || sub.tutorId,
-            tutorName: sub.tutor_name || sub.tutorName,
-            tutorAvatar: sub.tutor_avatar || sub.tutorAvatar,
-            tutorSubject: sub.tutor_subject || sub.tutorSubject,
-            planName: sub.plan_name || sub.planName,
-            planHours: Number(sub.plan_hours || sub.planHours || 8),
-            hoursRemaining: Number(sub.hours_remaining || sub.hoursRemaining || 8),
-            monthlyPrice: Number(sub.monthly_price || sub.monthlyPrice || 0),
-            cycleStartDate: sub.cycle_start_date || sub.cycleStartDate,
-            nextBillingDate: sub.next_billing_date || sub.nextBillingDate,
-            cycleEndDate: sub.cycle_end_date || sub.cycleEndDate,
-            status: sub.status || 'active'
-          }));
+          const savedLocal = (() => {
+            try { return JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS) || '[]'); } catch(e) { return []; }
+          })();
+
+          const mapped = data.map(sub => {
+            const localMatch = savedLocal.find(l => String(l.id).toLowerCase() === String(sub.id).toLowerCase());
+            const finalStatus = (localMatch && localMatch.status && localMatch.status !== 'active') 
+              ? localMatch.status 
+              : (sub.status || 'active');
+
+            return {
+              id: sub.id,
+              studentId: sub.student_id || sub.studentId,
+              studentEmail: sub.student_email || sub.studentEmail,
+              studentName: sub.student_name || sub.studentName,
+              studentMatricula: sub.student_matricula || sub.studentMatricula,
+              tutorId: sub.tutor_id || sub.tutorId,
+              tutorName: sub.tutor_name || sub.tutorName,
+              tutorAvatar: sub.tutor_avatar || sub.tutorAvatar,
+              tutorSubject: sub.tutor_subject || sub.tutorSubject,
+              planName: sub.plan_name || sub.planName,
+              planHours: Number(sub.plan_hours || sub.planHours || 8),
+              hoursRemaining: Number(sub.hours_remaining || sub.hoursRemaining || 8),
+              monthlyPrice: Number(sub.monthly_price || sub.monthlyPrice || 0),
+              cycleStartDate: sub.cycle_start_date || sub.cycleStartDate,
+              nextBillingDate: localMatch?.nextBillingDate || sub.next_billing_date || sub.nextBillingDate,
+              cycleEndDate: sub.cycle_end_date || sub.cycleEndDate,
+              status: finalStatus
+            };
+          });
 
           setSubscriptions(mapped);
           localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(mapped));
@@ -1105,11 +1116,10 @@ const isFakeMockTutor = (t) => {
       console.warn('⚠️ Aviso ao pausar assinatura na API Asaas:', asaasErr);
     }
 
-    // 2. Atualizar estado local do React
-    let updatedList = [];
+    // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      updatedList = prev.map(s => {
-        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+      const updatedList = prev.map(s => {
+        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
           return {
             ...s,
             status: 'paused',
@@ -1120,25 +1130,25 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+      } catch (e) {}
       return updatedList;
     });
 
-    // 3. Atualizar cache no LocalStorage para resistir ao F5
+    // 3. Persistir no Supabase
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-    } catch (e) {}
-
-    // 4. Persistir no Supabase
-    try {
-      await supabase
-        .from('subscriptions')
-        .update({
-          status: 'paused',
-          paused_until: pausedUntil,
-          next_billing_date: pausedUntil,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId);
+      if (subscriptionId) {
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'paused',
+            paused_until: pausedUntil,
+            next_billing_date: pausedUntil,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+      }
     } catch (err) {
       console.warn('Erro ao atualizar pausa no Supabase:', err);
     }
@@ -1154,11 +1164,10 @@ const isFakeMockTutor = (t) => {
       console.warn('⚠️ Aviso ao reativar assinatura na API Asaas:', asaasErr);
     }
 
-    // 2. Atualizar estado local do React
-    let updatedList = [];
+    // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      updatedList = prev.map(s => {
-        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+      const updatedList = prev.map(s => {
+        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
           return {
             ...s,
             status: 'active',
@@ -1168,24 +1177,24 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+      } catch (e) {}
       return updatedList;
     });
 
-    // 3. Atualizar cache no LocalStorage
+    // 3. Persistir no Supabase
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-    } catch (e) {}
-
-    // 4. Persistir no Supabase
-    try {
-      await supabase
-        .from('subscriptions')
-        .update({
-          status: 'active',
-          paused_until: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId);
+      if (subscriptionId) {
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'active',
+            paused_until: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+      }
     } catch (err) {
       console.warn('Erro ao atualizar reativação no Supabase:', err);
     }
@@ -1201,11 +1210,10 @@ const isFakeMockTutor = (t) => {
       console.warn('⚠️ Aviso ao cancelar assinatura na API Asaas:', asaasErr);
     }
 
-    // 2. Atualizar estado local do React
-    let updatedList = [];
+    // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      updatedList = prev.map(s => {
-        if (s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId) {
+      const updatedList = prev.map(s => {
+        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
           return {
             ...s,
             status: 'canceled',
@@ -1215,24 +1223,24 @@ const isFakeMockTutor = (t) => {
         }
         return s;
       });
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
+      } catch (e) {}
       return updatedList;
     });
 
-    // 3. Atualizar cache no LocalStorage
+    // 3. Persistir no Supabase
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-    } catch (e) {}
-
-    // 4. Persistir no Supabase
-    try {
-      await supabase
-        .from('subscriptions')
-        .update({
-          status: 'canceled',
-          cancel_reason: reason,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId);
+      if (subscriptionId) {
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'canceled',
+            cancel_reason: reason,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+      }
     } catch (err) {
       console.warn('Erro ao atualizar cancelamento no Supabase:', err);
     }

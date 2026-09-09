@@ -227,9 +227,17 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
     setIsPauseModalOpen(false);
 
-    await pauseSubscription(activeSub.id, 20);
-    setActiveSubState(prev => prev ? { ...prev, status: 'paused' } : null);
-    setActionNotice('⏸️ Assinatura pausada com sucesso via Asaas por 20 dias!');
+    const pauseDaysCount = Number(pauseDays || 20);
+    const pausedUntilDate = new Date(Date.now() + pauseDaysCount * 24 * 60 * 60 * 1000).toISOString();
+
+    await pauseSubscription(activeSub.id, pauseDaysCount);
+    setActiveSubState({
+      ...activeSub,
+      status: 'paused',
+      pausedUntil: pausedUntilDate,
+      nextBillingDate: pausedUntilDate
+    });
+    setActionNotice(`⏸️ Assinatura pausada com sucesso via Asaas por ${pauseDaysCount} dias!`);
     setTimeout(() => setActionNotice(''), 5000);
   };
 
@@ -237,7 +245,11 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
 
     await resumeSubscription(activeSub.id);
-    setActiveSubState(prev => prev ? { ...prev, status: 'active' } : null);
+    setActiveSubState({
+      ...activeSub,
+      status: 'active',
+      pausedUntil: null
+    });
     setActionNotice('⚡ Assinatura reativada com sucesso via Asaas!');
     setTimeout(() => setActionNotice(''), 5000);
   };
@@ -246,7 +258,11 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
 
     await cancelSubscription(activeSub.id, cancelReason);
-    setActiveSubState(prev => prev ? { ...prev, status: 'canceled' } : null);
+    setActiveSubState({
+      ...activeSub,
+      status: 'canceled',
+      cancelReason
+    });
     setIsCancelModalOpen(false);
     setCancelStep(1);
     setActionNotice('ℹ️ Renovação automática cancelada via Asaas. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
