@@ -600,9 +600,16 @@ export default function StudentDashboard() {
   const countTodas = useMemo(() => myBookingsList.filter(b => b.status !== 'canceled').length, [myBookingsList]);
 
   const filteredBookingsList = useMemo(() => {
-    if (!lessonSearchQuery.trim()) return myBookingsList;
+    // 🔒 REGLA EXPLICITA: 'Minhas Aulas Agendadas' muestra EXCLUSIVAMENTE aulas en Estado 1 (Agendada / Pendiente / Reagendada)
+    // Cuando el status pasa a 'concluida' / 'completed' / 'realizada' (Estado 2) o 'falta' / 'absent' / 'missed' (Estado 3), DEJAN de mostrarse aqui.
+    const activeScheduledOnly = myBookingsList.filter(b => {
+      const st = String(b.status || '').toLowerCase().trim();
+      return st === 'confirmed' || st === 'confirmada' || st === 'agendada' || st === 'rescheduled' || st === 'pending';
+    });
+
+    if (!lessonSearchQuery.trim()) return activeScheduledOnly;
     const q = lessonSearchQuery.toLowerCase().trim();
-    return myBookingsList.filter(b => {
+    return activeScheduledOnly.filter(b => {
       const code = String(b.lesson_code || b.id || '').toLowerCase();
       const name = String(b.tutorName || '').toLowerCase();
       const subject = String(b.tutorSubject || '').toLowerCase();
@@ -1781,7 +1788,33 @@ export default function StudentDashboard() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="bg-cyan-500/10 text-cyan-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                        {(() => {
+                          const st = String(b.status || '').toLowerCase().trim();
+                          if (st === 'concluida' || st === 'completed' || st === 'realizada') {
+                            return (
+                              <span className="bg-emerald-500/20 text-emerald-300 font-bold text-[11px] px-2.5 py-1 rounded-lg border border-emerald-500/40 flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Concluída</span>
+                              </span>
+                            );
+                          }
+                          if (st === 'falta' || st === 'absent' || st === 'missed') {
+                            return (
+                              <span className="bg-rose-500/20 text-rose-300 font-bold text-[11px] px-2.5 py-1 rounded-lg border border-rose-500/40 flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                                <span>Falta</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="bg-cyan-500/10 text-cyan-300 font-bold text-[11px] px-2.5 py-1 rounded-lg border border-cyan-500/30 flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Agendada</span>
+                            </span>
+                          );
+                        })()}
+
+                        <span className="bg-slate-950/80 text-slate-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-lg border border-slate-800">
                           Código: {b.lesson_code || b.id}
                         </span>
                       </div>
