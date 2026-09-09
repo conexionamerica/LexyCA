@@ -354,20 +354,55 @@ const isFakeMockTutor = (t) => {
 
 
   // Suscripciones
-  const [subscriptions, setSubscriptions] = useState([]);
+  const [subscriptions, setSubscriptions] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   useEffect(() => {
     async function fetchSubscriptions() {
       // 🔒 AISLAMIENTO: Solo descargar las suscripciones del usuario autenticado
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       const userId = currentSession?.user?.id;
+      const userEmail = currentSession?.user?.email;
+
       let query = supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
       if (userId) {
-        query = query.eq('student_id', userId);
+        query = query.or(`student_id.eq.${userId},student_email.eq.${userEmail || ''}`);
       }
-      const { data, error } = await query;
-      if (!error && data) {
-        setSubscriptions(data);
+
+      try {
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          const mapped = data.map(sub => ({
+            id: sub.id,
+            studentId: sub.student_id || sub.studentId,
+            studentEmail: sub.student_email || sub.studentEmail,
+            studentName: sub.student_name || sub.studentName,
+            studentMatricula: sub.student_matricula || sub.studentMatricula,
+            tutorId: sub.tutor_id || sub.tutorId,
+            tutorName: sub.tutor_name || sub.tutorName,
+            tutorAvatar: sub.tutor_avatar || sub.tutorAvatar,
+            tutorSubject: sub.tutor_subject || sub.tutorSubject,
+            planName: sub.plan_name || sub.planName,
+            planHours: Number(sub.plan_hours || sub.planHours || 8),
+            hoursRemaining: Number(sub.hours_remaining || sub.hoursRemaining || 8),
+            monthlyPrice: Number(sub.monthly_price || sub.monthlyPrice || 0),
+            cycleStartDate: sub.cycle_start_date || sub.cycleStartDate,
+            nextBillingDate: sub.next_billing_date || sub.nextBillingDate,
+            cycleEndDate: sub.cycle_end_date || sub.cycleEndDate,
+            status: sub.status || 'active'
+          }));
+
+          setSubscriptions(mapped);
+          localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(mapped));
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar assinaturas do Supabase:', err);
       }
     }
     fetchSubscriptions();
@@ -1265,7 +1300,41 @@ const isFakeMockTutor = (t) => {
         cycleEndDate: cycleEndDate.toISOString(),
         status: 'active'
       };
+
       setSubscriptions(prev => [newSub, ...prev]);
+
+      // 1. Guardar en localStorage para persisiter sin servidor
+      try {
+        const savedSubs = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS) || '[]');
+        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify([newSub, ...savedSubs]));
+        const userSubKey = `${LOCAL_STORAGE_KEY_SUBSCRIPTIONS}_${effectiveStudentId || 'anon'}`;
+        localStorage.setItem(userSubKey, JSON.stringify([newSub]));
+      } catch (e) {}
+
+      // 2. Persistir en la tabla 'subscriptions' de Supabase
+      try {
+        supabase.from('subscriptions').insert({
+          id: newSub.id,
+          student_id: effectiveStudentId && effectiveStudentId.length > 20 ? effectiveStudentId : null,
+          student_email: effectiveStudentEmail || '',
+          student_name: effectiveStudentName || '',
+          student_matricula: effectiveStudentMatricula || '',
+          tutor_id: tutorId && tutorId.length > 20 ? tutorId : null,
+          tutor_name: tutor.name || '',
+          tutor_avatar: tutor.avatar || '',
+          tutor_subject: tutor.subject || '',
+          plan_name: newSub.planName,
+          plan_hours: newSub.planHours,
+          hours_remaining: newSub.hoursRemaining,
+          monthly_price: newSub.monthlyPrice,
+          cycle_start_date: newSub.cycleStartDate,
+          next_billing_date: newSub.nextBillingDate,
+          cycle_end_date: newSub.cycleEndDate,
+          status: 'active'
+        }).then(({ error }) => {
+          if (error) console.warn('Aviso: insert subscription no Supabase (usando localStorage cache):', error);
+        });
+      } catch (e) {}
     }
 
     // Gerar todas as aulas do ciclo de 30 dias conforme a frequência contratada
