@@ -1396,6 +1396,72 @@ const isFakeMockTutor = (t) => {
     }
   };
 
+  // 🔄 FUNÇÃO DE REAGENDAMENTO COM PERSISTÊNCIA EM SUPABASE E NOTIFICAÇÃO DIRETA AO PROFESSOR
+  const rescheduleBooking = async (bookingId, newDay, newTime, studentName) => {
+    if (!bookingId) return false;
+    const cleanId = String(bookingId).trim();
+
+    let targetBooking = null;
+    setBookings(prev => prev.map(b => {
+      if (String(b.id || '').trim() === cleanId || String(b.lesson_code || '').trim() === cleanId) {
+        targetBooking = b;
+        return { 
+          ...b, 
+          day: newDay, 
+          date: newDay,
+          time: newTime, 
+          status: 'rescheduled',
+          updatedAt: new Date().toISOString() 
+        };
+      }
+      return b;
+    }));
+
+    // Actualizar en Supabase (tabla 'aulas' y/o 'bookings')
+    try {
+      await supabase.from('aulas')
+        .update({ 
+          day: newDay, 
+          date: newDay,
+          time: newTime, 
+          status: 'rescheduled', 
+          updated_at: new Date().toISOString() 
+        })
+        .or(`id.eq.${cleanId},lesson_code.eq.${cleanId}`);
+    } catch (e) {
+      console.warn('Erro ao persisitir reagendamento no Supabase:', e);
+    }
+
+    if (targetBooking) {
+      const tutorId = targetBooking.tutorId || targetBooking.tutor_id;
+      const originalDay = targetBooking.day || targetBooking.date || 'data anterior';
+      const originalTime = targetBooking.time || 'horário anterior';
+      const sName = studentName || targetBooking.studentName || targetBooking.student_name || 'Aluno';
+      const sId = targetBooking.studentId || targetBooking.student_id || 'stud-1';
+
+      // 1. Enviar Mensaje Directo al Chat con el Professor
+      const messageText = `🔄 AVISO DE REAGENDAMENTO: O aluno(a) ${sName} reagendou a aula (Código: ${targetBooking.lesson_code || cleanId}). Data/Hora Original: ${originalDay} às ${originalTime} ➡️ Nova Data/Hora: ${newDay} às ${newTime}. O reagendamento foi confirmado com sucesso pois o novo horário encontra-se 100% disponível em sua agenda!`;
+      
+      await sendDirectMessage({
+        studentId: sId,
+        tutorId: tutorId,
+        senderRole: 'system',
+        senderName: 'Lexy Notificações',
+        text: messageText
+      });
+
+      // 2. Enviar Anúncio/Notificação no Painel do Professor
+      addAnnouncement({
+        target: 'teachers',
+        title: `🔄 Aula Reagendada: ${sName}`,
+        content: `O aluno(a) ${sName} reagendou a aula (Código: ${targetBooking.lesson_code || cleanId}) de ${originalDay} às ${originalTime} para ${newDay} às ${newTime}. O horário estava disponível em sua agenda.`,
+        level: 'info'
+      });
+    }
+
+    return true;
+  };
+
   const completeBooking = (bookingId) => {
     if (!bookingId) return;
     const cleanSearchId = String(bookingId).trim().toLowerCase();
@@ -1647,6 +1713,7 @@ const isFakeMockTutor = (t) => {
       generateLessonCode,
       completeBooking,
       updateBookingStatus,
+      rescheduleBooking,
       autoPurge30DaysHistory
     }}>
       {children}

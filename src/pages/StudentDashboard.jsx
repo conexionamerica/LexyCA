@@ -18,7 +18,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
-    student, tutors, bookings, completeBooking, 
+    student, tutors, bookings, completeBooking, rescheduleBooking,
     announcements, directChatMessages, sendDirectMessage, subscriptions, teacherAvailability,
     getTrialEligibility, remainingFreeTrials, maxFreeTrials,
     simulate3MonthsPassed, toggleSimulate3Months
@@ -491,25 +491,100 @@ export default function StudentDashboard() {
     }
   }, [selectedBookingForReschedule]);
 
-  const handleConfirmReschedule = (e) => {
+  // Estado para controlar advertencia de reagendamento bloqueado por <3 horas
+  const [rescheduleWarningMessage, setRescheduleWarningMessage] = useState('');
+
+  // Helper para verificar se falta menos de 3 horas para o horário agendado da aula
+  const isLessonWithin3Hours = (booking) => {
+    if (!booking) return false;
+    try {
+      const now = new Date();
+      
+      // 1. Tentar parsear data exata se houver isoDateStr, date ou se o dia contiver ISO (YYYY-MM-DD)
+      const rawDateStr = String(booking.date || booking.isoDateStr || booking.day || '').trim();
+      const rawTimeStr = String(booking.time || '00:00').trim();
+
+      const [hours, minutes] = rawTimeStr.split(':').map(n => parseInt(n, 10) || 0);
+
+      let targetDate = null;
+
+      const isoMatch = rawDateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+      const brMatch = rawDateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+
+      if (isoMatch) {
+        targetDate = new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]), hours, minutes);
+      } else if (brMatch) {
+        targetDate = new Date(parseInt(brMatch[3]), parseInt(brMatch[2]) - 1, parseInt(brMatch[1]), hours, minutes);
+      } else {
+        // Se a data for um nome de dia da semana (ex: 'Segunda-feira'), calcular a data do próximo dia correspondente
+        const dayMap = { 'domingo': 0, 'segunda': 1, 'terça': 2, 'terca': 2, 'quarta': 3, 'quinta': 4, 'sexta': 5, 'sábado': 6, 'sabado': 6 };
+        const cleanDay = rawDateStr.toLowerCase().replace('-feira', '').trim();
+        const targetDayNum = dayMap[cleanDay];
+
+        if (targetDayNum !== undefined) {
+          targetDate = new Date();
+          const currentDayNum = targetDate.getDay();
+          let diffDays = targetDayNum - currentDayNum;
+          if (diffDays < 0) diffDays += 7; // Próximo dia da semana
+          targetDate.setDate(targetDate.getDate() + diffDays);
+          targetDate.setHours(hours, minutes, 0, 0);
+        }
+      }
+
+      if (targetDate && !isNaN(targetDate.getTime())) {
+        const diffMs = targetDate.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+        // Se a aula ocorrer nas próximas 3 horas (ou se já estiver no passado/em andamento)
+        return diffHours < 3;
+      }
+    } catch (e) {
+      console.warn('Erro ao calcular horário da aula:', e);
+    }
+    return false;
+  };
+
+  const handleOpenRescheduleModal = (booking) => {
+    // 🔒 REGLA EXPLICITA: Validar antecedencia de mínimo 3 horas
+    if (isLessonWithin3Hours(booking)) {
+      setRescheduleWarningMessage(
+        `⚠️ Não é possível reagendar esta aula. Falta menos de 3 horas para o horário agendado (${booking.day || booking.date} às ${booking.time}). De acordo com as políticas da Lexy, o reagendamento só pode ser realizado com no mínimo 3 horas de antecedência.`
+      );
+      return;
+    }
+    setRescheduleWarningMessage('');
+    setSelectedBookingForReschedule(booking);
+  };
+
+  const handleConfirmReschedule = async (e) => {
     e.preventDefault();
     if (!selectedBookingForReschedule) return;
 
-    // Regra dos 28 Dias: Bloqueio de cancelamento/reagendamento com menos de 12 horas de antecedência
-    const createdTime = new Date(selectedBookingForReschedule.createdAt || Date.now()).getTime();
-    const hoursDiff = Math.abs(Date.now() - createdTime) / (1000 * 60 * 60);
-
-    if (hoursDiff < 12) {
-      setActionSuccessMessage(`⚠️ Regra Nativa Lexy: Cancelamentos e reagendamentos devem ser realizados com no mínimo 12 horas de antecedência. Entre em contato com o suporte com sua Matrícula para auxílio.`);
+    // Dupla verificação de antecedência de 3 horas antes de confirmar
+    if (isLessonWithin3Hours(selectedBookingForReschedule)) {
+      setRescheduleWarningMessage(
+        `⚠️ Reagendamento bloqueado: Falta menos de 3 horas para o início desta aula. As aulas só podem ser reagendadas até com 3 horas ou mais de antecedência.`
+      );
       setSelectedBookingForReschedule(null);
-      setTimeout(() => setActionSuccessMessage(''), 7000);
       return;
     }
 
-    setMyBookingsList(prev => prev.map(b => b.id === selectedBookingForReschedule.id ? { ...b, day: rescheduleDay, time: rescheduleTime, status: 'rescheduled' } : b));
-    setActionSuccessMessage(`🔄 Reagendamento confirmado para ${rescheduleDay} às ${rescheduleTime}! Notificação enviada ao professor.`);
+    const sName = profile?.full_name || currentName;
+    const targetBookingId = selectedBookingForReschedule.id || selectedBookingForReschedule.lesson_code;
+
+    // Executar o reagendamento com notificação ao professor e persistência no Supabase
+    if (rescheduleBooking) {
+      await rescheduleBooking(targetBookingId, rescheduleDay, rescheduleTime, sName);
+    }
+
+    setMyBookingsList(prev => prev.map(b => 
+      (b.id === selectedBookingForReschedule.id || b.lesson_code === selectedBookingForReschedule.lesson_code)
+        ? { ...b, day: rescheduleDay, date: rescheduleDay, time: rescheduleTime, status: 'rescheduled' } 
+        : b
+    ));
+
+    setActionSuccessMessage(`🔄 Reagendamento realizado com sucesso para ${rescheduleDay} às ${rescheduleTime}! Notificação enviada ao professor confirmando a disponibilidade em sua agenda.`);
     setSelectedBookingForReschedule(null);
-    setTimeout(() => setActionSuccessMessage(''), 5000);
+    setTimeout(() => setActionSuccessMessage(''), 8000);
   };
 
   const handleLogout = async () => {
@@ -629,9 +704,27 @@ export default function StudentDashboard() {
     <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 animate-fade-in-up">
 
       {actionSuccessMessage && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3 rounded-xl flex items-center gap-2 text-xs font-medium animate-fade-in-up">
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold animate-fade-in-up shadow-lg">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{actionSuccessMessage}</span>
+        </div>
+      )}
+
+      {rescheduleWarningMessage && (
+        <div className="bg-rose-500/15 border-2 border-rose-500/40 text-rose-200 p-4 rounded-2xl flex items-start justify-between gap-3 text-xs font-semibold animate-fade-in-up shadow-xl backdrop-blur-md">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-extrabold text-white text-xs block uppercase tracking-wider">⚠️ Reagendamento Bloqueado (&lt; 3 Horas de Antecedência)</span>
+              <p className="text-rose-200 text-xs leading-relaxed font-normal">{rescheduleWarningMessage}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setRescheduleWarningMessage('')} 
+            className="text-rose-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -928,7 +1021,7 @@ export default function StudentDashboard() {
 
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
-                          onClick={() => setSelectedBookingForReschedule(booking)}
+                          onClick={() => handleOpenRescheduleModal(booking)}
                           className="flex-1 sm:flex-initial bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-medium px-3 py-1.5 rounded-xl transition-all cursor-pointer"
                         >
                           Reagendar
@@ -1869,7 +1962,7 @@ export default function StudentDashboard() {
                             <>
                               <button
                                 type="button"
-                                onClick={() => setSelectedBookingForReschedule(b)}
+                                onClick={() => handleOpenRescheduleModal(b)}
                                 className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs px-4 py-3 rounded-xl border border-slate-800 transition-all cursor-pointer"
                               >
                                 Reagendar
