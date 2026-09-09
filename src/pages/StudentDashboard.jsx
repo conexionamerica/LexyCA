@@ -252,6 +252,7 @@ export default function StudentDashboard() {
 
   const [myBookingsList, setMyBookingsList] = useState(userBookings);
   const [isTrialBannerDismissed, setIsTrialBannerDismissed] = useState(false);
+  const [isSelectTutorModalOpen, setIsSelectTutorModalOpen] = useState(false);
 
   // Estadísticas exclusivas de Aulas del Perfil del Alumno (Leídas directamente de Supabase `aulas.status`)
   const studentLessonStats = useMemo(() => {
@@ -689,7 +690,7 @@ export default function StudentDashboard() {
                         <span>Gostou da sua Aula Experimental? • Assinatura Recorrente</span>
                       </div>
                       <h3 className="text-base sm:text-lg font-black text-white">
-                        Assine um Plano com seus Professores Experimentais e Aproveite o Desconto!
+                        Assine um Plano de 30 Dias e Aproveite os Descontos!
                       </h3>
                     </div>
                   </div>
@@ -704,61 +705,24 @@ export default function StudentDashboard() {
                 </div>
 
                 <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                  Garanta seu horário fixo e acompanhamento contínuo no idioma! Escolha abaixo com qual professor das suas aulas experimentais você deseja assinar o pacote recorrente de 30 dias:
+                  Se você gostou da sua aula experimental, garanta seu horário fixo e acompanhamento contínuo no idioma! Nossos pacotes de aulas possuem cobrança recorrente <strong className="text-amber-300 font-bold">a cada 30 dias</strong> com renovação automática e descontos exclusivos por aula.
                 </p>
 
-                {/* LISTA ELEGIBLE DE PROFESORES EXPERIMENTALES */}
-                <div className="space-y-2 pt-1">
-                  <span className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider block">
-                    👨‍🏫 Escolha o Professor para Assinar o Plano de 30 Dias:
-                  </span>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {trialTutorsList.map((tutorObj) => (
-                      <div
-                        key={tutorObj.id}
-                        className="bg-slate-950/80 border border-slate-800 hover:border-amber-400/80 p-3 rounded-xl flex items-center justify-between gap-3 transition-all hover:bg-slate-900/90 shadow-md group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={tutorObj.avatar}
-                            alt={tutorObj.name}
-                            className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <h4 className="font-extrabold text-white text-xs truncate group-hover:text-amber-300 transition-colors">
-                              {tutorObj.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-400 block truncate">
-                              {tutorObj.subject} • Aula Experimental Feita
-                            </span>
-                          </div>
-                        </div>
+                <div className="pt-1 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    onClick={() => setIsSelectTutorModalOpen(true)}
+                    className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-xs py-3.5 px-6 rounded-xl shadow-lg shadow-amber-500/25 border border-amber-300/40 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-[1.02]"
+                  >
+                    <Zap className="w-4 h-4 fill-current text-slate-950" />
+                    <span>Ver Pacotes de Aulas Recorrentes (30 Dias) e Assinar</span>
+                  </button>
 
-                        <button
-                          onClick={() => {
-                            setSearchParams({ tab: 'meu-plano', tutorId: tutorObj.id, subscribe: 'true' });
-                          }}
-                          className="bg-gradient-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 text-slate-950 font-black text-[11px] px-3 py-2 rounded-lg shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1"
-                        >
-                          <Zap className="w-3.5 h-3.5 fill-slate-950" />
-                          <span>Assinar Plano</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <span className="text-[11px] text-slate-400">
-                    💡 Quer explorar mais opções antes de decidir?
-                  </span>
                   <button
                     onClick={() => setSearchParams({ tab: 'catalogo' })}
-                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs py-2 px-4 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    className="w-full sm:w-auto bg-slate-900/90 hover:bg-slate-800 text-slate-300 font-bold text-xs py-3.5 px-5 rounded-xl border border-slate-700/80 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Search className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Explorar Catálogo de Professores</span>
+                    <Search className="w-4 h-4 text-cyan-400" />
+                    <span>Explorar Outros Professores</span>
                   </button>
                 </div>
               </div>
@@ -1853,6 +1817,94 @@ export default function StudentDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SELECTOR DE PROFESSORES EXPERIMENTAIS PARA ASSINAR PLANO */}
+      {isSelectTutorModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-950 border border-amber-500/40 rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Com qual professor você deseja assinar?</h3>
+                  <p className="text-[11px] text-slate-400">Escolha um dos professores das suas Aulas Experimentais</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsSelectTutorModalOpen(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 border border-slate-800 rounded-2xl p-3.5">
+              Selecione o professor nativo para visualizar a agenda de horários fixos e escolher o pacote de aulas recorrente de 30 dias com desconto:
+            </p>
+
+            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+              {trialTutorsList.map((tutorObj) => (
+                <div
+                  key={tutorObj.id}
+                  className="bg-slate-900 border border-slate-800 hover:border-amber-400/80 p-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all hover:bg-slate-850 shadow-md group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={tutorObj.avatar}
+                      alt={tutorObj.name}
+                      className="w-12 h-12 rounded-xl object-cover border border-amber-400/40 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-white text-sm truncate group-hover:text-amber-300 transition-colors">
+                        {tutorObj.name}
+                      </h4>
+                      <span className="text-xs text-cyan-400 font-medium block truncate">
+                        {tutorObj.subject} • Aula Experimental Concluída
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsSelectTutorModalOpen(false);
+                      setSearchParams({ tab: 'meu-plano', tutorId: tutorObj.id, subscribe: 'true' });
+                    }}
+                    className="bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:from-amber-300 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Zap className="w-4 h-4 fill-slate-950" />
+                    <span>Assinar Plano ⚡</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSelectTutorModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-800 cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSelectTutorModalOpen(false);
+                  setSearchParams({ tab: 'catalogo' });
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-cyan-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 cursor-pointer flex items-center gap-1.5"
+              >
+                <Search className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Explorar Outros Professores</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

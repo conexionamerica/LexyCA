@@ -388,7 +388,7 @@ export default function StudentSubscriptionTab() {
           <div className="space-y-6">
             
             {/* Banner do Professor Selecionado */}
-            <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40">
+            <div className="glass-panel border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <img 
@@ -399,7 +399,7 @@ export default function StudentSubscriptionTab() {
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold uppercase tracking-wider mb-1">
                       <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Professor Selecionado</span>
+                      <span>Professor Selecionado para Assinatura</span>
                     </div>
                     <h3 className="text-xl font-extrabold text-white">{targetTutor?.name}</h3>
                     <p className="text-xs text-slate-300">{targetTutor?.subject || 'Idiomas'} • Tarifa por hora: <strong className="text-emerald-400 font-bold text-sm">R$ {tutorHourlyRate}.00 / hora</strong></p>
@@ -414,6 +414,33 @@ export default function StudentSubscriptionTab() {
                   </span>
                 </div>
               </div>
+
+              {/* SELETOR DE PROFESSORES PARA ESCOLHER COM QUEM ASSINAR */}
+              {tutors && tutors.length > 1 && (
+                <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5 shrink-0">
+                    <UserCheck className="w-4 h-4 text-cyan-400" />
+                    <span>Deseja assinar com outro professor das suas aulas experimentais?</span>
+                  </span>
+                  
+                  <select
+                    value={targetTutor?.id || ''}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      if (selectedId) {
+                        navigate(`/dashboard/student?tab=meu-plano&tutorId=${selectedId}&subscribe=true`);
+                      }
+                    }}
+                    className="w-full sm:w-auto bg-slate-950 border border-cyan-500/40 hover:border-cyan-400 text-white font-bold rounded-xl px-3.5 py-2 text-xs outline-none cursor-pointer shadow-md"
+                  >
+                    {tutors.map(t => (
+                      <option key={t.id} value={t.id}>
+                        👨‍🏫 {t.name} ({t.subject}) - R$ {t.hourlyRate || t.hourly_rate || 20}.00/h
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
           {/* SEÇÃO PRINCIPAL DE PACOTES DE AULAS RECORRENTES (30 DIAS) */}
