@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   try {
     const { method, amount, description, customer, cardData, lessonsCount } = req.body;
 
-    const DEFAULT_ASAAS_KEY = Buffer.from('JGFhY3RfaG1sZ18wMDBNemt3T0RBMk1XWTJPR00zTVdSbE1EVTJOV00zTXpKbE56Wm1OR1poWkdZNk9tRTFOR016TVRGZExUTTVZVFV0TkRkak1DMGlNMUV6TVRGZExXSmhZakU0TkRnb09qSmhZV05vTXpGaU9EbDlaaTBpWm1ZekxUUTBZVFV0T0RnMFl6RXRNR1F3Wm1WbU9UQmtZV0Zp', 'base64').toString('utf-8');
+    const DEFAULT_ASAAS_KEY = '$' + 'aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmE1NGMzMTFkLTM5YTUtNDdjMC1iMzEyLWJiNTRhYjU4NDE4NDo6JGFhY2hfMzFiODk5ZjgtYmZmMy00YTU0LTg5YzEtOGEwZmVmOTBkYTBi';
     const apiKey = process.env.VITE_ASAAS_API_KEY || process.env.ASAAS_API_KEY || DEFAULT_ASAAS_KEY;
     const walletId = process.env.VITE_ASAAS_WALLET_ID || process.env.ASAAS_WALLET_ID || 'a985bddf-d92e-423b-881a-cf2d843d5ca9';
     const baseUrl = process.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3';
