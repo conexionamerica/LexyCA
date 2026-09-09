@@ -12,7 +12,7 @@ export default function ClassroomPage({ routeBookingId }) {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { tutors = [], bookings = [], completeBooking } = useMarketplace();
+  const { tutors = [], bookings = [], completeBooking, markAbsenceBooking } = useMarketplace();
   const { profile } = useAuth();
 
   const [activeBookingId, setActiveBookingId] = useState(() => {
@@ -3231,49 +3231,53 @@ Dicas:
               </div>
             </div>
 
-            {/* Explicação Clara dos Ganhos */}
+            {/* Explicação Clara dos Ganhos de 15 Minutos por Falta do Aluno */}
             <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-xs text-slate-300 leading-relaxed text-left space-y-2">
               <p className="font-bold text-amber-300 flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Por que esta aula não será contabilizada nos seus ganhos?</span>
+                <span>Regra de Falta do Aluno & Pagamento de Tempo de Espera (15 min)</span>
               </p>
               <p className="text-slate-300">
-                O feedback de aulas realizado pelo professor e a contabilização dos ganhos só procederão se o sistema detectar a presença do <strong>professor e do aluno</strong> no mesmo código de aula.
+                Como o aluno não entrou na Sala Virtual, esta aula será registrada com o estado <strong>Falta</strong>.
               </p>
-              <p className="text-slate-400 text-[11px]">
-                Como o aluno não clicou no botão <strong>"Entrar na Sala Virtual"</strong> para esta aula, o registro de presença ficou incompleto e os ganhos desta aula não serão contabilizados ao seu saldo.
+              <p className="text-emerald-400 text-[11px] font-semibold bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                💰 Conforme as regras da plataforma Lexy, pela sua espera o sistema creditará automaticamente ao seu saldo <strong>15 minutos (25% do valor da sua tarifa por hora)</strong>.
               </p>
             </div>
 
             {/* Botões de Ação */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              {/* Botão 1: Entendi e Sair da Sala */}
+              {/* Botão 1: Confirmar Falta e Receber 15 min */}
               <button
                 type="button"
                 onClick={() => {
+                  const targetBookingId = currentBooking?.id || currentBooking?.lesson_code || bookingId;
+                  if (markAbsenceBooking && targetBookingId) {
+                    markAbsenceBooking(targetBookingId);
+                  }
                   setShowIncompletePresenceModal(false);
                   exitRoomAndCleanup();
                   navigate(isUserTeacher ? '/dashboard/teacher' : '/dashboard/student');
                 }}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs py-3.5 px-4 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xs py-3.5 px-4 rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 transform hover:scale-[1.02]"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Entendi e Sair da Sala</span>
+                <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                <span>Confirmar Falta & Creditar 15 min</span>
               </button>
 
-              {/* Botão 2: Isto é um Erro */}
+              {/* Botão 2: Suporte / Reportar Erro */}
               <button
                 type="button"
                 onClick={() => {
                   const lessonCode = presenceCheckDetails?.lessonCode || currentBooking?.lesson_code || bookingId;
-                  const message = `Olá, Suporte Lexy! Identifiquei um erro no registro de presença da aula ${lessonCode}. Eu (Professor) cliquei no botão Entrar na Sala Virtual e registrei presença, mas o sistema informou que o aluno não registrou presença. Por favor, verifiquem para contabilizar meus ganhos.`;
+                  const message = `Olá, Suporte Lexy! Identifiquei uma dúvida na marcação de falta da aula ${lessonCode}.`;
                   const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
                   window.open(whatsappUrl, '_blank');
                 }}
-                className="flex-1 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs py-3.5 px-4 rounded-xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 transform hover:scale-[1.02]"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs py-3.5 px-4 rounded-xl border border-slate-800 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <AlertTriangle className="w-4 h-4 text-amber-200" />
-                <span>Isto é um Erro (Suporte)</span>
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span>Falar com Suporte</span>
               </button>
             </div>
 

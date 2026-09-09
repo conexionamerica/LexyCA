@@ -1464,6 +1464,92 @@ const isFakeMockTutor = (t) => {
     return true;
   };
 
+  // 🚨 FUNÇÃO DE MARCAÇÃO DE FALTA DO ALUNO COM PAGAMENTO PROPORCIONAL DE 15 MINUTOS DE ESPERA AO PROFESSOR
+  const markAbsenceBooking = async (bookingId) => {
+    if (!bookingId) return;
+    const cleanSearchId = String(bookingId).trim().toLowerCase();
+
+    setBookings(prev => {
+      const target = prev.find(b => 
+        String(b.id || '').trim().toLowerCase() === cleanSearchId || 
+        String(b.lesson_code || '').trim().toLowerCase() === cleanSearchId
+      );
+
+      if (target) {
+        const targetTutorId = target.tutorId || target.tutor_id;
+        const isTrial = target.bookingType === 'trial' || target.booking_type === 'trial';
+
+        setTutors(tList => tList.map(t => {
+          if (
+            String(t.id || '').toLowerCase() === String(targetTutorId || '').toLowerCase() || 
+            String(t.email || '').toLowerCase() === String(target.tutorEmail || '').toLowerCase()
+          ) {
+            // Tarifa vigente do professor por hora (ex: R$ 20/h, R$ 30/h)
+            const teacherRate = Number(t.hourlyRate || t.hourly_rate || target.amount || 20);
+            const currentLessons = (t.totalLessons || t.total_lessons || 0);
+            const earnPercent = getTeacherEarnPercent(currentLessons, isTrial, tierRates);
+            
+            // 💸 CÁLCULO EXATO DE 15 MINUTOS DE ESPERA: (Tarifa * % repasse) * (15 minutos / 60 minutos) = 25% do valor da hora completa
+            const fullHourNetEarned = teacherRate * (earnPercent / 100);
+            const fifteenMinNetEarned = Number((fullHourNetEarned * (15 / 60)).toFixed(2));
+
+            const currentEarned = Number(t.earnedBalance || t.earned_balance || t.walletBalance || 0);
+            const newEarned = Number((currentEarned + fifteenMinNetEarned).toFixed(2));
+
+            // Persistir localmente por ID e E-mail
+            try {
+              if (t.id) {
+                localStorage.setItem(`lexy_earned_balance_${t.id}`, newEarned.toString());
+              }
+              if (t.email) {
+                localStorage.setItem(`lexy_earned_balance_${t.email}`, newEarned.toString());
+              }
+            } catch (e) {}
+
+            // Persistir atualização no Supabase (tabela public.profiles)
+            try {
+              supabase.from('profiles').update({
+                earned_balance: newEarned,
+                wallet_balance: newEarned
+              }).eq('id', t.id).then(() => {}).catch(() => {});
+            } catch (e) {}
+
+            return {
+              ...t,
+              earnedBalance: newEarned,
+              earned_balance: newEarned,
+              walletBalance: newEarned,
+              wallet_balance: newEarned
+            };
+          }
+          return t;
+        }));
+
+        // Atualizar status na tabela 'aulas' do Supabase para 'falta' e valor pago de 15 min
+        try {
+          supabase.from('aulas')
+            .update({ 
+              status: 'falta', 
+              paid_amount: (Number(target.amount || 20) * 0.25),
+              updated_at: new Date().toISOString() 
+            })
+            .or(`id.eq.${target.id},lesson_code.eq.${target.lesson_code || bookingId}`)
+            .then(() => {}).catch(() => {});
+        } catch (e) {}
+      }
+
+      return prev.map(b => {
+        if (
+          String(b.id || '').trim().toLowerCase() === cleanSearchId || 
+          String(b.lesson_code || '').trim().toLowerCase() === cleanSearchId
+        ) {
+          return { ...b, status: 'falta', updatedAt: new Date().toISOString() };
+        }
+        return b;
+      });
+    });
+  };
+
   const completeBooking = (bookingId) => {
     if (!bookingId) return;
     const cleanSearchId = String(bookingId).trim().toLowerCase();
@@ -1716,6 +1802,7 @@ const isFakeMockTutor = (t) => {
       completeBooking,
       updateBookingStatus,
       rescheduleBooking,
+      markAbsenceBooking,
       autoPurge30DaysHistory
     }}>
       {children}
