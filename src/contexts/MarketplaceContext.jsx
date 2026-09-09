@@ -719,13 +719,17 @@ const isFakeMockTutor = (t) => {
     });
   }, [bookings]);
 
-  // Contamos cuantas clases gratis de garantía ha consumido el alumno (en total)
+  // Contamos cuantas clases gratis de garantía ha agendado o consumido el alumno (en total)
   const freeTrialsCount = useMemo(() => {
-    return (bookings || []).filter(b => {
+    // Si ya completó la 1ª aula experimental paga, las aulas experimentales subsiguientes agendadas son gratis
+    const trialBookings = (bookings || []).filter(b => {
       const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
-      const isFree = b.totalAmount === 0 || (b.planName && b.planName.toLowerCase().includes('grátis'));
-      return isTrial && isFree;
-    }).length;
+      const isNotCanceled = b.status !== 'canceled' && b.status !== 'cancelada';
+      return isTrial && isNotCanceled;
+    });
+
+    // Descontamos la 1ª aula experimental (que es la paga). Todas las demás experimentales agendadas se consideran de las 3 gratis
+    return Math.max(0, trialBookings.length - 1);
   }, [bookings]);
 
   const remainingFreeTrials = hasCompletedFirstTrial ? Math.max(0, maxFreeTrials - freeTrialsCount) : 0;
