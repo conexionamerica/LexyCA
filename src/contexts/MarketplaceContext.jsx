@@ -710,7 +710,17 @@ const isFakeMockTutor = (t) => {
 
   const maxFreeTrials = 3;
 
-  // Modificado: El alumno solo desbloquea 3 aulas gratis SI ya completó la 1ª aula experimental paga
+  // Cliclos de Aulas Experimentais com persistência estrita no Supabase (Tabela public.aulas)
+  // Obter todas as aulas experimentais do aluno registradas no Supabase ordenadas por data
+  const studentTrialBookingsFromDb = useMemo(() => {
+    return (bookings || []).filter(b => {
+      const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
+      const isNotCanceled = b.status !== 'canceled' && b.status !== 'cancelada';
+      return isTrial && isNotCanceled;
+    }).sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  }, [bookings]);
+
+  // Verificar se o aluno já concluiu pelo menos 1 aula experimental paga no seu histórico do Supabase
   const hasCompletedFirstTrial = useMemo(() => {
     return (bookings || []).some(b => {
       const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
@@ -719,20 +729,36 @@ const isFakeMockTutor = (t) => {
     });
   }, [bookings]);
 
-  // Contamos cuantas clases gratis de garantía ha agendado o consumido el alumno (en total)
-  const freeTrialsCount = useMemo(() => {
-    // Si ya completó la 1ª aula experimental paga, las aulas experimentales subsiguientes agendadas son gratis
-    const trialBookings = (bookings || []).filter(b => {
-      const isTrial = b.bookingType === 'trial' || (b.planName && b.planName.toLowerCase().includes('experimental'));
-      const isNotCanceled = b.status !== 'canceled' && b.status !== 'cancelada';
-      return isTrial && isNotCanceled;
-    });
+  // Contar cuántas aulas experimentales gratis han sido agendadas en el ciclo actual
+  // A partir de la 2ª aula experimental (después de la 1ª paga), se cuentan como de las 3 gratis
+  const currentCycleFreeTrialsCount = useMemo(() => {
+    if (!hasCompletedFirstTrial) return 0;
+    // Las clases agendadas después de la 1ª paga (índice > 0) son las gratuitas de garantía
+    return Math.max(0, studentTrialBookingsFromDb.length - 1);
+  }, [studentTrialBookingsFromDb, hasCompletedFirstTrial]);
 
-    // Descontamos la 1ª aula experimental (que es la paga). Todas las demás experimentales agendadas se consideran de las 3 gratis
-    return Math.max(0, trialBookings.length - 1);
-  }, [bookings]);
+  // Regla de Cooldown de 3 Meses: Verificar la fecha en que se consumió la 3ª aula gratis
+  const isGuaranteeInCooldown = useMemo(() => {
+    if (studentTrialBookingsFromDb.length < 4) return false; // 1 paga + 3 gratis = 4 en total
+    
+    // La 4ª aula agendada en total (índice 3) fue la 3ª aula gratis de garantía
+    const thirdFreeTrial = studentTrialBookingsFromDb[3];
+    if (!thirdFreeTrial?.createdAt) return true;
 
-  const remainingFreeTrials = hasCompletedFirstTrial ? Math.max(0, maxFreeTrials - freeTrialsCount) : 0;
+    const thirdTrialDate = new Date(thirdFreeTrial.createdAt);
+    const now = new Date();
+
+    // Calcular diferencia en meses
+    const diffMonths = (now.getFullYear() - thirdTrialDate.getFullYear()) * 12 + (now.getMonth() - thirdTrialDate.getMonth());
+    return diffMonths < 3;
+  }, [studentTrialBookingsFromDb]);
+
+  // Aulas experimentais gratuitas restantes no ciclo atual (0 se em cooldown de 3 meses ou se 1ª aula não foi concluída)
+  const remainingFreeTrials = useMemo(() => {
+    if (!hasCompletedFirstTrial) return 0;
+    if (isGuaranteeInCooldown) return 0;
+    return Math.max(0, maxFreeTrials - currentCycleFreeTrialsCount);
+  }, [hasCompletedFirstTrial, isGuaranteeInCooldown, currentCycleFreeTrialsCount]);
 
   const getTrialEligibility = (tutorId) => {
     const hasUsedWithThisTutor = (usedTrials || []).includes(tutorId);
@@ -747,8 +773,7 @@ const isFakeMockTutor = (t) => {
       };
     }
 
-    // Regla: Si el alumno AÚN NO ha completado su 1ª Aula Experimental paga (comprada),
-    // la 1ª aula experimental se cobra con valor promocional de descuento (PAGA, NO GRATIS).
+    // Regla 1: Si el alumno AÚN NO ha completado su 1ª Aula Experimental paga (comprada), la 1ª aula se cobra.
     if (!hasCompletedFirstTrial) {
       return {
         allowed: true,
@@ -759,18 +784,18 @@ const isFakeMockTutor = (t) => {
       };
     }
 
-    // Si ya completó la 1ª y ya usó las 3 gratis de garantía:
-    if (freeTrialsCount >= maxFreeTrials) {
+    // Regla 2: Si consumió sus 3 aulas gratis y está dentro del periodo de Cooldown de 3 meses:
+    if (isGuaranteeInCooldown || currentCycleFreeTrialsCount >= maxFreeTrials) {
       return {
-        allowed: false,
+        allowed: true,
         isFree: false,
         remaining: 0,
-        reason: 'limit_reached',
-        message: 'Você já utilizou suas 3 Aulas Experimentais Gratuitas da Garantia de Satisfação Lexy. Escolha um plano de assinatura de 30 dias para agendar mais aulas.'
+        reason: 'cooldown_paid_trial',
+        message: 'Você já utilizou suas 3 Aulas Experimentais Gratuitas de Garantia de Satisfação neste trimestre. Você pode agendar aulas experimentais adicionais pelo valor promocional (pago).'
       };
     }
 
-    // Si ya completó la 1ª aula experimental paga y le quedan de las 3 gratis:
+    // Regla 3: Si tiene aulas gratis disponibles en su ciclo actual:
     return {
       allowed: true,
       isFree: true,
