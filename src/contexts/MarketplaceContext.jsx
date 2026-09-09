@@ -1115,47 +1115,23 @@ const isFakeMockTutor = (t) => {
 
     // 1. Enviar solicitação de pausa para a API do Asaas
     try {
-      await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+      if (subscriptionId) {
+        await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+      }
     } catch (asaasErr) {
       console.warn('⚠️ Aviso ao pausar assinatura na API Asaas:', asaasErr);
     }
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      let matched = false;
-      const updatedList = (prev || []).map(s => {
-        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
-          matched = true;
-          return {
-            ...s,
-            status: 'paused',
-            pausedUntil,
-            nextBillingDate: pausedUntil,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return s;
-      });
-
-      if (!matched) {
-        if (updatedList.length > 0) {
-          updatedList[0] = {
-            ...updatedList[0],
-            status: 'paused',
-            pausedUntil,
-            nextBillingDate: pausedUntil,
-            updatedAt: new Date().toISOString()
-          };
-        } else {
-          updatedList.push({
-            id: subscriptionId || `sub-${Date.now()}`,
-            status: 'paused',
-            pausedUntil,
-            nextBillingDate: pausedUntil,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
+      const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
+      const updatedList = base.map(s => ({
+        ...s,
+        status: 'paused',
+        pausedUntil,
+        nextBillingDate: pausedUntil,
+        updatedAt: new Date().toISOString()
+      }));
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
@@ -1168,7 +1144,7 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
-      const studentEmail = student?.email || profile?.email || '';
+      const studentEmail = student?.email || '';
       let query = supabase.from('subscriptions').update({
         status: 'paused',
         paused_until: pausedUntil,
@@ -1176,8 +1152,8 @@ const isFakeMockTutor = (t) => {
         updated_at: new Date().toISOString()
       });
 
-      if (subscriptionId) {
-        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
+      if (subscriptionId || studentEmail) {
+        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
       }
       await query;
     } catch (err) {
@@ -1190,44 +1166,22 @@ const isFakeMockTutor = (t) => {
   const resumeSubscription = async (subscriptionId) => {
     // 1. Enviar solicitação de reativação para a API do Asaas
     try {
-      await resumeAsaasSubscription({ subscriptionId });
+      if (subscriptionId) {
+        await resumeAsaasSubscription({ subscriptionId });
+      }
     } catch (asaasErr) {
       console.warn('⚠️ Aviso ao reativar assinatura na API Asaas:', asaasErr);
     }
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      let matched = false;
-      const updatedList = (prev || []).map(s => {
-        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
-          matched = true;
-          return {
-            ...s,
-            status: 'active',
-            pausedUntil: null,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return s;
-      });
-
-      if (!matched) {
-        if (updatedList.length > 0) {
-          updatedList[0] = {
-            ...updatedList[0],
-            status: 'active',
-            pausedUntil: null,
-            updatedAt: new Date().toISOString()
-          };
-        } else {
-          updatedList.push({
-            id: subscriptionId || `sub-${Date.now()}`,
-            status: 'active',
-            pausedUntil: null,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
+      const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
+      const updatedList = base.map(s => ({
+        ...s,
+        status: 'active',
+        pausedUntil: null,
+        updatedAt: new Date().toISOString()
+      }));
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
@@ -1240,15 +1194,15 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
-      const studentEmail = student?.email || profile?.email || '';
+      const studentEmail = student?.email || '';
       let query = supabase.from('subscriptions').update({
         status: 'active',
         paused_until: null,
         updated_at: new Date().toISOString()
       });
 
-      if (subscriptionId) {
-        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
+      if (subscriptionId || studentEmail) {
+        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
       }
       await query;
     } catch (err) {
@@ -1261,44 +1215,22 @@ const isFakeMockTutor = (t) => {
   const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
     // 1. Enviar solicitação de cancelamento para a API do Asaas
     try {
-      await cancelAsaasSubscription({ subscriptionId, reason });
+      if (subscriptionId) {
+        await cancelAsaasSubscription({ subscriptionId, reason });
+      }
     } catch (asaasErr) {
       console.warn('⚠️ Aviso ao cancelar assinatura na API Asaas:', asaasErr);
     }
 
     // 2. Atualizar estado local do React & LocalStorage
     setSubscriptions(prev => {
-      let matched = false;
-      const updatedList = (prev || []).map(s => {
-        if (!subscriptionId || s.id === subscriptionId || s.asaasSubscriptionId === subscriptionId || String(s.id).includes(subscriptionId)) {
-          matched = true;
-          return {
-            ...s,
-            status: 'canceled',
-            cancelReason: reason,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return s;
-      });
-
-      if (!matched) {
-        if (updatedList.length > 0) {
-          updatedList[0] = {
-            ...updatedList[0],
-            status: 'canceled',
-            cancelReason: reason,
-            updatedAt: new Date().toISOString()
-          };
-        } else {
-          updatedList.push({
-            id: subscriptionId || `sub-${Date.now()}`,
-            status: 'canceled',
-            cancelReason: reason,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
+      const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
+      const updatedList = base.map(s => ({
+        ...s,
+        status: 'canceled',
+        cancelReason: reason,
+        updatedAt: new Date().toISOString()
+      }));
 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
@@ -1311,15 +1243,15 @@ const isFakeMockTutor = (t) => {
 
     // 3. Persistir no Supabase
     try {
-      const studentEmail = student?.email || profile?.email || '';
+      const studentEmail = student?.email || '';
       let query = supabase.from('subscriptions').update({
         status: 'canceled',
         cancel_reason: reason,
         updated_at: new Date().toISOString()
       });
 
-      if (subscriptionId) {
-        query = query.or(`id.eq.${subscriptionId},student_email.eq.${studentEmail}`);
+      if (subscriptionId || studentEmail) {
+        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
       }
       await query;
     } catch (err) {
