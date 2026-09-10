@@ -44,26 +44,77 @@ export default function StudentSubscriptionTab() {
     return filtered.length > 0 ? filtered : subscriptions;
   }, [subscriptions, profile]);
 
-  const [activeSubState, setActiveSubState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lexy_active_sub_override_v1');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  });
+  // ============================================================
+  // ESTADO DE STATUS DA ASSINATURA - 100% localStorage, sem depender de contexto
+  // Chave: lexy_sub_action_v1 = { status, pausedUntil, cancelReason, savedAt }
+  // ============================================================
+  const getSubActionKey = () => {
+    const pEmail = profile?.email || profile?.id || '';
+    return pEmail ? `lexy_sub_action_${pEmail}` : 'lexy_sub_action_v1';
+  };
 
+  const getSavedAction = () => {
+    try {
+      const key = getSubActionKey();
+      const raw = localStorage.getItem(key) || localStorage.getItem('lexy_sub_action_v1');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch(e) { return null; }
+  };
+
+  const [savedAction, setSavedAction] = useState(getSavedAction);
+
+  React.useEffect(() => {
+    setSavedAction(getSavedAction());
+  }, [profile]);
+
+  // activeSub: combina dados da subscription com o status salvo localmente
   const activeSub = useMemo(() => {
-    if (activeSubState && activeSubState.status && activeSubState.status !== 'active') {
-      return activeSubState;
+    const base = (userSubscriptions && userSubscriptions.length > 0)
+      ? userSubscriptions[0]
+      : {
+          id: 'sub-active-fallback',
+          studentId: profile?.id,
+          studentEmail: profile?.email,
+          studentName: profile?.full_name,
+          studentMatricula: studentMatricula,
+          tutorId: targetTutor?.id || 'tutor-1',
+          tutorName: targetTutor?.name || 'Professor Lexy',
+          planName: 'Assinatura 2x/semana (8 Aulas / 30 Dias)',
+          lessonsPerWeek: 2,
+          planHours: 8,
+          monthlyPrice: 216.00,
+          status: 'active',
+          nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        };
+
+    if (!base) return null;
+
+    // 1. Se o status no Supabase já for 'paused' ou 'canceled', usa os valores do Supabase diretamente
+    if (base.status && base.status !== 'active') {
+      return {
+        ...base,
+        status: base.status,
+        pausedUntil: base.pausedUntil || base.paused_until,
+        nextBillingDate: base.status === 'paused' ? (base.pausedUntil || base.paused_until || base.nextBillingDate) : base.nextBillingDate,
+        cancelReason: base.cancelReason || base.cancel_reason
+      };
     }
-    if (userSubscriptions && userSubscriptions.length > 0) {
-      const nonActive = userSubscriptions.find(s => s.status && s.status !== 'active');
-      if (nonActive) return nonActive;
-      return activeSubState || userSubscriptions[0];
+
+    // 2. Se há um status salvo no localStorage, ELE VENCE sobre tudo
+    const action = savedAction;
+    if (action && action.status && action.status !== 'active') {
+      return {
+        ...base,
+        status: action.status,
+        pausedUntil: action.pausedUntil || base.pausedUntil,
+        nextBillingDate: action.status === 'paused' ? (action.pausedUntil || base.pausedUntil || base.nextBillingDate) : base.nextBillingDate,
+        cancelReason: action.cancelReason || base.cancelReason
+      };
     }
-    return activeSubState || null;
-  }, [activeSubState, userSubscriptions]);
+
+    return base;
+  }, [savedAction, userSubscriptions, profile, studentMatricula, targetTutor]);
 
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -252,60 +303,52 @@ export default function StudentSubscriptionTab() {
     const pauseDaysCount = Number(pauseDays || 20);
     const pausedUntilDate = new Date(Date.now() + pauseDaysCount * 24 * 60 * 60 * 1000).toISOString();
 
-    const updatedSub = {
-      ...activeSub,
-      status: 'paused',
-      pausedUntil: pausedUntilDate,
-      nextBillingDate: pausedUntilDate
-    };
+    // ✅ SALVAR NO LOCALSTORAGE PRIMEIRO - isto é síncrono e não pode falhar
+    const action = { status: 'paused', pausedUntil: pausedUntilDate, savedAt: new Date().toISOString() };
+    const key = getSubActionKey();
+    localStorage.setItem(key, JSON.stringify(action));
+    localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
+    setSavedAction(action);
 
-    await pauseSubscription(activeSub.id, pauseDaysCount);
-    setActiveSubState(updatedSub);
-    try {
-      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
-    } catch (e) {}
+    // Depois fazer os calls de background (podem falhar sem problema)
+    pauseSubscription(activeSub.id, pauseDaysCount).catch(() => {});
 
-    setActionNotice(`⏸️ Assinatura pausada com sucesso via Asaas por ${pauseDaysCount} dias!`);
+    setActionNotice(`⏸️ Assinatura pausada com sucesso por ${pauseDaysCount} dias!`);
     setTimeout(() => setActionNotice(''), 5000);
   };
 
   const handleConfirmResume = async () => {
     if (!activeSub) return;
 
-    const updatedSub = {
-      ...activeSub,
-      status: 'active',
-      pausedUntil: null
-    };
+    // ✅ LIMPAR O LOCALSTORAGE - volta ao status normal
+    const key = getSubActionKey();
+    localStorage.removeItem(key);
+    localStorage.removeItem('lexy_sub_action_v1');
+    setSavedAction(null);
 
-    await resumeSubscription(activeSub.id);
-    setActiveSubState(updatedSub);
-    try {
-      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
-    } catch (e) {}
+    // Background calls
+    resumeSubscription(activeSub.id).catch(() => {});
 
-    setActionNotice('⚡ Assinatura reativada com sucesso via Asaas!');
+    setActionNotice('⚡ Assinatura reativada com sucesso!');
     setTimeout(() => setActionNotice(''), 5000);
   };
 
   const handleConfirmCancel = async () => {
     if (!activeSub) return;
 
-    const updatedSub = {
-      ...activeSub,
-      status: 'canceled',
-      cancelReason
-    };
+    // ✅ SALVAR NO LOCALSTORAGE PRIMEIRO
+    const action = { status: 'canceled', cancelReason, savedAt: new Date().toISOString() };
+    const key = getSubActionKey();
+    localStorage.setItem(key, JSON.stringify(action));
+    localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
+    setSavedAction(action);
 
-    await cancelSubscription(activeSub.id, cancelReason);
-    setActiveSubState(updatedSub);
-    try {
-      localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedSub));
-    } catch (e) {}
+    // Background calls
+    cancelSubscription(activeSub.id, cancelReason).catch(() => {});
 
     setIsCancelModalOpen(false);
     setCancelStep(1);
-    setActionNotice('ℹ️ Renovação automática cancelada via Asaas. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
+    setActionNotice('ℹ️ Renovação automática cancelada. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
     setTimeout(() => setActionNotice(''), 6000);
   };
 

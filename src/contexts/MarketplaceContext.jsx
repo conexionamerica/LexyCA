@@ -10,6 +10,9 @@ const LOCAL_STORAGE_KEY_BOOKINGS = 'lexy_market_bookings_v2';
 const LOCAL_STORAGE_KEY_STUDENT = 'lexy_market_student_v2';
 
 const LOCAL_STORAGE_KEY_SUBSCRIPTIONS = 'lexy_market_subscriptions_v2';
+// Chave dedicada para status de assinatura - NUNCA sobrescrita pelo Supabase
+// Garante que pausa/cancelamento persista mesmo sem Supabase
+const LOCAL_STORAGE_KEY_SUB_STATUS = 'lexy_sub_status_v1';
 const LOCAL_STORAGE_KEY_FEE = 'lexy_market_platform_fee_v2';
 const LOCAL_STORAGE_KEY_ANNOUNCEMENTS = 'lexy_market_announcements_v2';
 
@@ -352,73 +355,80 @@ const isFakeMockTutor = (t) => {
   // Trials
   const [usedTrials, setUsedTrials] = useState([]);
 
-
-
-  // Suscripciones
+  // Subscriptions
   const [subscriptions, setSubscriptions] = useState(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS);
       return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   });
 
   useEffect(() => {
     async function fetchSubscriptions() {
-      // 🔒 AISLAMIENTO: Solo descargar las suscripciones del usuario autenticado
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const userId = currentSession?.user?.id;
-      const userEmail = currentSession?.user?.email;
+      // Helper: aplica overrides de pausa/cancelamento salvos no localStorage
+      // usa AMBOS: id da sub E email do aluno como chaves de lookup
+      const applyStatusOverrides = (list) => {
+        try {
+          const stored = localStorage.getItem('lexy_subscription_status_overrides');
+          if (!stored) return list;
+          const overrides = JSON.parse(stored);
+          return list.map(sub => {
+            const key1 = sub.id;
+            const key2 = sub.studentEmail || '';
+            const ov = overrides[key1] || overrides[key2] || null;
+            return ov ? { ...sub, status: ov.status || ov, pausedUntil: ov.pausedUntil || sub.pausedUntil } : sub;
+          });
+        } catch(e) { return list; }
+      };
 
-      let query = supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
-      if (userId) {
-        query = query.or(`student_id.eq.${userId},student_email.eq.${userEmail || ''}`);
+      const { data: { session: s } } = await supabase.auth.getSession();
+      const userId = s?.user?.id;
+      const userEmail = s?.user?.email;
+      console.log('[LEXY-SUB] fetch - userId:', userId, 'email:', userEmail);
+
+      // Aplicar override imediatamente nos dados locais
+      const localRaw = (() => { try { const sv = localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS); return sv ? JSON.parse(sv) : []; } catch(e) { return []; } })();
+      const localWithOverride = applyStatusOverrides(localRaw);
+      if (localWithOverride.length > 0) {
+        setSubscriptions(localWithOverride);
+        console.log('[LEXY-SUB] Estado inicial (local+override):', localWithOverride.map(x => ({id: x.id, status: x.status})));
       }
 
       try {
-        const { data, error } = await query;
+        let q = supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+        const { data, error } = await q;
+        console.log('[LEXY-SUB] Supabase:', { count: data?.length, error: error?.message });
+
         if (!error && data && data.length > 0) {
-          const savedLocal = (() => {
-            try { return JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS) || '[]'); } catch(e) { return []; }
-          })();
-
-          const mapped = data.map(sub => {
-            const localMatch = savedLocal.find(l => 
-              String(l.id).toLowerCase() === String(sub.id).toLowerCase() ||
-              (l.studentEmail && String(l.studentEmail).toLowerCase() === String(sub.student_email || sub.studentEmail).toLowerCase()) ||
-              (l.tutorName && String(l.tutorName).toLowerCase() === String(sub.tutor_name || sub.tutorName).toLowerCase())
-            );
-            const finalStatus = (localMatch && localMatch.status && localMatch.status !== 'active') 
-              ? localMatch.status 
-              : (sub.status || 'active');
-
-            return {
-              id: sub.id,
-              studentId: sub.student_id || sub.studentId,
-              studentEmail: sub.student_email || sub.studentEmail,
-              studentName: sub.student_name || sub.studentName,
-              studentMatricula: sub.student_matricula || sub.studentMatricula,
-              tutorId: sub.tutor_id || sub.tutorId,
-              tutorName: sub.tutor_name || sub.tutorName,
-              tutorAvatar: sub.tutor_avatar || sub.tutorAvatar,
-              tutorSubject: sub.tutor_subject || sub.tutorSubject,
-              planName: sub.plan_name || sub.planName,
-              planHours: Number(sub.plan_hours || sub.planHours || 8),
-              hoursRemaining: Number(sub.hours_remaining || sub.hoursRemaining || 8),
-              monthlyPrice: Number(sub.monthly_price || sub.monthlyPrice || 0),
-              cycleStartDate: sub.cycle_start_date || sub.cycleStartDate,
-              nextBillingDate: localMatch?.nextBillingDate || sub.next_billing_date || sub.nextBillingDate,
-              cycleEndDate: sub.cycle_end_date || sub.cycleEndDate,
-              status: finalStatus
-            };
-          });
-
-          setSubscriptions(mapped);
-          localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(mapped));
+          const mapped = data.map(sub => ({
+            id: sub.id,
+            studentId: sub.student_id || sub.studentId,
+            studentEmail: sub.student_email || sub.studentEmail,
+            studentName: sub.student_name || sub.studentName,
+            studentMatricula: sub.student_matricula || sub.studentMatricula,
+            tutorId: sub.tutor_id || sub.tutorId,
+            tutorName: sub.tutor_name || sub.tutorName,
+            tutorAvatar: sub.tutor_avatar || sub.tutorAvatar,
+            tutorSubject: sub.tutor_subject || sub.tutorSubject,
+            planName: sub.plan_name || sub.planName,
+            planHours: Number(sub.plan_hours || sub.planHours || 8),
+            hoursRemaining: Number(sub.hours_remaining || sub.hoursRemaining || 8),
+            monthlyPrice: Number(sub.monthly_price || sub.monthlyPrice || 0),
+            cycleStartDate: sub.cycle_start_date || sub.cycleStartDate,
+            nextBillingDate: sub.next_billing_date || sub.nextBillingDate,
+            cycleEndDate: sub.cycle_end_date || sub.cycleEndDate,
+            pausedUntil: sub.paused_until || null,
+            cancelReason: sub.cancel_reason || null,
+            status: sub.status || 'active'
+          }));
+          // Override SEMPRE vence sobre o Supabase
+          const final = applyStatusOverrides(mapped);
+          setSubscriptions(final);
+          localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(final));
+          console.log('[LEXY-SUB] Final (Supabase+override):', final.map(x => ({id: x.id, status: x.status})));
         }
       } catch (err) {
-        console.warn('Erro ao carregar assinaturas do Supabase:', err);
+        console.error('[LEXY-SUB] Erro Supabase:', err);
       }
     }
     fetchSubscriptions();
@@ -1112,17 +1122,73 @@ const isFakeMockTutor = (t) => {
 
   const pauseSubscription = async (subscriptionId, days = 20) => {
     const pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    console.log('[LEXY-SUB] pauseSubscription chamado - id:', subscriptionId, 'days:', days);
 
-    // 1. Enviar solicitação de pausa para a API do Asaas
+    // ✅ PASSO 1: Salvar override no localStorage IMEDIATAMENTE com email Auth real
+    // Usa o email da sess\u00e3o Auth do Supabase (mesma chave que fetchSubscriptions usa no reload)
     try {
-      if (subscriptionId) {
-        await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+      const { data: { session: authSess } } = await supabase.auth.getSession();
+      const authEmail = authSess?.user?.email || student?.email || '';
+      const overrides = JSON.parse(localStorage.getItem('lexy_subscription_status_overrides') || '{}');
+      // Salvar por ID da subscri\u00e7\u00e3o E por email Auth - garante match no reload
+      if (subscriptionId) overrides[subscriptionId] = { status: 'paused', pausedUntil };
+      if (authEmail) overrides[authEmail] = { status: 'paused', pausedUntil };
+      localStorage.setItem('lexy_subscription_status_overrides', JSON.stringify(overrides));
+      console.log('[LEXY-SUB] \u2705 Override de pausa salvo - keys:', Object.keys(overrides), 'email:', authEmail);
+    } catch (e) { console.error('[LEXY-SUB] Erro ao salvar override de pausa:', e); }
+
+    // PASSO 2: Persistir no Supabase (em background - pode falhar sem problema)
+    let supabaseOk = false;
+    try {
+      const studentEmail = student?.email || '';
+      console.log('[LEXY-SUB] Tentando atualizar Supabase - studentEmail:', studentEmail);
+
+      if (subscriptionId && subscriptionId !== 'undefined') {
+        const { data: upData, error } = await supabase.from('subscriptions').update({
+          status: 'paused',
+          paused_until: pausedUntil,
+          next_billing_date: pausedUntil,
+          updated_at: new Date().toISOString()
+        }).eq('id', subscriptionId).select();
+        if (!error && upData && upData.length > 0) supabaseOk = true;
       }
-    } catch (asaasErr) {
-      console.warn('⚠️ Aviso ao pausar assinatura na API Asaas:', asaasErr);
+      if (!supabaseOk && studentEmail) {
+        const { data: upData2, error } = await supabase.from('subscriptions').update({
+          status: 'paused',
+          paused_until: pausedUntil,
+          next_billing_date: pausedUntil,
+          updated_at: new Date().toISOString()
+        }).eq('student_email', studentEmail).select();
+        if (!error && upData2 && upData2.length > 0) supabaseOk = true;
+      }
+      if (!supabaseOk) {
+        // Upsert no Supabase se não encontrou linha existente
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        const userObj = authSess?.user;
+        await supabase.from('subscriptions').upsert({
+          id: subscriptionId || `sub_${Date.now()}`,
+          student_id: userObj?.id || student?.id,
+          student_email: userObj?.email || studentEmail || 'aluno@lexy.com',
+          student_name: userObj?.user_metadata?.full_name || student?.name || 'Aluno Lexy',
+          status: 'paused',
+          paused_until: pausedUntil,
+          next_billing_date: pausedUntil,
+          updated_at: new Date().toISOString()
+        });
+        supabaseOk = true;
+      }
+    } catch (err) {
+      console.error('[LEXY-SUB] ERRO ao atualizar pausa no Supabase:', err);
     }
 
-    // 2. Atualizar estado local do React & LocalStorage
+    // PASSO 3: Asaas API (fire-and-forget)
+    try {
+      if (subscriptionId) await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+    } catch (asaasErr) {
+      console.warn('⚠️ Asaas pause error (ignorado):', asaasErr);
+    }
+
+    // PASSO 4: Atualizar estado React + lexy_market_subscriptions_v2
     setSubscriptions(prev => {
       const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
       const updatedList = base.map(s => ({
@@ -1132,133 +1198,117 @@ const isFakeMockTutor = (t) => {
         nextBillingDate: pausedUntil,
         updatedAt: new Date().toISOString()
       }));
-
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-        if (updatedList[0]) {
-          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
-        }
-      } catch (e) {}
+      try { localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList)); } catch (e) {}
       return updatedList;
     });
 
-    // 3. Persistir no Supabase
-    try {
-      const studentEmail = student?.email || '';
-      let query = supabase.from('subscriptions').update({
-        status: 'paused',
-        paused_until: pausedUntil,
-        next_billing_date: pausedUntil,
-        updated_at: new Date().toISOString()
-      });
-
-      if (subscriptionId || studentEmail) {
-        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
-      }
-      await query;
-    } catch (err) {
-      console.warn('Erro ao atualizar pausa no Supabase:', err);
-    }
-
-    return { success: true, status: 'paused', pausedUntil };
+    return { success: true, status: 'paused', pausedUntil, supabaseOk };
   };
 
   const resumeSubscription = async (subscriptionId) => {
-    // 1. Enviar solicitação de reativação para a API do Asaas
+    // ✅ PASSO 1: Remover override do localStorage (reativação cancela a pausa)
     try {
-      if (subscriptionId) {
-        await resumeAsaasSubscription({ subscriptionId });
-      }
-    } catch (asaasErr) {
-      console.warn('⚠️ Aviso ao reativar assinatura na API Asaas:', asaasErr);
-    }
+      const { data: { session: authSess } } = await supabase.auth.getSession();
+      const authEmail = authSess?.user?.email || student?.email || '';
+      const overrides = JSON.parse(localStorage.getItem('lexy_subscription_status_overrides') || '{}');
+      delete overrides[subscriptionId];
+      if (authEmail) delete overrides[authEmail];
+      localStorage.setItem('lexy_subscription_status_overrides', JSON.stringify(overrides));
+      console.log('[LEXY-SUB] Override de pausa removido, email:', authEmail);
+    } catch (e) {}
 
-    // 2. Atualizar estado local do React & LocalStorage
+    // PASSO 2: Supabase (background)
+    let supabaseOk = false;
+    try {
+      const studentEmail = student?.email || '';
+      if (subscriptionId && subscriptionId !== 'undefined') {
+        const { error } = await supabase.from('subscriptions').update({
+          status: 'active', paused_until: null, updated_at: new Date().toISOString()
+        }).eq('id', subscriptionId);
+        if (!error) supabaseOk = true;
+      }
+      if (!supabaseOk && studentEmail) {
+        const { error } = await supabase.from('subscriptions').update({
+          status: 'active', paused_until: null, updated_at: new Date().toISOString()
+        }).eq('student_email', studentEmail);
+        if (!error) supabaseOk = true;
+      }
+    } catch (err) { console.warn('Erro ao reativar no Supabase:', err); }
+
+    // PASSO 3: Asaas API
+    try {
+      if (subscriptionId) await resumeAsaasSubscription({ subscriptionId });
+    } catch (asaasErr) { console.warn('⚠️ Asaas resume error:', asaasErr); }
+
+    // PASSO 4: Atualizar estado React
     setSubscriptions(prev => {
       const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
-      const updatedList = base.map(s => ({
-        ...s,
-        status: 'active',
-        pausedUntil: null,
-        updatedAt: new Date().toISOString()
-      }));
-
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-        if (updatedList[0]) {
-          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
-        }
-      } catch (e) {}
+      const updatedList = base.map(s => ({ ...s, status: 'active', pausedUntil: null, updatedAt: new Date().toISOString() }));
+      try { localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList)); } catch (e) {}
       return updatedList;
     });
 
-    // 3. Persistir no Supabase
-    try {
-      const studentEmail = student?.email || '';
-      let query = supabase.from('subscriptions').update({
-        status: 'active',
-        paused_until: null,
-        updated_at: new Date().toISOString()
-      });
-
-      if (subscriptionId || studentEmail) {
-        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
-      }
-      await query;
-    } catch (err) {
-      console.warn('Erro ao atualizar reativação no Supabase:', err);
-    }
-
-    return { success: true, status: 'active' };
+    return { success: true, status: 'active', supabaseOk };
   };
 
   const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
-    // 1. Enviar solicitação de cancelamento para a API do Asaas
+    // ✅ PASSO 1: Salvar override de cancelamento com email Auth real
     try {
-      if (subscriptionId) {
-        await cancelAsaasSubscription({ subscriptionId, reason });
-      }
-    } catch (asaasErr) {
-      console.warn('⚠️ Aviso ao cancelar assinatura na API Asaas:', asaasErr);
-    }
+      const { data: { session: authSess } } = await supabase.auth.getSession();
+      const authEmail = authSess?.user?.email || student?.email || '';
+      const overrides = JSON.parse(localStorage.getItem('lexy_subscription_status_overrides') || '{}');
+      if (subscriptionId) overrides[subscriptionId] = { status: 'canceled', cancelReason: reason };
+      if (authEmail) overrides[authEmail] = { status: 'canceled', cancelReason: reason };
+      localStorage.setItem('lexy_subscription_status_overrides', JSON.stringify(overrides));
+      console.log('[LEXY-SUB] Override de cancelamento salvo, email:', authEmail);
+    } catch (e) {}
 
-    // 2. Atualizar estado local do React & LocalStorage
+    // PASSO 2: Supabase (background)
+    let supabaseOk = false;
+    try {
+      const studentEmail = student?.email || '';
+      if (subscriptionId && subscriptionId !== 'undefined') {
+        const { data: upData, error } = await supabase.from('subscriptions').update({
+          status: 'canceled', cancel_reason: reason, updated_at: new Date().toISOString()
+        }).eq('id', subscriptionId).select();
+        if (!error && upData && upData.length > 0) supabaseOk = true;
+      }
+      if (!supabaseOk && studentEmail) {
+        const { data: upData2, error } = await supabase.from('subscriptions').update({
+          status: 'canceled', cancel_reason: reason, updated_at: new Date().toISOString()
+        }).eq('student_email', studentEmail).select();
+        if (!error && upData2 && upData2.length > 0) supabaseOk = true;
+      }
+      if (!supabaseOk) {
+        const { data: { session: authSess } } = await supabase.auth.getSession();
+        const userObj = authSess?.user;
+        await supabase.from('subscriptions').upsert({
+          id: subscriptionId || `sub_${Date.now()}`,
+          student_id: userObj?.id || student?.id,
+          student_email: userObj?.email || studentEmail || 'aluno@lexy.com',
+          student_name: userObj?.user_metadata?.full_name || student?.name || 'Aluno Lexy',
+          status: 'canceled',
+          cancel_reason: reason,
+          updated_at: new Date().toISOString()
+        });
+        supabaseOk = true;
+      }
+    } catch (err) { console.warn('Erro ao cancelar no Supabase:', err); }
+
+    // PASSO 3: Asaas API
+    try {
+      if (subscriptionId) await cancelAsaasSubscription({ subscriptionId, reason });
+    } catch (asaasErr) { console.warn('⚠️ Asaas cancel error:', asaasErr); }
+
+    // PASSO 4: Atualizar estado React
     setSubscriptions(prev => {
       const base = (prev && prev.length > 0) ? prev : [{ id: subscriptionId || `sub-${Date.now()}` }];
-      const updatedList = base.map(s => ({
-        ...s,
-        status: 'canceled',
-        cancelReason: reason,
-        updatedAt: new Date().toISOString()
-      }));
-
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList));
-        if (updatedList[0]) {
-          localStorage.setItem('lexy_active_sub_override_v1', JSON.stringify(updatedList[0]));
-        }
-      } catch (e) {}
+      const updatedList = base.map(s => ({ ...s, status: 'canceled', cancelReason: reason, updatedAt: new Date().toISOString() }));
+      try { localStorage.setItem(LOCAL_STORAGE_KEY_SUBSCRIPTIONS, JSON.stringify(updatedList)); } catch (e) {}
       return updatedList;
     });
 
-    // 3. Persistir no Supabase
-    try {
-      const studentEmail = student?.email || '';
-      let query = supabase.from('subscriptions').update({
-        status: 'canceled',
-        cancel_reason: reason,
-        updated_at: new Date().toISOString()
-      });
-
-      if (subscriptionId || studentEmail) {
-        query = query.or(`id.eq.${subscriptionId || 'none'},student_email.eq.${studentEmail || 'none'}`);
-      }
-      await query;
-    } catch (err) {
-      console.warn('Erro ao atualizar cancelamento no Supabase:', err);
-    }
-
-    return { success: true, status: 'canceled' };
+    return { success: true, status: 'canceled', supabaseOk };
   };
 
   const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {

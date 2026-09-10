@@ -6,7 +6,8 @@ import { processAsaasTransfer } from '../lib/asaasPaymentService';
 import { 
   ShieldCheck, Users, DollarSign, CheckCircle2, Clock, 
   Award, Sparkles, Lock, Mail, Eye, EyeOff, AlertCircle, Wallet, ArrowRight, Check, 
-  Megaphone, Trash2, Settings, Save, AlertTriangle, Calendar, Percent, Search, User, Video
+  Megaphone, Trash2, Settings, Save, AlertTriangle, Calendar, Percent, Search, User, Video,
+  PauseCircle, XCircle, Unlock
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -568,6 +569,12 @@ export default function AdminDashboard() {
           <Sparkles className="w-4 h-4 shrink-0 text-amber-400" /> 💬 Feedbacks ({studentReviews.length})
         </button>
         <button 
+          onClick={() => setActiveTab('pauses')}
+          className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'pauses' ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:text-white'}`}
+        >
+          <PauseCircle className="w-4 h-4 shrink-0 text-amber-400" /> ⏸️ Pausas & Cancelamentos
+        </button>
+        <button 
           onClick={() => setActiveTab('announcements')}
           className={`flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl transition-all ${activeTab === 'announcements' ? 'bg-amber-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'}`}
         >
@@ -582,6 +589,164 @@ export default function AdminDashboard() {
       </div>
 
       {/* CONTEÚDO DAS ABAS */}
+      {activeTab === 'pauses' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-lg font-black text-white flex items-center gap-2">
+                  <PauseCircle className="w-5 h-5 text-amber-400" />
+                  Notificações de Pausas e Cancelamentos de Alunos
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Aba destinada exclusivamente para acompanhamento de alunos que solicitaram pausa do pacote (até 20 dias) ou cancelamento da assinatura.
+                </p>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-right">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Destrancar Pausa</span>
+                <span className="text-xs font-bold text-amber-400">Padrão de 20 Dias</span>
+              </div>
+            </div>
+
+            {(() => {
+              const savedActionRaw = localStorage.getItem('lexy_sub_action_v1');
+              const savedAction = savedActionRaw ? JSON.parse(savedActionRaw) : null;
+              const overridesRaw = localStorage.getItem('lexy_subscription_status_overrides');
+              const overrides = overridesRaw ? JSON.parse(overridesRaw) : {};
+
+              const requests = [];
+              if (savedAction && savedAction.status && savedAction.status !== 'active') {
+                requests.push({
+                  id: 'req-current',
+                  studentName: profile?.full_name || 'Aluno Cadastrado',
+                  studentEmail: profile?.email || profile?.username || 'aluno@lexy.com',
+                  matricula: profile?.matricula_code || 'LXY-2026-808391',
+                  status: savedAction.status,
+                  pausedUntil: savedAction.pausedUntil,
+                  cancelReason: savedAction.cancelReason,
+                  savedAt: savedAction.savedAt || new Date().toISOString()
+                });
+              }
+
+              Object.keys(overrides).forEach((key, idx) => {
+                const ov = overrides[key];
+                const statusStr = typeof ov === 'string' ? ov : ov?.status;
+                if (statusStr && statusStr !== 'active' && !requests.some(r => r.studentEmail === key || r.id === key)) {
+                  requests.push({
+                    id: `req-ov-${idx}`,
+                    studentName: key.includes('@') ? key.split('@')[0] : 'Aluno Lexy',
+                    studentEmail: key.includes('@') ? key : 'aluno@lexy.com',
+                    matricula: 'LXY-2026-808391',
+                    status: statusStr,
+                    pausedUntil: typeof ov === 'object' ? ov.pausedUntil : null,
+                    cancelReason: typeof ov === 'object' ? ov.cancelReason : null,
+                    savedAt: new Date().toISOString()
+                  });
+                }
+              });
+
+              if (requests.length === 0) {
+                return (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                    <p className="text-sm font-bold text-white">Nenhuma notificação pendente</p>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      Quando algum aluno clicar no botão de pausar seu pacote por até 20 dias ou solicitar cancelamento, a notificação aparecerá nesta aba.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {requests.map(req => {
+                    const isPaused = req.status === 'paused';
+                    const isCanceled = req.status === 'canceled';
+                    const formattedUntil = req.pausedUntil 
+                      ? new Date(req.pausedUntil).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : '20 Dias';
+
+                    const handleUnlock = () => {
+                      localStorage.removeItem('lexy_sub_action_v1');
+                      const currentOv = JSON.parse(localStorage.getItem('lexy_subscription_status_overrides') || '{}');
+                      delete currentOv[req.studentEmail];
+                      delete currentOv[req.id];
+                      localStorage.setItem('lexy_subscription_status_overrides', JSON.stringify(currentOv));
+                      alert(`✅ Pausa do aluno ${req.studentName} destrancada com sucesso! A assinatura foi reativada.`);
+                      window.location.reload();
+                    };
+
+                    return (
+                      <div key={req.id} className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-lg hover:border-slate-700 transition-all">
+                        <div className="flex items-start justify-between gap-3 border-b border-slate-800/60 pb-3">
+                          <div>
+                            <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                              Matrícula: {req.matricula}
+                            </span>
+                            <h3 className="text-sm font-extrabold text-white mt-1.5">{req.studentName}</h3>
+                            <p className="text-xs text-slate-400">{req.studentEmail}</p>
+                          </div>
+
+                          {isPaused && (
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                              <PauseCircle className="w-3.5 h-3.5" />
+                              Pausado (Até 20d)
+                            </span>
+                          )}
+
+                          {isCanceled && (
+                            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                              <XCircle className="w-3.5 h-3.5" />
+                              Solicitou Cancelamento
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          {isPaused && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-300">
+                              <p className="font-bold flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                                Pausa solicitada até: {formattedUntil}
+                              </p>
+                              <p className="text-[11px] text-amber-400/80 mt-1">
+                                O aluno congelou a cobrança por até 20 dias preservando seus horários na agenda.
+                              </p>
+                            </div>
+                          )}
+
+                          {isCanceled && (
+                            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl text-rose-300">
+                              <p className="font-bold flex items-center gap-1.5">
+                                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                                Motivo informado: {req.cancelReason || 'Financeiro / Outros'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800/60">
+                          <button
+                            type="button"
+                            onClick={handleUnlock}
+                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Unlock className="w-4 h-4 fill-slate-950" />
+                            <span>Destrancar e Reativar Assinatura Agora ⚡</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
       {activeTab === 'panel' && (
         <div className="space-y-6">
           <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 shadow-xl rounded-2xl p-6 space-y-4">
