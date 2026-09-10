@@ -359,6 +359,48 @@ export default function StudentSubscriptionTab() {
     setTimeout(() => setActionNotice(''), 6000);
   };
 
+  const handleAsaasSubscriptionPaymentSuccess = async (paymentResult) => {
+    setIsAsaasModalOpen(false);
+    setIsSubscribeModalOpen(false);
+
+    const activeSlots = weeklySlots.slice(0, selectedLessonsPerWeek);
+    const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
+
+    await createBooking({
+      tutorId: targetTutor.id,
+      day: primarySlot.day,
+      time: primarySlot.time,
+      allSlots: activeSlots,
+      bookingType: 'package',
+      planHours: totalContractedHours,
+      planName: `Assinatura ${selectedLessonsPerWeek}x/semana (${totalContractedHours} Aulas / 30 Dias)`,
+      totalAmount: totalCycleAmount,
+      bypassWallet: true,
+      paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
+      studentId: profile?.id,
+      studentEmail: profile?.email,
+      studentName: profile?.full_name,
+      studentMatricula: profile?.matricula_code
+    });
+
+    const newTx = {
+      id: paymentResult?.transactionId || `tx_${Date.now()}`,
+      studentId: profile?.id,
+      studentEmail: profile?.email,
+      studentMatricula: profile?.matricula_code,
+      desc: `Assinatura de 30 Dias com ${targetTutor.name} (${selectedLessonsPerWeek}x/sem)`,
+      date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      amount: totalCycleAmount,
+      status: 'Concluído'
+    };
+
+    const updatedHistory = [newTx, ...userHistory];
+    localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
+
+    setActionNotice(`🎉 Assinatura ativada com sucesso via Asaas! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
+    setTimeout(() => setActionNotice(''), 8000);
+  };
+
   const formattedNextDate = activeSub?.nextBillingDate
     ? new Date(activeSub.nextBillingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
