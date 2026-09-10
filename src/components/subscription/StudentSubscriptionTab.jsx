@@ -367,7 +367,7 @@ export default function StudentSubscriptionTab() {
     const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
 
     await createBooking({
-      tutorId: targetTutor.id,
+      tutorId: targetTutor?.id || tutors[0]?.id || 'tutor-1',
       day: primarySlot.day,
       time: primarySlot.time,
       allSlots: activeSlots,
@@ -388,7 +388,7 @@ export default function StudentSubscriptionTab() {
       studentId: profile?.id,
       studentEmail: profile?.email,
       studentMatricula: profile?.matricula_code,
-      desc: `Assinatura de 30 Dias com ${targetTutor.name} (${selectedLessonsPerWeek}x/sem)`,
+      desc: `Assinatura de 30 Dias com ${targetTutor?.name || 'Professor Lexy'} (${selectedLessonsPerWeek}x/sem)`,
       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       amount: totalCycleAmount,
       status: 'Concluído'
@@ -397,7 +397,7 @@ export default function StudentSubscriptionTab() {
     const updatedHistory = [newTx, ...userHistory];
     localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
 
-    setActionNotice(`🎉 Assinatura ativada com sucesso via Asaas! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
+    setActionNotice(`🎉 Assinatura ativada com sucesso via Asaas! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor?.name || 'seu professor'} foram agendadas na aba Início.`);
     setTimeout(() => setActionNotice(''), 8000);
   };
 
@@ -694,13 +694,13 @@ export default function StudentSubscriptionTab() {
 
               <div className="flex items-center gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800/60">
                 <img 
-                  src={targetTutor.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
-                  alt={targetTutor.name}
+                  src={targetTutor?.avatar || activeSub?.tutorAvatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'} 
+                  alt={targetTutor?.name || activeSub?.tutorName || 'Professor Lexy'}
                   className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-500/30 shadow-md shrink-0" 
                 />
                 <div className="space-y-0.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-white text-base truncate">{targetTutor.name}</h3>
+                    <h3 className="font-bold text-white text-base truncate">{targetTutor?.name || activeSub?.tutorName || 'Professor Lexy'}</h3>
                     <span className="bg-emerald-500/10 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
                       {activeSub.planName || 'Assinatura de 30 Dias'}
                     </span>
