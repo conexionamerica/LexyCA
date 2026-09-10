@@ -167,7 +167,7 @@ export default function StudentSubscriptionTab() {
       );
       if (match) return match;
     }
-    return tutors[0] || null;
+    return null;
   }, [tutors, activeSub, lastBooking, searchParams]);
 
   const tutorHourlyRate = Number(targetTutor?.hourlyRate || targetTutor?.hourly_rate || 20);
