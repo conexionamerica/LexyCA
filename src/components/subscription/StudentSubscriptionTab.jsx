@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   Sparkles, Calendar, Clock, CreditCard, ShieldCheck, 
   AlertCircle, CheckCircle2, PauseCircle, XCircle, 
-  RefreshCw, Award, UserCheck, Lock, ArrowRight, Zap, FileText
+  RefreshCw, Award, UserCheck, Lock, ArrowRight, Zap, FileText, MessageSquare
 } from 'lucide-react';
 import { useMarketplace } from '../../contexts/MarketplaceContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -818,6 +818,24 @@ export default function StudentSubscriptionTab() {
                   <p className="text-slate-300 text-[11px] leading-relaxed">
                     Você pode pausar as cobranças por até 20 dias por ciclo caso precise viajar ou descansar.
                   </p>
+                </div>
+
+                <div className="p-3 bg-cyan-950/40 rounded-xl border border-cyan-500/30 space-y-2">
+                  <span className="font-bold text-cyan-400 flex items-center gap-1.5 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    Processador de Pagamentos & Suporte
+                  </span>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    As ações de <strong>pausar</strong> e <strong>cancelar</strong> estão sujeitas ao correto funcionamento do nosso processador de pagamentos <strong>Asaas</strong>. Em caso de apresentar qualquer problema ou instabilidade, entre em contato conosco para resolvermos seu caso imediatamente.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/student?tab=chat')}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs py-2 px-3 rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                    <span>Falar com o Atendimento / Suporte 💬</span>
+                  </button>
                 </div>
               </div>
             </div>
