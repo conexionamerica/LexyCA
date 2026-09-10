@@ -1209,11 +1209,17 @@ export default function StudentDashboard() {
                         alt={tutor.name} 
                         className="w-12 h-12 rounded-full object-cover border border-cyan-400/50 ring-2 ring-cyan-500/30 group-hover:scale-105 transition-transform shrink-0" 
                       />
-                      <div>
-                        <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
-                          {tutor.name && tutor.name.includes('@') ? (tutor.name.split('@')[0].charAt(0).toUpperCase() + tutor.name.split('@')[0].slice(1)) : tutor.name}
-                        </h3>
-                        <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border border-cyan-500/30 mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors truncate">
+                            {tutor.name && tutor.name.includes('@') ? (tutor.name.split('@')[0].charAt(0).toUpperCase() + tutor.name.split('@')[0].slice(1)) : tutor.name}
+                          </h3>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-extrabold shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            Verificado Lexy
+                          </span>
+                        </div>
+                        <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border border-cyan-500/30 mt-1">
                           🗣️ {(!tutor.subject || tutor.subject === 'Idiomas' || tutor.subject === '--') ? 'Espanhol' : tutor.subject} • Nativo {tutor.flag || '🌐'}
                         </span>
                       </div>

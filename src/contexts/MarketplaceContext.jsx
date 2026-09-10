@@ -305,7 +305,7 @@ const isFakeMockTutor = (t) => {
               avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
               nativeSpeaker: true,
               isSuperTutor: false,
-              isVerified: dbT.status === 'approved' || !dbT.status,
+              isVerified: true,
               status: dbT.status || 'approved',
               subject: cleanSubject,
               hourlyRate: Number(dbT.hourly_rate || 20),
