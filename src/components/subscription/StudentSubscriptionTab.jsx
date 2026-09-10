@@ -68,12 +68,12 @@ export default function StudentSubscriptionTab() {
     setSavedAction(getSavedAction(profile));
   }, [profile]);
 
-  // activeSub: combina dados da subscription com o status salvo localmente
+  // activeSub: combina dados da subscription real do Supabase com o status salvo localmente
   const activeSub = useMemo(() => {
     const base = (userSubscriptions && userSubscriptions.length > 0)
       ? userSubscriptions[0]
-      : {
-          id: 'sub-active-fallback',
+      : (savedAction ? {
+          id: `sub-${profile?.id || 'saved'}`,
           studentId: profile?.id,
           studentEmail: profile?.email,
           studentName: profile?.full_name,
@@ -84,9 +84,9 @@ export default function StudentSubscriptionTab() {
           lessonsPerWeek: 2,
           planHours: 8,
           monthlyPrice: 216.00,
-          status: 'active',
+          status: savedAction.status || 'active',
           nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        };
+        } : null);
 
     if (!base) return null;
 
