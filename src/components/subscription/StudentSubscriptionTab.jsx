@@ -48,24 +48,24 @@ export default function StudentSubscriptionTab() {
   // ESTADO DE STATUS DA ASSINATURA - 100% localStorage, sem depender de contexto
   // Chave: lexy_sub_action_v1 = { status, pausedUntil, cancelReason, savedAt }
   // ============================================================
-  const getSubActionKey = () => {
-    const pEmail = profile?.email || profile?.id || '';
+  const getSubActionKey = (p) => {
+    const pEmail = p?.email || p?.id || '';
     return pEmail ? `lexy_sub_action_${pEmail}` : 'lexy_sub_action_v1';
   };
 
-  const getSavedAction = () => {
+  const getSavedAction = (p) => {
     try {
-      const key = getSubActionKey();
+      const key = getSubActionKey(p);
       const raw = localStorage.getItem(key) || localStorage.getItem('lexy_sub_action_v1');
       if (!raw) return null;
       return JSON.parse(raw);
     } catch(e) { return null; }
   };
 
-  const [savedAction, setSavedAction] = useState(getSavedAction);
+  const [savedAction, setSavedAction] = useState(() => getSavedAction(profile));
 
   React.useEffect(() => {
-    setSavedAction(getSavedAction());
+    setSavedAction(getSavedAction(profile));
   }, [profile]);
 
   // activeSub: combina dados da subscription com o status salvo localmente
@@ -305,7 +305,7 @@ export default function StudentSubscriptionTab() {
 
     // ✅ SALVAR NO LOCALSTORAGE PRIMEIRO - isto é síncrono e não pode falhar
     const action = { status: 'paused', pausedUntil: pausedUntilDate, savedAt: new Date().toISOString() };
-    const key = getSubActionKey();
+    const key = getSubActionKey(profile);
     localStorage.setItem(key, JSON.stringify(action));
     localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
     setSavedAction(action);
@@ -321,7 +321,7 @@ export default function StudentSubscriptionTab() {
     if (!activeSub) return;
 
     // ✅ LIMPAR O LOCALSTORAGE - volta ao status normal
-    const key = getSubActionKey();
+    const key = getSubActionKey(profile);
     localStorage.removeItem(key);
     localStorage.removeItem('lexy_sub_action_v1');
     setSavedAction(null);
@@ -338,7 +338,7 @@ export default function StudentSubscriptionTab() {
 
     // ✅ SALVAR NO LOCALSTORAGE PRIMEIRO
     const action = { status: 'canceled', cancelReason, savedAt: new Date().toISOString() };
-    const key = getSubActionKey();
+    const key = getSubActionKey(profile);
     localStorage.setItem(key, JSON.stringify(action));
     localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
     setSavedAction(action);
