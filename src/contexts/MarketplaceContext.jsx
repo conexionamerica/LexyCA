@@ -279,21 +279,35 @@ const isFakeMockTutor = (t) => {
             const earnedVal = Number(dbT.earned_balance || dbT.wallet_balance || dbT.earnedBalance || savedEarned || 0);
             const lessonsVal = Number(dbT.total_lessons || dbT.totalLessons || savedLessons || 0);
 
+            const rawName = dbT.full_name || dbT.name || (dbT.email ? dbT.email.split('@')[0] : 'Professor');
+            const cleanName = (rawName.includes('@')) 
+              ? (rawName.split('@')[0].charAt(0).toUpperCase() + rawName.split('@')[0].slice(1)) 
+              : rawName;
+
+            const rawSubject = dbT.subject_taught || dbT.subject || dbT.study_language || dbT.idioma || dbT.language;
+            const cleanSubject = (!rawSubject || rawSubject === 'Idiomas' || rawSubject === '--') ? 'Espanhol' : rawSubject;
+
+            const cleanBio = (dbT.headline && dbT.headline.trim() !== '--') 
+              ? dbT.headline 
+              : ((dbT.bio && dbT.bio.trim() !== '--') 
+                ? dbT.bio 
+                : 'Professor(a) nativo(a) especializado(a) em conversação prática e acompanhamento personalizado.');
+
             return {
               id: dbT.id,
-              name: dbT.full_name || dbT.name || dbT.email?.split('@')[0] || 'Professor',
+              name: cleanName,
               email: dbT.email,
               phone: dbT.phone || dbT.document_number || '',
-              title: dbT.headline || 'Professor(a) Nativo(a) de Idiomas',
+              title: cleanBio,
               country: dbT.residence_country || 'Brasil',
               countryCode: 'BR',
-              flag: '🌐',
+              flag: cleanSubject.toLowerCase().includes('ingl') ? '🇬🇧🇺🇸' : cleanSubject.toLowerCase().includes('esp') ? '🇪🇸🇲🇽' : '🌐',
               avatar: dbT.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
               nativeSpeaker: true,
               isSuperTutor: false,
               isVerified: dbT.status === 'approved' || !dbT.status,
               status: dbT.status || 'approved',
-              subject: dbT.subject_taught || dbT.study_language || 'Idiomas',
+              subject: cleanSubject,
               hourlyRate: Number(dbT.hourly_rate || 20),
               trialRate: Number(dbT.hourly_rate || 20) * 0.5,
               rating: 5.0,
@@ -303,10 +317,10 @@ const isFakeMockTutor = (t) => {
               activeStudents: 0,
               responseTime: 'Responde em <1 hora',
               videoUrl: dbT.video_url || '',
-              headline: dbT.headline || '',
-              bio: dbT.bio || '',
+              headline: cleanBio,
+              bio: cleanBio,
               specialties: dbT.specialties || ['Conversação'],
-              languagesSpoken: dbT.languages_spoken || [{ language: dbT.subject_taught || 'Espanhol', level: 'Nativo' }],
+              languagesSpoken: dbT.languages_spoken || [{ language: cleanSubject, level: 'Nativo' }],
               weeklySchedule: dbT.weekly_schedule || {},
               earnedBalance: earnedVal,
               earned_balance: earnedVal,

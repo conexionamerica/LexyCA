@@ -1211,16 +1211,16 @@ export default function StudentDashboard() {
                       />
                       <div>
                         <h3 className="font-semibold text-white text-sm group-hover:text-cyan-300 transition-colors">
-                          {tutor.name}
+                          {tutor.name && tutor.name.includes('@') ? (tutor.name.split('@')[0].charAt(0).toUpperCase() + tutor.name.split('@')[0].slice(1)) : tutor.name}
                         </h3>
-                        <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/20 mt-0.5">
-                          {tutor.subject} • Nativo {tutor.flag}
+                        <span className="inline-block bg-cyan-500/10 text-cyan-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border border-cyan-500/30 mt-0.5">
+                          🗣️ {(!tutor.subject || tutor.subject === 'Idiomas' || tutor.subject === '--') ? 'Espanhol' : tutor.subject} • Nativo {tutor.flag || '🌐'}
                         </span>
                       </div>
                     </div>
 
                     <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed font-normal">
-                      "{tutor.headline || tutor.bio}"
+                      "{(!tutor.headline || tutor.headline === '--') ? ((!tutor.bio || tutor.bio === '--') ? 'Professor(a) nativo(a) de idiomas com foco em conversação fluida.' : tutor.bio) : tutor.headline}"
                     </p>
 
                     {/* Preço e Avaliação */}
