@@ -320,16 +320,23 @@ export default function StudentSubscriptionTab() {
   const handleConfirmResume = async () => {
     if (!activeSub) return;
 
-    // ✅ LIMPAR O LOCALSTORAGE - volta ao status normal
+    // ✅ LIMPAR O LOCALSTORAGE - volta ao status ativo normal
     const key = getSubActionKey(profile);
     localStorage.removeItem(key);
     localStorage.removeItem('lexy_sub_action_v1');
+    try {
+      const overrides = JSON.parse(localStorage.getItem('lexy_subscription_status_overrides') || '{}');
+      if (activeSub.id) delete overrides[activeSub.id];
+      if (profile?.email) delete overrides[profile.email];
+      localStorage.setItem('lexy_subscription_status_overrides', JSON.stringify(overrides));
+    } catch(e) {}
+
     setSavedAction(null);
 
-    // Background calls
+    // Background calls - atualiza no Supabase para status = 'active'
     resumeSubscription(activeSub.id).catch(() => {});
 
-    setActionNotice('⚡ Assinatura reativada com sucesso!');
+    setActionNotice('⚡ Assinatura e cobranças automáticas reativadas com sucesso!');
     setTimeout(() => setActionNotice(''), 5000);
   };
 
@@ -350,85 +357,6 @@ export default function StudentSubscriptionTab() {
     setCancelStep(1);
     setActionNotice('ℹ️ Renovação automática cancelada. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
     setTimeout(() => setActionNotice(''), 6000);
-  };
-
-  const handleAsaasSubscriptionPaymentSuccess = async (paymentResult) => {
-    setIsAsaasModalOpen(false);
-    setIsSubscribeModalOpen(false);
-
-    const activeSlots = weeklySlots.slice(0, selectedLessonsPerWeek);
-    const primarySlot = activeSlots[0] || { day: 'Segunda-feira', time: '10:00' };
-
-    await createBooking({
-      tutorId: targetTutor.id,
-      day: primarySlot.day,
-      time: primarySlot.time,
-      allSlots: activeSlots,
-      bookingType: 'package',
-      planHours: totalContractedHours,
-      planName: `Assinatura ${selectedLessonsPerWeek}x/semana (${totalContractedHours} Aulas / 30 Dias)`,
-      totalAmount: totalCycleAmount,
-      bypassWallet: true,
-      paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
-      studentId: profile?.id,
-      studentEmail: profile?.email,
-      studentName: profile?.full_name,
-      studentMatricula: profile?.matricula_code
-    });
-
-    const newTx = {
-      id: paymentResult?.transactionId || `tx_${Date.now()}`,
-      studentId: profile?.id,
-      studentEmail: profile?.email,
-      studentMatricula: profile?.matricula_code,
-      desc: `Assinatura de 30 Dias com ${targetTutor.name} (${selectedLessonsPerWeek}x/sem)`,
-      date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      amount: totalCycleAmount,
-      status: 'Concluído'
-    };
-
-    const updatedHistory = [newTx, ...userHistory];
-    localStorage.setItem('lexy_wallet_history', JSON.stringify(updatedHistory));
-
-    setActionNotice(`🎉 Assinatura ativada com sucesso via Asaas! Suas ${totalContractedHours} aulas do ciclo de 30 dias com ${targetTutor.name} foram agendadas na aba Início.`);
-    setTimeout(() => setActionNotice(''), 8000);
-  };
-
-  const handlePauseSubscription = () => {
-    if (!activeSub) return;
-    const nextDateObj = new Date(activeSub.nextBillingDate || Date.now());
-    nextDateObj.setDate(nextDateObj.getDate() + Number(pauseDays));
-    const newPausedUntil = nextDateObj.toISOString();
-
-    const updatedSub = {
-      ...activeSub,
-      status: 'paused',
-      pausedUntil: newPausedUntil,
-      nextBillingDate: newPausedUntil,
-      pauseDaysLeft: Math.max(0, (activeSub.pauseDaysLeft || 20) - Number(pauseDays))
-    };
-
-    setActiveSubState(updatedSub);
-    setIsPauseModalOpen(false);
-    setActionNotice(`⏸️ Assinatura pausada por ${pauseDays} dias. Próxima cobrança prorrogada para ${new Date(newPausedUntil).toLocaleDateString('pt-BR')}.`);
-    setTimeout(() => setActionNotice(''), 6000);
-  };
-
-  const handleReactivateSubscription = () => {
-    if (!activeSub) return;
-    const updatedSub = { ...activeSub, status: 'active', pausedUntil: null };
-    setActiveSubState(updatedSub);
-    setActionNotice(`▶️ Assinatura reativada com sucesso! Cobrança de 30 dias mantida.`);
-    setTimeout(() => setActionNotice(''), 6000);
-  };
-
-  const handleCancelSubscription = () => {
-    if (!activeSub) return;
-    const updatedSub = { ...activeSub, status: 'canceled' };
-    setActiveSubState(updatedSub);
-    setIsCancelModalOpen(false);
-    setActionNotice(`🚫 Assinatura cancelada. As cobranças automáticas de 30 dias foram interrompidas.`);
-    setTimeout(() => setActionNotice(''), 7000);
   };
 
   const formattedNextDate = activeSub?.nextBillingDate
@@ -802,13 +730,20 @@ export default function StudentSubscriptionTab() {
                 )}
 
                 {activeSub.status === 'canceled' && (
-                  <button
-                    onClick={handleReactivateSubscription}
-                    className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <RefreshCw className="w-4 h-4 text-slate-950" />
-                    <span>Recontratar Assinatura</span>
-                  </button>
+                  <div className="flex items-center justify-between gap-3 w-full">
+                    <span className="text-xs text-rose-300 font-medium flex items-center gap-1.5">
+                      <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      Renovação automática suspensa. Clique para reativar suas cobranças recorrentes.
+                    </span>
+
+                    <button
+                      onClick={handleConfirmResume}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
+                      <span>Reativar Assinatura Agora ⚡</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
