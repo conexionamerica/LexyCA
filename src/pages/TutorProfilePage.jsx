@@ -12,39 +12,86 @@ import BookingAuthModal from '../components/modals/BookingAuthModal';
 export default function TutorProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tutors, getTrialEligibility, packageDiscounts, getTutorPackageDiscount } = useMarketplace();
+  const { tutors, bookings, teacherAvailability, getTrialEligibility, packageDiscounts, getTutorPackageDiscount } = useMarketplace();
   const { profile } = useAuth();
 
   // Buscar tutor por ID
   const tutor = tutors.find(t => t.id === id) || tutors[0];
 
-  const [selectedDay, setSelectedDay] = useState('Segunda');
+  const ALL_DAYS = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
+  const [selectedDay, setSelectedDay] = useState('Segunda-feira');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [targetBookingTab, setTargetBookingTab] = useState('trial');
 
-  if (!tutor) {
-    return (
-      <div className="max-w-2xl mx-auto py-16 px-4 text-center space-y-4 animate-fade-in">
-        <div className="w-16 h-16 rounded-3xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto border border-cyan-500/20">
-          <Sparkles className="w-8 h-8" />
-        </div>
-        <h2 className="text-xl font-black text-white">Em breve...</h2>
-        <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
-          Perfil de professor não encontrado ou indisponível. Novos tutores reais estão finalizando seus cadastros na plataforma Lexy.
-        </p>
-        <button
-          onClick={() => navigate('/explore')}
-          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer"
-        >
-          Explorar Professores
-        </button>
-      </div>
-    );
-  }
+  const getDayNameClean = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = String(dateStr).trim();
+    if (!cleanStr.includes('-')) return cleanStr;
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return weekDays[d.getDay()] || cleanStr;
+  };
 
-  const availableDays = Object.keys(tutor.weeklySchedule || {});
-  const slotsForDay = tutor.weeklySchedule?.[selectedDay] || [];
+  // HELPER: Calcula ÚNICAMENTE os horários LIVRES do professor (ocultando 100% dos horários ocupados e bloqueados)
+  const getFreeSlotsForDay = (dayName) => {
+    if (!dayName || !tutor) return [];
+
+    const targetClean = String(dayName).toLowerCase().replace('-feira', '').trim();
+    const rawSchedule = tutor?.weeklySchedule || {};
+    
+    const matchedKey = Object.keys(rawSchedule).find(k => 
+      k.toLowerCase().replace('-feira', '').trim() === targetClean
+    );
+
+    let baseSlots = matchedKey ? (rawSchedule[matchedKey] || []) : [];
+    if (!baseSlots || baseSlots.length === 0) {
+      if (targetClean !== 'sábado' && targetClean !== 'domingo' && targetClean !== 'sabado') {
+        baseSlots = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+      } else if (targetClean === 'sábado' || targetClean === 'sabado') {
+        baseSlots = ['09:00', '10:00', '11:00', '14:00', '15:00'];
+      }
+    }
+
+    const extraFreeFromDb = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id || '').toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'free')
+      .filter(a => {
+        const slotDayName = getDayNameClean(a.date || a.day || '');
+        return String(slotDayName).toLowerCase().replace('-feira', '').trim() === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    const combinedSlots = Array.from(new Set([...baseSlots, ...extraFreeFromDb]));
+
+    const occupiedTimes = (bookings || [])
+      .filter(b => String(b.tutorId || b.tutor_id || '').toLowerCase() === String(tutor?.id || '').toLowerCase() && (b.status === 'confirmed' || b.status === 'rescheduled' || b.status === 'pending'))
+      .filter(b => {
+        const bookingDayName = getDayNameClean(b.date || b.day || '');
+        const cleanBookingDay = String(bookingDayName).split(' (')[0].toLowerCase().replace('-feira', '').trim();
+        return cleanBookingDay === targetClean;
+      })
+      .map(b => String(b.time || '').trim());
+
+    const blockedTimesForTeacher = (teacherAvailability || [])
+      .filter(a => String(a.teacher_id || a.tutor_id || '').toLowerCase() === String(tutor?.id || '').toLowerCase() && a.status === 'blocked')
+      .filter(a => {
+        const slotDayName = getDayNameClean(a.date || a.day || '');
+        return String(slotDayName).toLowerCase().replace('-feira', '').trim() === targetClean;
+      })
+      .map(a => String(a.time).trim());
+
+    // Retorna APENAS horários livres
+    return combinedSlots
+      .filter(t => !occupiedTimes.includes(String(t).trim()) && !blockedTimesForTeacher.includes(String(t).trim()))
+      .sort();
+  };
+
+  const freeSlotsForSelectedDay = getFreeSlotsForDay(selectedDay);
 
   const handleBookClick = (tab = 'trial', timeSlot = null) => {
     setTargetBookingTab(tab);
@@ -196,33 +243,44 @@ export default function TutorProfilePage() {
               </div>
             </div>
 
-            {/* Selector de Días */}
+            {/* Selector de Días da Semana */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {availableDays.map(day => (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-                    selectedDay === day
-                      ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                      : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
+              {ALL_DAYS.map(day => {
+                const count = getFreeSlotsForDay(day).length;
+                const isSelected = selectedDay === day;
+
+                return (
+                  <button
+                    key={day}
+                    onClick={() => setSelectedDay(day)}
+                    className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>{day}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isSelected ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-emerald-400'}`}>
+                      {count} livre{count !== 1 ? 's' : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Slots de Horario para el Día Seleccionado */}
+            {/* Slots de Horários Livres (Horários ocupados e bloqueados são ocultados) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {slotsForDay.length === 0 ? (
-                <p className="col-span-4 text-xs text-slate-500 text-center py-4">Sem horários abertos para este dia.</p>
+              {freeSlotsForSelectedDay.length === 0 ? (
+                <div className="col-span-4 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-6 text-center space-y-1">
+                  <p className="text-xs font-bold text-slate-300">Nenhum horário livre para este dia.</p>
+                  <p className="text-[11px] text-slate-500">Todos os horários estão ocupados por alunos ou reservados na agenda do professor.</p>
+                </div>
               ) : (
-                slotsForDay.map(slot => (
+                freeSlotsForSelectedDay.map(slot => (
                   <button
                     key={slot}
                     onClick={() => handleBookSlot(slot)}
-                    className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm group"
+                    className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm group cursor-pointer"
                   >
                     <span>{slot}</span>
                     <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
