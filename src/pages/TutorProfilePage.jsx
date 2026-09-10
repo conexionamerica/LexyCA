@@ -166,8 +166,8 @@ export default function TutorProfilePage() {
           {/* Biografía y Metodología */}
           <div className="glass-panel rounded-3xl p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-extrabold text-white">Sobre Mim e Minhas Aulas</h3>
-            <div className="prose prose-invert text-slate-300 text-sm leading-relaxed whitespace-pre-line">
-              {tutor.bio}
+            <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-line bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 font-normal">
+              {tutor.bio || tutor.headline || tutor.title || 'Olá! Sou professor(a) nativo(a) e ajudo meus alunos a alcançarem a fluência no idioma com aulas 100% dinâmicas, focadas em conversação prática e acompanhamento personalizado.'}
             </div>
 
             <div className="pt-4 border-t border-slate-800">
