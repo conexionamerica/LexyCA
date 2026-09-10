@@ -1772,7 +1772,7 @@ export default function StudentDashboard() {
               className="z-10 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/60 font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 shrink-0 shadow-md"
             >
               <Search className="w-4 h-4 text-cyan-400" />
-              <span>+ Agendar Nova Aula</span>
+              <span>Conhecer Outros Tutores</span>
             </button>
           </div>
 
