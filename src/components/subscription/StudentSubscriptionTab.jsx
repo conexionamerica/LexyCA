@@ -78,8 +78,8 @@ export default function StudentSubscriptionTab() {
           studentEmail: profile?.email,
           studentName: profile?.full_name,
           studentMatricula: studentMatricula,
-          tutorId: targetTutor?.id || 'tutor-1',
-          tutorName: targetTutor?.name || 'Professor Lexy',
+          tutorId: 'tutor-1',
+          tutorName: 'Professor Lexy',
           planName: 'Assinatura 2x/semana (8 Aulas / 30 Dias)',
           lessonsPerWeek: 2,
           planHours: 8,
@@ -114,7 +114,7 @@ export default function StudentSubscriptionTab() {
     }
 
     return base;
-  }, [savedAction, userSubscriptions, profile, studentMatricula, targetTutor]);
+  }, [savedAction, userSubscriptions, profile, studentMatricula]);
 
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
