@@ -1,8 +1,17 @@
 import React from 'react';
-import { Star, Globe, Sun, Moon, ArrowRight } from 'lucide-react';
+import { Star, Globe, ArrowRight, Percent } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function TeacherCard({ teacher, onBookClick, className }) {
+  // Lógica de Descuento del Administrador
+  const hasDiscount = teacher.admin_discount_active && Number(teacher.admin_discount_percent) > 0;
+  const baseRate = Number(teacher.hourly_rate || 20);
+  const discountPercent = Number(teacher.admin_discount_percent || 0);
+  
+  const finalRate = hasDiscount 
+    ? baseRate * (1 - discountPercent / 100) 
+    : baseRate;
+
   return (
     <div className={cn(
       "bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-cyan-200/60",
@@ -37,6 +46,14 @@ export function TeacherCard({ teacher, onBookClick, className }) {
                 <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                 <span className="font-bold text-[11px] text-amber-700">{teacher.rating}</span>
               </div>
+
+              {/* Badge Dinámico de Descuento del Admin */}
+              {hasDiscount && (
+                <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm animate-pulse">
+                  <Percent className="w-3 h-3" />
+                  <span>{discountPercent}% OFF</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
@@ -55,9 +72,23 @@ export function TeacherCard({ teacher, onBookClick, className }) {
       <div className="p-5 md:p-6 md:w-48 lg:w-52 bg-slate-50/60 border-t md:border-t-0 md:border-l border-slate-100 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 text-center relative z-10">
         <div className="space-y-0.5">
           <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Por hora</span>
-          <p className="text-2xl font-black text-slate-800 font-mono tracking-tight">
-            R$ {Number(teacher.hourly_rate).toFixed(0)}
-          </p>
+          
+          {/* Visualización de Precios con Descuento Aplicado */}
+          {hasDiscount ? (
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-slate-400 line-through font-mono">
+                R$ {baseRate.toFixed(0)}
+              </span>
+              <p className="text-2xl font-black text-emerald-600 font-mono tracking-tight">
+                R$ {finalRate.toFixed(0)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-2xl font-black text-slate-800 font-mono tracking-tight">
+              R$ {baseRate.toFixed(0)}
+            </p>
+          )}
+
           <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 inline-block">
             PIX / Tarjeta
           </span>
@@ -65,7 +96,7 @@ export function TeacherCard({ teacher, onBookClick, className }) {
 
         <button
           onClick={() => onBookClick?.(teacher)}
-          className="w-full md:w-auto px-6 py-2.5 bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-500 text-white rounded-xl font-bold text-xs hover:from-cyan-700 hover:to-emerald-600 shadow-md shadow-cyan-200/30 hover:shadow-lg hover:shadow-cyan-200/40 transition-all duration-300 flex items-center justify-center gap-1.5"
+          className="w-full md:w-auto px-6 py-2.5 bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-500 text-white rounded-xl font-bold text-xs hover:from-cyan-700 hover:to-emerald-600 shadow-md shadow-cyan-200/30 hover:shadow-lg hover:shadow-cyan-200/40 transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
         >
           Agendar Prueba
           <ArrowRight className="w-3.5 h-3.5" />
