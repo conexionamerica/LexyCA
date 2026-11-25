@@ -541,6 +541,10 @@ const isFakeMockTutor = (t) => {
         const userId = (currentSession?.user?.id || '').toLowerCase().trim();
         
         const { data, error } = await supabase.from('aulas').select('*').order('created_at', { ascending: false });
+        // Com RLS, 'aulas' só retorna as aulas do próprio usuário. Para saber quais horários dos
+        // professores já estão ocupados por OUTROS alunos, usamos a view pública 'agenda_ocupada'
+        // (somente professor, dia, horário e status — sem dados do aluno).
+        const { data: agendaData } = await supabase.from('agenda_ocupada').select('*');
 
         if (!error && data && active) {
           const filteredData = data.filter(dbApt => {
@@ -578,8 +582,28 @@ const isFakeMockTutor = (t) => {
             createdAt: dbApt.created_at || new Date().toISOString()
           }));
 
+          const ownIds = new Set(fetchedBookings.map(b => String(b.id)));
+          const occupiedSlotsFromOthers = (agendaData || [])
+            .filter(a => a && !ownIds.has(String(a.id)))
+            .filter(a => !String(a.day_name || a.day || '').match(/Semana [2-5]/))
+            .map(a => ({
+              id: a.id,
+              isOccupiedSlotOnly: true, // horário de outro aluno: só serve para bloquear o slot
+              tutorId: a.tutor_id,
+              tutorEmail: a.tutor_email || a.teacher_email || '',
+              studentId: '',
+              studentEmail: '',
+              studentName: '',
+              day: (a.day_name || a.day || '').replace(' (Semana 1)', ''),
+              time: a.time_slot || a.time || '',
+              bookingType: 'occupied',
+              amount: 0,
+              status: a.status || 'confirmed',
+              createdAt: a.created_at
+            }));
+
           // Cargar exclusivamente los datos reales de Supabase
-          setBookings(fetchedBookings);
+          setBookings([...fetchedBookings, ...occupiedSlotsFromOthers]);
           
           // Actualizar localStorage como cache secundario sincronizado
           const saveUserId = userId || 'anon';
