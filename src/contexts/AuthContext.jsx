@@ -5,6 +5,14 @@ const AuthContext = createContext(undefined);
 
 const LOCAL_STORAGE_KEY_AUTH = 'lexy_auth_user_v3';
 
+// El rol SOLO se confía si viene de la tabla profiles (controlada por el servidor).
+// Los metadatos de auth los controla el propio usuario, así que de ahí nunca se acepta 'admin'.
+const VALID_ROLES = ['student', 'teacher', 'admin'];
+function resolveRole(dbRole, metaRole) {
+  if (VALID_ROLES.includes(dbRole)) return dbRole;
+  return metaRole === 'teacher' ? 'teacher' : 'student';
+}
+
 export function generateMatriculaCode(id, email) {
   if (!id && !email) return 'LXY-2026-880192';
   const str = String(id || '') + String(email || '');
@@ -45,7 +53,14 @@ export const AuthProvider = ({ children }) => {
 
     async function checkSupabaseSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Limite de tempo: se o Supabase não responder (rede lenta, projeto fora do ar),
+        // o site abre mesmo assim em vez de ficar preso no carregamento.
+        const timeout = new Promise(resolve =>
+          setTimeout(() => resolve({ data: { session: null }, timedOut: true }), 6000)
+        );
+        const result = await Promise.race([supabase.auth.getSession(), timeout]);
+        if (result?.timedOut) console.warn('[Lexy] Supabase não respondeu em 6s; continuando sem sessão.');
+        const session = result?.data?.session;
         if (session?.user && mounted) {
           const userMeta = session.user.user_metadata || {};
           let dbProfile = {};
@@ -62,7 +77,7 @@ export const AuthProvider = ({ children }) => {
             id: session.user.id,
             full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
             email: session.user.email,
-            role: dbProfile.role || userMeta.role || 'student',
+            role: resolveRole(dbProfile.role, userMeta.role),
             phone: dbProfile.phone || userMeta.phone || '',
             documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
             postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
@@ -82,6 +97,10 @@ export const AuthProvider = ({ children }) => {
             wallet_history: dbProfile.wallet_history || userMeta.wallet_history || []
           };
           setProfile(userProfile);
+        } else if (mounted && !result?.timedOut) {
+          // Sin sesión real de Supabase: descartar cualquier perfil guardado en localStorage
+          // (si solo hubo timeout de red, no se desloguea al usuario; el RLS protege los datos igual)
+          setProfile(null);
         }
       } catch (err) {
         console.warn('Supabase Auth check error:', err);
@@ -110,7 +129,7 @@ export const AuthProvider = ({ children }) => {
             id: session.user.id,
             full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || session.user.email?.split('@')[0],
             email: session.user.email,
-            role: dbProfile.role || userMeta.role || 'student',
+            role: resolveRole(dbProfile.role, userMeta.role),
             phone: dbProfile.phone || userMeta.phone || '',
             documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
             postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
@@ -153,19 +172,6 @@ export const AuthProvider = ({ children }) => {
   const signInWithSupabase = async ({ email, password }) => {
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Verificación de Credenciales de Super Administrador (Conexión América)
-    if (cleanEmail === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
-      const adminUser = {
-        id: 'admin-super-1',
-        full_name: 'Administrador Lexy Idiomas',
-        email: 'emaildeconexionamerica@gmail.com',
-        role: 'admin',
-        avatar_url: ''
-      };
-      setProfile(adminUser);
-      return { success: true, user: adminUser };
-    }
-
     // 2. Autenticación Real Estricta contra Supabase Auth (Sin Falsos Positivos ni Usuarios Ficticios)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -203,7 +209,7 @@ export const AuthProvider = ({ children }) => {
         id: data.user.id,
         full_name: dbProfile.full_name || userMeta.name || userMeta.full_name || cleanEmail.split('@')[0],
         email: data.user.email,
-        role: dbProfile.role || userMeta.role || 'student',
+        role: resolveRole(dbProfile.role, userMeta.role),
         phone: dbProfile.phone || userMeta.phone || '',
         documentNumber: dbProfile.document_number || userMeta.documentNumber || '',
         postalCode: dbProfile.postal_code || userMeta.postalCode || dbProfile.cep || userMeta.cep || '',
@@ -236,7 +242,7 @@ export const AuthProvider = ({ children }) => {
   const signUpWithSupabase = async ({ name, email, password, role, phone, documentNumber, residenceCountry, postalCode, address, addressNumber, complement, province, city, state, hourlyRate, study_language, language_level, study_motivation, subject_taught, headline, bio }) => {
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const normalizedRole = role === 'professor' || role === 'tutor' ? 'teacher' : (role || 'student');
+      const normalizedRole = ['teacher', 'professor', 'tutor'].includes(role) ? 'teacher' : 'student';
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: password,
@@ -320,7 +326,7 @@ export const AuthProvider = ({ children }) => {
         id: userId,
         full_name: name,
         email: cleanEmail,
-        role: role || 'student',
+        role: normalizedRole,
         phone: phone || '',
         documentNumber: documentNumber || '',
         cpf: documentNumber || '',
@@ -335,7 +341,7 @@ export const AuthProvider = ({ children }) => {
         study_language: study_language || '',
         language_level: language_level || '',
         study_motivation: study_motivation || '',
-        avatar_url: role === 'teacher' 
+        avatar_url: normalizedRole === 'teacher' 
           ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
           : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
         hourly_rate: hourlyRate || 20,
@@ -350,21 +356,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Iniciar Sesión como Super Admin
-  const loginAdmin = (email, password) => {
-    if (email === 'emaildeconexionamerica@gmail.com' && password === 'AlyRoberto2026*') {
-      const adminUser = {
-        id: 'admin-super-1',
-        full_name: 'Administrador Lexy Idiomas',
-        email: 'emaildeconexionamerica@gmail.com',
-        role: 'admin',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-      };
-      setProfile(adminUser);
-      return { success: true, user: adminUser };
-    }
-    return { success: false, error: '❌ Credenciais inválidas de Administrador. Acesso restrito.' };
-  };
+  // Iniciar Sesión como Admin: usa Supabase Auth; el acceso depende de profiles.role = 'admin'
+  const loginAdmin = (email, password) => signInWithSupabase({ email, password });
 
   // Cerrar Sesión (Logout)
   const signOut = async () => {

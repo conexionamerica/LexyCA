@@ -541,6 +541,10 @@ const isFakeMockTutor = (t) => {
         const userId = (currentSession?.user?.id || '').toLowerCase().trim();
         
         const { data, error } = await supabase.from('aulas').select('*').order('created_at', { ascending: false });
+        // Com RLS, 'aulas' só retorna as aulas do próprio usuário. Para saber quais horários dos
+        // professores já estão ocupados por OUTROS alunos, usamos a view pública 'agenda_ocupada'
+        // (somente professor, dia, horário e status — sem dados do aluno).
+        const { data: agendaData } = await supabase.from('agenda_ocupada').select('*');
 
         if (!error && data && active) {
           const filteredData = data.filter(dbApt => {
@@ -578,8 +582,28 @@ const isFakeMockTutor = (t) => {
             createdAt: dbApt.created_at || new Date().toISOString()
           }));
 
+          const ownIds = new Set(fetchedBookings.map(b => String(b.id)));
+          const occupiedSlotsFromOthers = (agendaData || [])
+            .filter(a => a && !ownIds.has(String(a.id)))
+            .filter(a => !String(a.day_name || a.day || '').match(/Semana [2-5]/))
+            .map(a => ({
+              id: a.id,
+              isOccupiedSlotOnly: true, // horário de outro aluno: só serve para bloquear o slot
+              tutorId: a.tutor_id,
+              tutorEmail: a.tutor_email || a.teacher_email || '',
+              studentId: '',
+              studentEmail: '',
+              studentName: '',
+              day: (a.day_name || a.day || '').replace(' (Semana 1)', ''),
+              time: a.time_slot || a.time || '',
+              bookingType: 'occupied',
+              amount: 0,
+              status: a.status || 'confirmed',
+              createdAt: a.created_at
+            }));
+
           // Cargar exclusivamente los datos reales de Supabase
-          setBookings(fetchedBookings);
+          setBookings([...fetchedBookings, ...occupiedSlotsFromOthers]);
           
           // Actualizar localStorage como cache secundario sincronizado
           const saveUserId = userId || 'anon';
@@ -815,11 +839,13 @@ const isFakeMockTutor = (t) => {
   }, [studentTrialBookingsFromDb, hasCompletedFirstTrial]);
 
   // Estado de simulação rápida para teste dos 3 meses de renovação da Garantia
+  // SOMENTE em desenvolvimento local: em produção, um valor em localStorage liberava 3 aulas grátis.
   const [simulate3MonthsPassed, setSimulate3MonthsPassed] = useState(() => {
-    return localStorage.getItem('lexy_simulated_3_months') === 'true';
+    return import.meta.env.DEV && localStorage.getItem('lexy_simulated_3_months') === 'true';
   });
 
   const toggleSimulate3Months = () => {
+    if (!import.meta.env.DEV) return;
     setSimulate3MonthsPassed(prev => {
       const next = !prev;
       localStorage.setItem('lexy_simulated_3_months', String(next));
@@ -1135,6 +1161,7 @@ const isFakeMockTutor = (t) => {
   };
 
   const pauseSubscription = async (subscriptionId, days = 20) => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     const pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     console.log('[LEXY-SUB] pauseSubscription chamado - id:', subscriptionId, 'days:', days);
 
@@ -1197,7 +1224,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API (fire-and-forget)
     try {
-      if (subscriptionId) await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+      if (subscriptionId) asaasResult = await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
     } catch (asaasErr) {
       console.warn('⚠️ Asaas pause error (ignorado):', asaasErr);
     }
@@ -1216,10 +1243,11 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'paused', pausedUntil, supabaseOk };
+    return { success: true, status: 'paused', pausedUntil, supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
   const resumeSubscription = async (subscriptionId) => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     // ✅ PASSO 1: Remover override do localStorage (reativação cancela a pausa)
     try {
       const { data: { session: authSess } } = await supabase.auth.getSession();
@@ -1251,7 +1279,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API
     try {
-      if (subscriptionId) await resumeAsaasSubscription({ subscriptionId });
+      if (subscriptionId) asaasResult = await resumeAsaasSubscription({ subscriptionId });
     } catch (asaasErr) { console.warn('⚠️ Asaas resume error:', asaasErr); }
 
     // PASSO 4: Atualizar estado React
@@ -1262,10 +1290,11 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'active', supabaseOk };
+    return { success: true, status: 'active', supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
   const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     // ✅ PASSO 1: Salvar override de cancelamento com email Auth real
     try {
       const { data: { session: authSess } } = await supabase.auth.getSession();
@@ -1311,7 +1340,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API
     try {
-      if (subscriptionId) await cancelAsaasSubscription({ subscriptionId, reason });
+      if (subscriptionId) asaasResult = await cancelAsaasSubscription({ subscriptionId, reason });
     } catch (asaasErr) { console.warn('⚠️ Asaas cancel error:', asaasErr); }
 
     // PASSO 4: Atualizar estado React
@@ -1322,10 +1351,10 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'canceled', supabaseOk };
+    return { success: true, status: 'canceled', supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
-  const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
+  const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula, asaasSubscriptionId = null }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
 
@@ -1348,9 +1377,7 @@ const isFakeMockTutor = (t) => {
       bookingType === 'trial' || 
       bookingType === 'experimental' || 
       (planName && planName.toLowerCase().includes('experimental')) ||
-      (planName && planName.toLowerCase().includes('teste')) ||
-      Number(totalAmount) <= 30 ||
-      Number(planHours) === 1
+      (planName && planName.toLowerCase().includes('teste'))
     );
 
     const totalContractedHours = isTrialBooking ? 1 : (Number(planHours) || 8);
@@ -1424,7 +1451,10 @@ const isFakeMockTutor = (t) => {
       const cycleEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const newSub = {
-        id: `sub-${Date.now()}`,
+        // A coluna subscriptions.id é UUID: o id antigo "sub-<timestamp>" fazia o insert falhar
+        // e a assinatura ficava só no localStorage.
+        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sub-${Date.now()}`,
+        asaasSubscriptionId,
         studentId: effectiveStudentId,
         studentEmail: effectiveStudentEmail,
         studentName: effectiveStudentName,
@@ -1472,7 +1502,8 @@ const isFakeMockTutor = (t) => {
           cycle_start_date: newSub.cycleStartDate,
           next_billing_date: newSub.nextBillingDate,
           cycle_end_date: newSub.cycleEndDate,
-          status: 'active'
+          status: 'active',
+          asaas_subscription_id: asaasSubscriptionId
         }).then(({ error }) => {
           if (error) console.warn('Aviso: insert subscription no Supabase (usando localStorage cache):', error);
         });

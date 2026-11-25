@@ -1,75 +1,38 @@
-// Vercel Serverless Function - Cancelar Assinatura Recorrente Asaas
-// Executa o cancelamento da assinatura no Asaas via API (DELETE /v3/subscriptions/{id})
+// Vercel Serverless Function - Cancelar assinatura recorrente no Asaas (DELETE /v3/subscriptions/{id})
+import { applyCors, requireUser, getSupabaseAdmin, asaasFetch, asaasErrorMessage, sendError, HttpError } from '../_lib/server.js';
+import { resolveOwnedAsaasSubscription, rememberAsaasSubscriptionId } from '../_lib/payments.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST,DELETE');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST' && req.method !== 'DELETE') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
+  if (applyCors(req, res, 'POST,OPTIONS')) return;
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Método não permitido' });
 
   try {
-    const { subscriptionId, reason = 'Cancelamento solicitado pelo aluno' } = req.body || {};
+    const { user, profile } = await requireUser(req);
+    const supabase = getSupabaseAdmin();
+    const { subscriptionId } = req.body || {};
 
-    if (!subscriptionId) {
-      return res.status(400).json({ success: false, error: 'ID da assinatura não fornecido' });
+    const { asaasId, row } = await resolveOwnedAsaasSubscription({ supabase, asaasFetch, user, profile, subscriptionId });
+
+    if (!asaasId) {
+      return res.status(200).json({ success: true, subscriptionId: null, status: 'NO_RECURRING_BILLING', message: 'Não há cobrança recorrente no Asaas para esta assinatura.' });
     }
 
-    const DEFAULT_ASAAS_KEY = '$' + 'aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmE1NGMzMTFkLTM5YTUtNDdjMC1iMzEyLWJiNTRhYjU4NDE4NDo6JGFhY2hfMzFiODk5ZjgtYmZmMy00YTU0LTg5YzEtOGEwZmVmOTBkYTBi';
-    const apiKey = process.env.VITE_ASAAS_API_KEY || process.env.ASAAS_API_KEY || DEFAULT_ASAAS_KEY;
-    const baseUrl = process.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3';
-
-    const asaasHeaders = {
-      'Content-Type': 'application/json',
-      'access_token': apiKey,
-      'User-Agent': 'LexyIdiomas/1.0'
-    };
-
-    if (subscriptionId.startsWith('sub_')) {
-      const asaasRes = await fetch(`${baseUrl}/subscriptions/${subscriptionId}`, {
-        method: 'DELETE',
-        headers: asaasHeaders
-      });
-
-      const asaasData = await asaasRes.json();
-
-      if (!asaasRes.ok) {
-        console.warn('[Asaas Cancel Warning]:', asaasData);
-      }
-
-      return res.status(200).json({
-        success: true,
-        subscriptionId,
-        status: 'CANCELED',
-        deleted: asaasData.deleted || true,
-        message: `Assinatura ${subscriptionId} cancelada no Asaas com sucesso.`
-      });
+    const asaasRes = await asaasFetch(`/subscriptions/${encodeURIComponent(asaasId)}`, { method: 'DELETE' });
+    if (!asaasRes.ok) {
+      console.error('[Asaas Cancel Error]:', asaasRes.data);
+      // Antes este erro era ignorado e o aluno via "cancelado", mas continuava sendo cobrado.
+      throw new HttpError(502, asaasErrorMessage(asaasRes.data, 'O Asaas não confirmou o cancelamento. Tente novamente.'));
     }
+
+    await rememberAsaasSubscriptionId(supabase, row, asaasId);
 
     return res.status(200).json({
       success: true,
-      subscriptionId,
+      subscriptionId: asaasId,
       status: 'CANCELED',
-      deleted: true,
-      message: `Assinatura cancelada com sucesso.`
+      message: 'Assinatura cancelada no Asaas. Não haverá novas cobranças.'
     });
-
-  } catch (error) {
-    console.error('[Asaas Cancel Exception]:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno ao cancelar assinatura no Asaas.',
-      message: error.message
-    });
+  } catch (err) {
+    return sendError(res, err, 'Asaas Cancel');
   }
 }

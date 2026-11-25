@@ -1,24 +1,22 @@
-export default async function handler(req, res) {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+import { applyCors, requireAdmin, sendError } from '../_lib/server.js';
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+// Somente o administrador pode disparar mensagens (antes qualquer pessoa podia usar este
+// endpoint para enviar WhatsApp em nome da empresa).
+export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { type, recipient_phone, data } = req.body;
+    await requireAdmin(req);
+  } catch (authErr) {
+    return sendError(res, authErr, 'WhatsApp Auth');
+  }
+
+  try {
+    const { type, recipient_phone, data } = req.body || {};
 
     if (!type || !recipient_phone || !data) {
       return res.status(400).json({ error: 'Missing parameters (type, recipient_phone, data)' });
@@ -29,16 +27,16 @@ export default async function handler(req, res) {
     // 1. Formatear mensajes según requerimientos de Fase 9
     if (type === 'class-reminder') {
       const { time_label, meet_url } = data;
-      messageText = `¡Hola! Tu clase en Conexión América Idiomas comienza en ${time_label || '1 hora'}. Enlace para conectarte: ${meet_url || 'https://meet.google.com'}`;
+      messageText = `¡Hola! Tu clase en Lexy Idiomas comienza en ${time_label || '1 hora'}. Enlace para conectarte: ${meet_url || 'https://meet.google.com'}`;
     } else if (type === 'wallet-empty') {
       messageText = `Has agotado tus créditos de aprendizaje. Recarga tu billetera hoy mismo en tu panel para seguir agendando clases y no perder el ritmo.`;
     } else {
-      messageText = data.text || 'Notificación de Conexión América';
+      messageText = data.text || 'Notificação Lexy Idiomas';
     }
 
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const evolutionToken = process.env.EVOLUTION_API_TOKEN;
-    const evolutionInstance = process.env.EVOLUTION_INSTANCE_NAME || 'ConexionAmerica';
+    const evolutionInstance = process.env.EVOLUTION_INSTANCE_NAME || 'LexyIdiomas';
 
     console.log(`Sending WhatsApp (${type}) to ${recipient_phone}: "${messageText}"`);
 

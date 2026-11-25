@@ -4,7 +4,7 @@ import {
   ShieldCheck, CreditCard, QrCode, CheckCircle2, 
   Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText, Phone, MapPin, Building
 } from 'lucide-react';
-import { processAsaasPayment, processAsaasSubscription } from '../../lib/asaasPaymentService';
+import { processAsaasPayment, processAsaasSubscription, checkAsaasPaymentStatus } from '../../lib/asaasPaymentService';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
 import { formatPhone, validatePhone } from '../../lib/phoneValidator';
 import { formatCEP, validateCEP, fetchAddressByCEP } from '../../lib/cepValidator';
@@ -35,11 +35,11 @@ export default function AsaasCheckoutModal({
   const [phoneInput, setPhoneInput] = useState(() => customerInfo?.phone || profile?.phone || '');
   const [cardCpf, setCardCpf] = useState(() => customerInfo?.document || profile?.documentNumber || '');
   const [cepInput, setCepInput] = useState(() => customerInfo?.postalCode || profile?.postalCode || customerInfo?.cep || profile?.cep || '01001-000');
-  const [addressInput, setAddressInput] = useState(() => customerInfo?.address || profile?.address || 'Praça da Sé');
-  const [addressNumberInput, setAddressNumberInput] = useState(() => customerInfo?.addressNumber || profile?.addressNumber || '100');
+  const [addressInput, setAddressInput] = useState(() => customerInfo?.address || profile?.address || '');
+  const [addressNumberInput, setAddressNumberInput] = useState(() => customerInfo?.addressNumber || profile?.addressNumber || '');
   const [provinceInput, setProvinceInput] = useState(() => customerInfo?.province || profile?.province || customerInfo?.bairro || profile?.bairro || 'Centro');
-  const [cityInput, setCityInput] = useState(() => customerInfo?.city || profile?.city || 'São Paulo');
-  const [stateInput, setStateInput] = useState(() => customerInfo?.state || profile?.state || 'SP');
+  const [cityInput, setCityInput] = useState(() => customerInfo?.city || profile?.city || '');
+  const [stateInput, setStateInput] = useState(() => customerInfo?.state || profile?.state || '');
 
   // Formulario Cartão de Crédito
   const [cardNumber, setCardNumber] = useState('');
@@ -158,12 +158,12 @@ export default function AsaasCheckoutModal({
           name: registeredName,
           phone: phoneInput,
           document: cleanCpf,
-          postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
-          address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
-          addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
-          province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
-          city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
-          state: stateInput || customerInfo?.state || profile?.state || 'SP'
+          postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '',
+          address: addressInput || customerInfo?.address || profile?.address || '',
+          addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '',
+          province: provinceInput || customerInfo?.province || profile?.province || '',
+          city: cityInput || customerInfo?.city || profile?.city || '',
+          state: stateInput || customerInfo?.state || profile?.state || ''
         },
         lessonsCount: lessonsCount
       });
@@ -241,12 +241,12 @@ export default function AsaasCheckoutModal({
         name: registeredName,
         document: cleanCpf,
         phone: phoneInput,
-        postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
-        address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
-        addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
-        province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
-        city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
-        state: stateInput || customerInfo?.state || profile?.state || 'SP'
+        postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '',
+        address: addressInput || customerInfo?.address || profile?.address || '',
+        addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '',
+        province: provinceInput || customerInfo?.province || profile?.province || '',
+        city: cityInput || customerInfo?.city || profile?.city || '',
+        state: stateInput || customerInfo?.state || profile?.state || ''
       };
 
       if (isRecurring) {
@@ -269,11 +269,15 @@ export default function AsaasCheckoutModal({
         });
       }
 
-      if (res.success) {
+      if (res.success && res.confirmed) {
         setSuccessResult(res);
         setTimeout(() => {
           if (onSuccess) onSuccess(res);
         }, 1500);
+      } else if (res.success) {
+        // A cobrança foi criada, mas o cartão ainda não foi aprovado (pendente/em análise):
+        // NÃO liberar aulas até o Asaas confirmar o pagamento.
+        setErrorMsg('Pagamento ainda não aprovado pela operadora do cartão. Verifique os dados ou tente outro cartão.');
       } else {
         setErrorMsg(res.error || 'Transação recusada pela plataforma Asaas.');
       }
@@ -296,10 +300,9 @@ export default function AsaasCheckoutModal({
     if (pixData?.transactionId && !successResult) {
       interval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/payments/asaas-status?payment_id=${pixData.transactionId}`);
-          if (statusRes.ok) {
-            const data = await statusRes.json();
-            if (data.paid || data.status === 'RECEIVED' || data.status === 'CONFIRMED') {
+          const data = await checkAsaasPaymentStatus(pixData.transactionId);
+          if (data?.success) {
+            if (data.paid) {
               clearInterval(interval);
               const res = {
                 success: true,
@@ -612,17 +615,19 @@ export default function AsaasCheckoutModal({
                         <span>Aguardando confirmação de pagamento no Asaas...</span>
                       </div>
 
-                      {/* Botão de Simulação de Aprovação PIX para Testes Sandbox */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onSuccess) onSuccess(pixData || { transactionId: `pix_asaas_test_${Date.now()}`, amount: numAmount });
-                        }}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                        <span>⚡ Simular Pagamento PIX Aprovado (Asaas Sandbox)</span>
-                      </button>
+                      {/* Simulação de aprovação PIX: SOMENTE em desenvolvimento local (nunca no build de produção) */}
+                      {import.meta.env.DEV && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onSuccess) onSuccess(pixData || { transactionId: `pix_asaas_test_${Date.now()}`, amount: numAmount });
+                          }}
+                          className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                          <span>⚡ Simular Pagamento PIX Aprovado (Asaas Sandbox)</span>
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

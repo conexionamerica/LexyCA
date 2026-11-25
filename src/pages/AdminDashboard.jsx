@@ -456,7 +456,7 @@ export default function AdminDashboard() {
                   required
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="emaildeconexionamerica@gmail.com"
+                  placeholder="admin@lexyidiomas.com.br"
                   className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-medium outline-none focus:border-emerald-400"
                 />
               </div>

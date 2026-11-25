@@ -1,16 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const defaultUrl = 'https://vmbjptvjuggmxsmgfkhr.supabase.co';
-const defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYmpwdHZqdWdnbXhzbWdma2hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODMyMjYsImV4cCI6MjEwMjA1OTIyNn0.c50b3z3VFfUMj2EI95mwqa6A76qoBfVho7ZtPL3xK10';
+// URL e anon key vêm SOMENTE das variáveis de ambiente (Vercel > Settings > Environment Variables).
+// Antes havia um projeto "padrão" fixo no código: quando a variável faltava, o site usava em
+// silêncio um projeto que não existe mais e ficava travado na tela de carregamento.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const envUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseUrl = (envUrl && typeof envUrl === 'string' && envUrl.startsWith('http'))
-  ? envUrl
-  : defaultUrl;
+export const isSupabaseConfigured = Boolean(
+  typeof supabaseUrl === 'string' && supabaseUrl.startsWith('http') &&
+  typeof supabaseAnonKey === 'string' && supabaseAnonKey.length > 20
+);
 
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseAnonKey = (envKey && typeof envKey === 'string' && envKey.length > 20)
-  ? envKey
-  : defaultAnonKey;
+if (!isSupabaseConfigured) {
+  console.error(
+    '[Lexy] Supabase não configurado: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY ' +
+    'nas variáveis de ambiente da Vercel e faça um novo deploy.'
+  );
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Com valores inválidos o cliente ainda é criado (para o app renderizar), mas as chamadas falham rápido.
+export const supabase = createClient(
+  isSupabaseConfigured ? supabaseUrl : 'http://localhost:54321',
+  isSupabaseConfigured ? supabaseAnonKey : 'supabase-nao-configurado'
+);
