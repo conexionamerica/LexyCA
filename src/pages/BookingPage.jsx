@@ -17,7 +17,25 @@ export default function BookingPage() {
   const { tutors, student, bookings, canBookTrial, getTrialEligibility, createBooking, packageDiscounts, getTutorPackageDiscount, teacherAvailability } = useMarketplace();
   const { profile } = useAuth();
 
-  const tutor = tutors.find(t => t.id === id) || tutors[0];
+  // Todos os hooks devem ser chamados ANTES de qualquer return condicional
+  // (os tutores carregam de forma assíncrona; um return antecipado quebrava a página).
+  const [bookingType, setBookingType] = useState('trial'); // 'trial' - Aula Experimental Única
+  const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8 aulas / 30 dias (2 aulas/semana)
+  // Estado dinámico de selección de slots por semana com padrão <Selecione>
+  const [selectedSlots, setSelectedSlots] = useState(() => {
+    return Array.from({ length: 4 }, () => ({
+      day: '',
+      time: ''
+    }));
+  });
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [insufficientBalanceError, setInsufficientBalanceError] = useState(null);
+  const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
+
+  // Nunca usar outro professor como fallback: reservar com o professor errado seria pior que mostrar "não encontrado"
+  const tutor = tutors.find(t => String(t.id) === String(id));
 
   if (!tutor) {
     return (
@@ -44,8 +62,6 @@ export default function BookingPage() {
   const isTrialAllowed = trialEligibility.allowed;
   const isFreeTrial = trialEligibility.isFree;
 
-  const [bookingType, setBookingType] = useState('trial'); // 'trial' - Aula Experimental Única
-  const [selectedPackage, setSelectedPackage] = useState(subscriptionPackages[1]); // 8 aulas / 30 dias (2 aulas/semana)
   
   const rawSchedule = tutor?.weeklySchedule || {};
 
@@ -129,13 +145,6 @@ export default function BookingPage() {
     ? 1 
     : (selectedPackage?.lessonsPerWeek || (pkgHours === 4 ? 1 : pkgHours === 8 ? 2 : pkgHours === 12 ? 3 : 4));
 
-  // Estado dinámico de selección de slots por semana com padrão <Selecione>
-  const [selectedSlots, setSelectedSlots] = useState(() => {
-    return Array.from({ length: 4 }, () => ({
-      day: '',
-      time: ''
-    }));
-  });
 
   // Ajustar slots ao selecionar no dropdown
   const handleSlotChange = (index, field, value) => {
@@ -156,11 +165,6 @@ export default function BookingPage() {
     });
   };
 
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [insufficientBalanceError, setInsufficientBalanceError] = useState(null);
-  const [isAsaasModalOpen, setIsAsaasModalOpen] = useState(false);
 
   // Cálculo del valor total
   const totalAmount = bookingType === 'trial' 

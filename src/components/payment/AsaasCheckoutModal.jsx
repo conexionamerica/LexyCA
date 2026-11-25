@@ -269,11 +269,15 @@ export default function AsaasCheckoutModal({
         });
       }
 
-      if (res.success) {
+      if (res.success && res.confirmed) {
         setSuccessResult(res);
         setTimeout(() => {
           if (onSuccess) onSuccess(res);
         }, 1500);
+      } else if (res.success) {
+        // A cobrança foi criada, mas o cartão ainda não foi aprovado (pendente/em análise):
+        // NÃO liberar aulas até o Asaas confirmar o pagamento.
+        setErrorMsg('Pagamento ainda não aprovado pela operadora do cartão. Verifique os dados ou tente outro cartão.');
       } else {
         setErrorMsg(res.error || 'Transação recusada pela plataforma Asaas.');
       }
@@ -612,17 +616,19 @@ export default function AsaasCheckoutModal({
                         <span>Aguardando confirmação de pagamento no Asaas...</span>
                       </div>
 
-                      {/* Botão de Simulação de Aprovação PIX para Testes Sandbox */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onSuccess) onSuccess(pixData || { transactionId: `pix_asaas_test_${Date.now()}`, amount: numAmount });
-                        }}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                        <span>⚡ Simular Pagamento PIX Aprovado (Asaas Sandbox)</span>
-                      </button>
+                      {/* Simulação de aprovação PIX: SOMENTE em desenvolvimento local (nunca no build de produção) */}
+                      {import.meta.env.DEV && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onSuccess) onSuccess(pixData || { transactionId: `pix_asaas_test_${Date.now()}`, amount: numAmount });
+                          }}
+                          className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                          <span>⚡ Simular Pagamento PIX Aprovado (Asaas Sandbox)</span>
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

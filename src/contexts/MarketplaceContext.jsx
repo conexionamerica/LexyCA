@@ -815,11 +815,13 @@ const isFakeMockTutor = (t) => {
   }, [studentTrialBookingsFromDb, hasCompletedFirstTrial]);
 
   // Estado de simulação rápida para teste dos 3 meses de renovação da Garantia
+  // SOMENTE em desenvolvimento local: em produção, um valor em localStorage liberava 3 aulas grátis.
   const [simulate3MonthsPassed, setSimulate3MonthsPassed] = useState(() => {
-    return localStorage.getItem('lexy_simulated_3_months') === 'true';
+    return import.meta.env.DEV && localStorage.getItem('lexy_simulated_3_months') === 'true';
   });
 
   const toggleSimulate3Months = () => {
+    if (!import.meta.env.DEV) return;
     setSimulate3MonthsPassed(prev => {
       const next = !prev;
       localStorage.setItem('lexy_simulated_3_months', String(next));
@@ -1348,9 +1350,7 @@ const isFakeMockTutor = (t) => {
       bookingType === 'trial' || 
       bookingType === 'experimental' || 
       (planName && planName.toLowerCase().includes('experimental')) ||
-      (planName && planName.toLowerCase().includes('teste')) ||
-      Number(totalAmount) <= 30 ||
-      Number(planHours) === 1
+      (planName && planName.toLowerCase().includes('teste'))
     );
 
     const totalContractedHours = isTrialBooking ? 1 : (Number(planHours) || 8);

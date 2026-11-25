@@ -55,9 +55,9 @@ export default function LoginPage({ forceRole }) {
   
   // Campos comunes del formulario
   const [name, setName] = useState('');
-  const [email, setEmail] = useState(isAdmin ? 'emaildeconexionamerica@gmail.com' : '');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState(isAdmin ? 'AlyRoberto2026*' : '');
+  const [password, setPassword] = useState('');
   const [residenceCountry, setResidenceCountry] = useState('Brasil 🇧🇷');
   const [cpf, setCpf] = useState('');
   const [passport, setPassport] = useState('');

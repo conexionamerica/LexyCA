@@ -9,7 +9,7 @@ import { validateCPF, formatCPF } from '../../lib/cpfValidator';
 import { useMarketplace, getTeacherEarnPercent } from '../../contexts/MarketplaceContext';
 
 export default function StoneCheckoutModal({ isOpen, onClose, amount, description, onSuccess, customerInfo, isRecurring = false, tutorInfo }) {
-  const marketplace = useMarketplace ? useMarketplace() : null;
+  const marketplace = useMarketplace();
   const tierRates = marketplace?.tierRates;
   const [activeTab, setActiveTab] = useState('pix'); // 'pix' | 'card' | 'boleto'
   const [loading, setLoading] = useState(false);
@@ -451,17 +451,19 @@ export default function StoneCheckoutModal({ isOpen, onClose, amount, descriptio
                         <span>Aguardando confirmação do banco via Stone S.A....</span>
                       </div>
 
-                      {/* Botão de Simulação de Aprovação PIX para Testes Sandbox */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onSuccess) onSuccess(pixData || { transactionId: `pix_test_${Date.now()}`, amount: numAmount });
-                        }}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                        <span>⚡ Simular Pagamento PIX Aprovado (Sandbox)</span>
-                      </button>
+                      {/* Simulação de aprovação PIX: SOMENTE em desenvolvimento local (nunca no build de produção) */}
+                      {import.meta.env.DEV && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onSuccess) onSuccess(pixData || { transactionId: `pix_test_${Date.now()}`, amount: numAmount });
+                          }}
+                          className="w-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs py-2.5 rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                          <span>⚡ Simular Pagamento PIX Aprovado (Sandbox)</span>
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

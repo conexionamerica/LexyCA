@@ -167,7 +167,24 @@ export default async function handler(req, res) {
       });
     }
 
-    const isActive = subData.status === 'ACTIVE';
+    // Verificar se a PRIMEIRA cobrança da assinatura foi realmente aprovada.
+    // Criar a assinatura não significa que o cartão foi cobrado.
+    let firstPaymentId = null;
+    let firstPaymentStatus = null;
+    try {
+      const firstPayRes = await fetch(`${baseUrl}/subscriptions/${subData.id}/payments`, {
+        method: 'GET',
+        headers: asaasHeaders
+      });
+      const firstPayData = await firstPayRes.json();
+      if (firstPayRes.ok && Array.isArray(firstPayData.data) && firstPayData.data.length > 0) {
+        firstPaymentId = firstPayData.data[0].id;
+        firstPaymentStatus = firstPayData.data[0].status;
+      }
+    } catch (fpErr) {
+      console.warn('[Asaas Subscription] Não foi possível consultar a primeira cobrança:', fpErr);
+    }
+    const isConfirmed = firstPaymentStatus === 'CONFIRMED' || firstPaymentStatus === 'RECEIVED';
 
     return res.status(200).json({
       success: true,
@@ -176,6 +193,9 @@ export default async function handler(req, res) {
       cycle: subData.cycle, // MONTHLY (30 dias)
       amount: subData.value,
       nextDueDate: subData.nextDueDate,
+      firstPaymentId,
+      firstPaymentStatus,
+      confirmed: isConfirmed,
       rawResponse: subData,
       message: 'Assinatura recorrente de 30 dias criada no Asaas com sucesso!'
     });

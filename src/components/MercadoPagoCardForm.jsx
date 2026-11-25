@@ -176,7 +176,7 @@ const MercadoPagoCardForm = ({ amount, studentId, onSuccess, onCancel }) => {
         <span className="font-extrabold text-lg text-emerald-700">R$ {amount.toFixed(2)}</span>
       </div>
 
-      {simulationMode ? (
+      {simulationMode && import.meta.env.DEV ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center space-y-3">
           <div className="flex justify-center text-amber-500">
             <Sparkles className="w-8 h-8 animate-pulse" />
