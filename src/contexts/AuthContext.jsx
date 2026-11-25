@@ -53,7 +53,14 @@ export const AuthProvider = ({ children }) => {
 
     async function checkSupabaseSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Limite de tempo: se o Supabase não responder (rede lenta, projeto fora do ar),
+        // o site abre mesmo assim em vez de ficar preso no carregamento.
+        const timeout = new Promise(resolve =>
+          setTimeout(() => resolve({ data: { session: null }, timedOut: true }), 6000)
+        );
+        const result = await Promise.race([supabase.auth.getSession(), timeout]);
+        if (result?.timedOut) console.warn('[Lexy] Supabase não respondeu em 6s; continuando sem sessão.');
+        const session = result?.data?.session;
         if (session?.user && mounted) {
           const userMeta = session.user.user_metadata || {};
           let dbProfile = {};
@@ -90,8 +97,9 @@ export const AuthProvider = ({ children }) => {
             wallet_history: dbProfile.wallet_history || userMeta.wallet_history || []
           };
           setProfile(userProfile);
-        } else if (mounted) {
+        } else if (mounted && !result?.timedOut) {
           // Sin sesión real de Supabase: descartar cualquier perfil guardado en localStorage
+          // (si solo hubo timeout de red, no se desloguea al usuario; el RLS protege los datos igual)
           setProfile(null);
         }
       } catch (err) {

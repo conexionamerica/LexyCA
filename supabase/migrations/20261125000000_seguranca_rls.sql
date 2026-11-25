@@ -14,8 +14,10 @@
 --
 -- COMO APLICAR:
 --   * Faça um backup antes (Supabase > Database > Backups).
---   * Cole este arquivo inteiro no SQL Editor do Supabase e execute. Ele roda em uma transação:
---     se algo falhar, nada é alterado.
+--   * Rode ANTES a migração 20261124000000_esquema_base.sql (cria as tabelas).
+--   * Cole este arquivo no SQL Editor do Supabase e execute (ou deixe a integração do
+--     Supabase com o GitHub aplicar a pasta supabase/migrations). É idempotente: rodar de novo
+--     não causa problema.
 --   * ANTES de publicar o frontend novo, crie a conta de admin (veja o final deste arquivo).
 --
 -- Esta migração REMOVE todas as políticas RLS existentes nas tabelas abaixo e recria um
@@ -23,7 +25,6 @@
 -- "USING (true)" esquecida deixaria tudo aberto de novo.
 -- =================================================================================================
 
-BEGIN;
 
 -- -------------------------------------------------------------------------------------------------
 -- 0. Funções auxiliares
@@ -79,21 +80,48 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  requested_role text := lower(coalesce(new.raw_user_meta_data->>'role', 'student'));
+  meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
+  requested_role text := lower(coalesce(meta->>'role', 'student'));
   safe_role text;
+  rate_text text := meta->>'hourlyRate';
 BEGIN
   safe_role := CASE WHEN requested_role IN ('teacher', 'professor', 'tutor') THEN 'teacher' ELSE 'student' END;
 
-  INSERT INTO public.profiles (id, full_name, email, role, avatar_url)
+  -- Copia os dados do formulário de cadastro (enviados como metadata no signUp).
+  -- Com confirmação de email ativada não há sessão logo após o cadastro, então o upsert
+  -- feito pelo navegador falha: este trigger é quem garante que os dados fiquem salvos.
+  INSERT INTO public.profiles (
+    id, full_name, email, role, avatar_url, phone, document_number, cpf, residence_country,
+    postal_code, address, address_number, complement, province, city, state,
+    study_language, language_level, study_motivation, subject_taught, headline, bio, hourly_rate
+  )
   VALUES (
     new.id,
-    COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    COALESCE(NULLIF(meta->>'full_name', ''), NULLIF(meta->>'name', ''), split_part(new.email, '@', 1)),
     new.email,
     safe_role,
     CASE
       WHEN safe_role = 'teacher' THEN 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
       ELSE 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
-    END
+    END,
+    NULLIF(meta->>'phone', ''),
+    NULLIF(meta->>'documentNumber', ''),
+    NULLIF(meta->>'documentNumber', ''),
+    COALESCE(NULLIF(meta->>'residenceCountry', ''), 'Brasil'),
+    NULLIF(meta->>'postalCode', ''),
+    NULLIF(meta->>'address', ''),
+    NULLIF(meta->>'addressNumber', ''),
+    NULLIF(meta->>'complement', ''),
+    NULLIF(meta->>'province', ''),
+    NULLIF(meta->>'city', ''),
+    NULLIF(meta->>'state', ''),
+    NULLIF(meta->>'study_language', ''),
+    NULLIF(meta->>'language_level', ''),
+    NULLIF(meta->>'study_motivation', ''),
+    NULLIF(meta->>'subject_taught', ''),
+    NULLIF(meta->>'headline', ''),
+    NULLIF(meta->>'bio', ''),
+    CASE WHEN rate_text ~ '^[0-9]+(\.[0-9]+)?$' THEN rate_text::numeric ELSE 20 END
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
@@ -444,7 +472,63 @@ ALTER TABLE public.subscriptions
   ADD CONSTRAINT subscriptions_tutor_id_profiles_fkey
   FOREIGN KEY (tutor_id) REFERENCES public.profiles(id) NOT VALID;
 
-COMMIT;
+
+-- -------------------------------------------------------------------------------------------------
+-- 11. Demais tabelas do app: subscriptions, reviews, teacher_availability, tutors
+-- -------------------------------------------------------------------------------------------------
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+SELECT pg_temp.drop_all_policies('subscriptions');
+CREATE POLICY "subs_select_own" ON public.subscriptions
+  FOR SELECT USING (
+    student_id = auth.uid()
+    OR tutor_id = auth.uid()
+    OR lower(coalesce(student_email, '')) = lower(coalesce(auth.jwt() ->> 'email', '#'))
+    OR public.is_admin()
+  );
+CREATE POLICY "subs_insert_own" ON public.subscriptions
+  FOR INSERT WITH CHECK (
+    student_id = auth.uid()
+    OR lower(coalesce(student_email, '')) = lower(coalesce(auth.jwt() ->> 'email', '#'))
+    OR public.is_admin()
+  );
+CREATE POLICY "subs_update_own" ON public.subscriptions
+  FOR UPDATE USING (
+    student_id = auth.uid()
+    OR lower(coalesce(student_email, '')) = lower(coalesce(auth.jwt() ->> 'email', '#'))
+    OR public.is_admin()
+  );
+
+DO $$
+BEGIN
+  IF to_regclass('public.reviews') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY';
+    PERFORM pg_temp.drop_all_policies('reviews');
+    -- Avaliações são públicas (aparecem no perfil do professor)
+    EXECUTE $p$ CREATE POLICY "reviews_select_public" ON public.reviews FOR SELECT USING (true) $p$;
+    EXECUTE $p$ CREATE POLICY "reviews_insert_student" ON public.reviews FOR INSERT TO authenticated
+      WITH CHECK (student_id::text = auth.uid()::text OR public.is_admin()) $p$;
+    EXECUTE $p$ CREATE POLICY "reviews_delete_admin" ON public.reviews FOR DELETE USING (public.is_admin()) $p$;
+  END IF;
+
+  IF to_regclass('public.teacher_availability') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.teacher_availability ENABLE ROW LEVEL SECURITY';
+    PERFORM pg_temp.drop_all_policies('teacher_availability');
+    -- A agenda livre/bloqueada é pública (o aluno precisa ver para agendar)
+    EXECUTE $p$ CREATE POLICY "availability_select_public" ON public.teacher_availability FOR SELECT USING (true) $p$;
+    EXECUTE $p$ CREATE POLICY "availability_write_own" ON public.teacher_availability FOR ALL
+      USING (teacher_id::text = auth.uid()::text OR public.is_admin())
+      WITH CHECK (teacher_id::text = auth.uid()::text OR public.is_admin()) $p$;
+  END IF;
+
+  IF to_regclass('public.tutors') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.tutors ENABLE ROW LEVEL SECURITY';
+    PERFORM pg_temp.drop_all_policies('tutors');
+    EXECUTE $p$ CREATE POLICY "tutors_select_public" ON public.tutors FOR SELECT USING (true) $p$;
+    EXECUTE $p$ CREATE POLICY "tutors_write_own" ON public.tutors FOR ALL
+      USING (id = auth.uid() OR public.is_admin())
+      WITH CHECK (id = auth.uid() OR public.is_admin()) $p$;
+  END IF;
+END $$;
 
 -- =================================================================================================
 -- CONTA DE ADMIN (executar uma vez, DEPOIS da migração e ANTES de publicar o frontend novo)
