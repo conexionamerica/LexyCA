@@ -5,9 +5,10 @@ const LOCAL_STORAGE_KEY_STONE_CONFIG = 'lexy_stone_payment_config_v1';
 
 export const DEFAULT_STONE_CONFIG = {
   mode: 'sandbox', // 'sandbox' | 'production'
-  secretKey: import.meta.env.VITE_STONE_SECRET_KEY || 'sk_test_e281e8247d9842a58a07be13e0e5a577',
-  publicKey: import.meta.env.VITE_STONE_PUBLIC_KEY || 'pk_test_Y5VB4W6sbZTWJa2O',
-  accountId: import.meta.env.VITE_STONE_ACCOUNT_ID || 'acc_2bPVBbvinPimVa8j',
+  // Chaves secretas NUNCA no frontend (tudo que está aqui vai para o navegador do visitante).
+  secretKey: '',
+  publicKey: import.meta.env.VITE_STONE_PUBLIC_KEY || '',
+  accountId: import.meta.env.VITE_STONE_ACCOUNT_ID || '',
   pixEnabled: true,
   cardEnabled: true,
   boletoEnabled: false

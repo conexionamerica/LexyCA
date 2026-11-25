@@ -1161,6 +1161,7 @@ const isFakeMockTutor = (t) => {
   };
 
   const pauseSubscription = async (subscriptionId, days = 20) => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     const pausedUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     console.log('[LEXY-SUB] pauseSubscription chamado - id:', subscriptionId, 'days:', days);
 
@@ -1223,7 +1224,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API (fire-and-forget)
     try {
-      if (subscriptionId) await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
+      if (subscriptionId) asaasResult = await pauseAsaasSubscription({ subscriptionId, pauseDays: days });
     } catch (asaasErr) {
       console.warn('⚠️ Asaas pause error (ignorado):', asaasErr);
     }
@@ -1242,10 +1243,11 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'paused', pausedUntil, supabaseOk };
+    return { success: true, status: 'paused', pausedUntil, supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
   const resumeSubscription = async (subscriptionId) => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     // ✅ PASSO 1: Remover override do localStorage (reativação cancela a pausa)
     try {
       const { data: { session: authSess } } = await supabase.auth.getSession();
@@ -1277,7 +1279,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API
     try {
-      if (subscriptionId) await resumeAsaasSubscription({ subscriptionId });
+      if (subscriptionId) asaasResult = await resumeAsaasSubscription({ subscriptionId });
     } catch (asaasErr) { console.warn('⚠️ Asaas resume error:', asaasErr); }
 
     // PASSO 4: Atualizar estado React
@@ -1288,10 +1290,11 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'active', supabaseOk };
+    return { success: true, status: 'active', supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
   const cancelSubscription = async (subscriptionId, reason = 'Cancelamento solicitado pelo aluno') => {
+    let asaasResult = null; // resultado real do Asaas (antes era ignorado)
     // ✅ PASSO 1: Salvar override de cancelamento com email Auth real
     try {
       const { data: { session: authSess } } = await supabase.auth.getSession();
@@ -1337,7 +1340,7 @@ const isFakeMockTutor = (t) => {
 
     // PASSO 3: Asaas API
     try {
-      if (subscriptionId) await cancelAsaasSubscription({ subscriptionId, reason });
+      if (subscriptionId) asaasResult = await cancelAsaasSubscription({ subscriptionId, reason });
     } catch (asaasErr) { console.warn('⚠️ Asaas cancel error:', asaasErr); }
 
     // PASSO 4: Atualizar estado React
@@ -1348,10 +1351,10 @@ const isFakeMockTutor = (t) => {
       return updatedList;
     });
 
-    return { success: true, status: 'canceled', supabaseOk };
+    return { success: true, status: 'canceled', supabaseOk, asaasOk: asaasResult?.success !== false, asaasError: asaasResult?.error };
   };
 
-  const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula }) => {
+  const createBooking = async ({ tutorId, day, time, allSlots, bookingType, planHours, planName, totalAmount, bypassWallet = false, studentId, studentEmail, studentName, studentMatricula, asaasSubscriptionId = null }) => {
     const tutor = tutors.find(t => t.id === tutorId);
     if (!tutor) return { success: false, error: 'Tutor não encontrado' };
 
@@ -1448,7 +1451,10 @@ const isFakeMockTutor = (t) => {
       const cycleEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const newSub = {
-        id: `sub-${Date.now()}`,
+        // A coluna subscriptions.id é UUID: o id antigo "sub-<timestamp>" fazia o insert falhar
+        // e a assinatura ficava só no localStorage.
+        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sub-${Date.now()}`,
+        asaasSubscriptionId,
         studentId: effectiveStudentId,
         studentEmail: effectiveStudentEmail,
         studentName: effectiveStudentName,
@@ -1496,7 +1502,8 @@ const isFakeMockTutor = (t) => {
           cycle_start_date: newSub.cycleStartDate,
           next_billing_date: newSub.nextBillingDate,
           cycle_end_date: newSub.cycleEndDate,
-          status: 'active'
+          status: 'active',
+          asaas_subscription_id: asaasSubscriptionId
         }).then(({ error }) => {
           if (error) console.warn('Aviso: insert subscription no Supabase (usando localStorage cache):', error);
         });

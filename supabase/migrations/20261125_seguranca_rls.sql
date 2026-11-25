@@ -394,6 +394,56 @@ $$;
 REVOKE ALL ON FUNCTION public.request_tutor_payout(NUMERIC, TEXT, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.request_tutor_payout(NUMERIC, TEXT, TEXT) TO authenticated;
 
+-- -------------------------------------------------------------------------------------------------
+-- 9. ASAAS_PAYMENTS: registro dos eventos do webhook do Asaas (somente o servidor acessa)
+-- -------------------------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.asaas_payments (
+  id TEXT PRIMARY KEY,                 -- id da cobrança no Asaas (pay_...)
+  last_event TEXT,
+  status TEXT,
+  value NUMERIC,
+  net_value NUMERIC,
+  billing_type TEXT,
+  customer_id TEXT,
+  subscription_id TEXT,
+  external_reference TEXT,
+  invoice_requested_at TIMESTAMPTZ,
+  raw JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.asaas_payments ENABLE ROW LEVEL SECURITY;
+SELECT pg_temp.drop_all_policies('asaas_payments');
+-- Sem políticas para anon/authenticated: só a service role (servidor) lê e grava.
+-- O admin pode consultar pelo painel do Supabase.
+CREATE POLICY "asaas_payments_select_admin" ON public.asaas_payments
+  FOR SELECT USING (public.is_admin());
+
+-- -------------------------------------------------------------------------------------------------
+-- 10. SUBSCRIPTIONS: tutor_id apontava para public.tutors (professores ficam em profiles),
+--     o que fazia o insert da assinatura falhar. Também garante a coluna do id do Asaas.
+-- -------------------------------------------------------------------------------------------------
+ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS asaas_subscription_id TEXT;
+
+DO $$
+DECLARE
+  fk record;
+BEGIN
+  FOR fk IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = ANY (con.conkey)
+    WHERE con.conrelid = 'public.subscriptions'::regclass
+      AND con.contype = 'f'
+      AND att.attname = 'tutor_id'
+  LOOP
+    EXECUTE format('ALTER TABLE public.subscriptions DROP CONSTRAINT %I', fk.conname);
+  END LOOP;
+END $$;
+ALTER TABLE public.subscriptions
+  ADD CONSTRAINT subscriptions_tutor_id_profiles_fkey
+  FOREIGN KEY (tutor_id) REFERENCES public.profiles(id) NOT VALID;
+
 COMMIT;
 
 -- =================================================================================================

@@ -4,7 +4,7 @@ import {
   ShieldCheck, CreditCard, QrCode, CheckCircle2, 
   Loader2, Copy, Check, Lock, AlertCircle, X, Sparkles, FileText, Phone, MapPin, Building
 } from 'lucide-react';
-import { processAsaasPayment, processAsaasSubscription } from '../../lib/asaasPaymentService';
+import { processAsaasPayment, processAsaasSubscription, checkAsaasPaymentStatus } from '../../lib/asaasPaymentService';
 import { validateCPF, formatCPF } from '../../lib/cpfValidator';
 import { formatPhone, validatePhone } from '../../lib/phoneValidator';
 import { formatCEP, validateCEP, fetchAddressByCEP } from '../../lib/cepValidator';
@@ -35,11 +35,11 @@ export default function AsaasCheckoutModal({
   const [phoneInput, setPhoneInput] = useState(() => customerInfo?.phone || profile?.phone || '');
   const [cardCpf, setCardCpf] = useState(() => customerInfo?.document || profile?.documentNumber || '');
   const [cepInput, setCepInput] = useState(() => customerInfo?.postalCode || profile?.postalCode || customerInfo?.cep || profile?.cep || '01001-000');
-  const [addressInput, setAddressInput] = useState(() => customerInfo?.address || profile?.address || 'Praça da Sé');
-  const [addressNumberInput, setAddressNumberInput] = useState(() => customerInfo?.addressNumber || profile?.addressNumber || '100');
+  const [addressInput, setAddressInput] = useState(() => customerInfo?.address || profile?.address || '');
+  const [addressNumberInput, setAddressNumberInput] = useState(() => customerInfo?.addressNumber || profile?.addressNumber || '');
   const [provinceInput, setProvinceInput] = useState(() => customerInfo?.province || profile?.province || customerInfo?.bairro || profile?.bairro || 'Centro');
-  const [cityInput, setCityInput] = useState(() => customerInfo?.city || profile?.city || 'São Paulo');
-  const [stateInput, setStateInput] = useState(() => customerInfo?.state || profile?.state || 'SP');
+  const [cityInput, setCityInput] = useState(() => customerInfo?.city || profile?.city || '');
+  const [stateInput, setStateInput] = useState(() => customerInfo?.state || profile?.state || '');
 
   // Formulario Cartão de Crédito
   const [cardNumber, setCardNumber] = useState('');
@@ -158,12 +158,12 @@ export default function AsaasCheckoutModal({
           name: registeredName,
           phone: phoneInput,
           document: cleanCpf,
-          postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
-          address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
-          addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
-          province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
-          city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
-          state: stateInput || customerInfo?.state || profile?.state || 'SP'
+          postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '',
+          address: addressInput || customerInfo?.address || profile?.address || '',
+          addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '',
+          province: provinceInput || customerInfo?.province || profile?.province || '',
+          city: cityInput || customerInfo?.city || profile?.city || '',
+          state: stateInput || customerInfo?.state || profile?.state || ''
         },
         lessonsCount: lessonsCount
       });
@@ -241,12 +241,12 @@ export default function AsaasCheckoutModal({
         name: registeredName,
         document: cleanCpf,
         phone: phoneInput,
-        postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '01001000',
-        address: addressInput || customerInfo?.address || profile?.address || 'Praça da Sé',
-        addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '100',
-        province: provinceInput || customerInfo?.province || profile?.province || 'Centro',
-        city: cityInput || customerInfo?.city || profile?.city || 'São Paulo',
-        state: stateInput || customerInfo?.state || profile?.state || 'SP'
+        postalCode: cepInput || customerInfo?.postalCode || profile?.postalCode || '',
+        address: addressInput || customerInfo?.address || profile?.address || '',
+        addressNumber: addressNumberInput || customerInfo?.addressNumber || profile?.addressNumber || '',
+        province: provinceInput || customerInfo?.province || profile?.province || '',
+        city: cityInput || customerInfo?.city || profile?.city || '',
+        state: stateInput || customerInfo?.state || profile?.state || ''
       };
 
       if (isRecurring) {
@@ -300,10 +300,9 @@ export default function AsaasCheckoutModal({
     if (pixData?.transactionId && !successResult) {
       interval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/payments/asaas-status?payment_id=${pixData.transactionId}`);
-          if (statusRes.ok) {
-            const data = await statusRes.json();
-            if (data.paid || data.status === 'RECEIVED' || data.status === 'CONFIRMED') {
+          const data = await checkAsaasPaymentStatus(pixData.transactionId);
+          if (data?.success) {
+            if (data.paid) {
               clearInterval(interval);
               const res = {
                 success: true,

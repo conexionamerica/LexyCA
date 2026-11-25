@@ -310,11 +310,15 @@ export default function StudentSubscriptionTab() {
     localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
     setSavedAction(action);
 
-    // Depois fazer os calls de background (podem falhar sem problema)
-    pauseSubscription(activeSub.id, pauseDaysCount).catch(() => {});
-
-    setActionNotice(`⏸️ Assinatura pausada com sucesso por ${pauseDaysCount} dias!`);
-    setTimeout(() => setActionNotice(''), 5000);
+    const asaasResult = await pauseSubscription(activeSub.id, pauseDaysCount).catch(() => null);
+    if (asaasResult && asaasResult.asaasOk === false) {
+      // Erro real do Asaas: manter o aviso visível por mais tempo
+      setActionNotice(`⚠️ Não foi possível pausar a cobrança no Asaas: ${asaasResult.asaasError || 'Tente novamente ou fale com o suporte.'}`);
+      setTimeout(() => setActionNotice(''), 12000);
+    } else {
+      setActionNotice(`⏸️ Assinatura pausada com sucesso por ${pauseDaysCount} dias!`);
+      setTimeout(() => setActionNotice(''), 5000);
+    }
   };
 
   const handleConfirmResume = async () => {
@@ -333,11 +337,15 @@ export default function StudentSubscriptionTab() {
 
     setSavedAction(null);
 
-    // Background calls - atualiza no Supabase para status = 'active'
-    resumeSubscription(activeSub.id).catch(() => {});
-
-    setActionNotice('⚡ Assinatura e cobranças automáticas reativadas com sucesso!');
-    setTimeout(() => setActionNotice(''), 5000);
+    const asaasResult = await resumeSubscription(activeSub.id).catch(() => null);
+    if (asaasResult && asaasResult.asaasOk === false) {
+      // Erro real do Asaas: manter o aviso visível por mais tempo
+      setActionNotice(`⚠️ Não foi possível reativar a cobrança no Asaas: ${asaasResult.asaasError || 'Tente novamente ou fale com o suporte.'}`);
+      setTimeout(() => setActionNotice(''), 12000);
+    } else {
+      setActionNotice('⚡ Assinatura e cobranças automáticas reativadas com sucesso!');
+      setTimeout(() => setActionNotice(''), 5000);
+    }
   };
 
   const handleConfirmCancel = async () => {
@@ -350,13 +358,17 @@ export default function StudentSubscriptionTab() {
     localStorage.setItem('lexy_sub_action_v1', JSON.stringify(action));
     setSavedAction(action);
 
-    // Background calls
-    cancelSubscription(activeSub.id, cancelReason).catch(() => {});
-
     setIsCancelModalOpen(false);
     setCancelStep(1);
-    setActionNotice('ℹ️ Renovação automática cancelada. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
-    setTimeout(() => setActionNotice(''), 6000);
+    const asaasResult = await cancelSubscription(activeSub.id, cancelReason).catch(() => null);
+    if (asaasResult && asaasResult.asaasOk === false) {
+      // Erro real do Asaas: manter o aviso visível por mais tempo
+      setActionNotice(`⚠️ Atenção: o cancelamento NÃO foi confirmado pelo Asaas e a cobrança pode continuar. ${asaasResult.asaasError || 'Tente novamente ou fale com o suporte.'}`);
+      setTimeout(() => setActionNotice(''), 12000);
+    } else {
+      setActionNotice('ℹ️ Renovação automática cancelada. Suas aulas pagas deste ciclo continuam válidas até o final dos 30 dias.');
+      setTimeout(() => setActionNotice(''), 6000);
+    }
   };
 
   const handleAsaasSubscriptionPaymentSuccess = async (paymentResult) => {
@@ -377,6 +389,7 @@ export default function StudentSubscriptionTab() {
       totalAmount: totalCycleAmount,
       bypassWallet: true,
       paymentId: paymentResult?.transactionId || `tx_${Date.now()}`,
+      asaasSubscriptionId: paymentResult?.subscriptionId || null,
       studentId: profile?.id,
       studentEmail: profile?.email,
       studentName: profile?.full_name,

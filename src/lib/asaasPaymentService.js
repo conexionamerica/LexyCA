@@ -3,12 +3,40 @@
 // Ciclo Recorrente Oficial: 30 Dias (MONTHLY)
 // Unidade de Crédito: Aulas de 45 minutos
 
+import { supabase } from './supabaseClient';
+
 const LOCAL_STORAGE_KEY_ASAAS_CONFIG = 'lexy_asaas_payment_config_v1';
+
+// Cabeçalhos com o token da sessão do Supabase: as rotas /api/payments/* exigem login.
+export const authHeaders = async () => {
+  const headers = { 'Content-Type': 'application/json' };
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  } catch (e) {
+    console.warn('Não foi possível obter a sessão para a API de pagamentos:', e);
+  }
+  return headers;
+};
+
+/**
+ * Consulta o status real de uma cobrança no Asaas (via servidor)
+ */
+export const checkAsaasPaymentStatus = async (paymentId) => {
+  try {
+    const apiRes = await fetch(`/api/payments/asaas-status?payment_id=${encodeURIComponent(paymentId)}`, {
+      headers: await authHeaders()
+    });
+    const data = await apiRes.json();
+    return apiRes.ok ? data : { success: false, error: data.error };
+  } catch (err) {
+    console.error('Erro chamando /api/payments/asaas-status:', err);
+    return { success: false, error: 'Falha ao consultar a cobrança.' };
+  }
+};
 
 export const DEFAULT_ASAAS_CONFIG = {
   mode: import.meta.env.VITE_ASAAS_ENVIRONMENT || 'sandbox', // 'sandbox' | 'production'
-  apiKey: import.meta.env.VITE_ASAAS_API_KEY || '',
-  walletId: import.meta.env.VITE_ASAAS_WALLET_ID || 'a985bddf-d92e-423b-881a-cf2d843d5ca9',
   apiUrl: import.meta.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3',
   pixEnabled: true,
   cardEnabled: true,
@@ -32,9 +60,7 @@ export const processAsaasPayment = async (paymentData) => {
   try {
     const apiRes = await fetch('/api/payments/asaas', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         method: paymentData.method, // 'pix' | 'credit_card'
         amount: paymentData.amount,
@@ -71,9 +97,7 @@ export const processAsaasSubscription = async (subData) => {
   try {
     const apiRes = await fetch('/api/payments/asaas-subscription', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         amount: subData.amount,
         planName: subData.planName,
@@ -109,9 +133,7 @@ export const issueAsaasInvoice = async (invoiceData) => {
   try {
     const apiRes = await fetch('/api/payments/asaas-invoice', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         paymentId: invoiceData.paymentId,
         value: invoiceData.value,
@@ -138,9 +160,7 @@ export const processAsaasTransfer = async (transferData) => {
   try {
     const apiRes = await fetch('/api/payments/asaas-transfer', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         amount: transferData.amount,
         pixKey: transferData.pixKey,
@@ -174,7 +194,7 @@ export const pauseAsaasSubscription = async ({ subscriptionId, pauseDays = 20 })
   try {
     const apiRes = await fetch('/api/payments/asaas-pause-subscription', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ subscriptionId, pauseDays })
     });
     const data = await apiRes.json();
@@ -192,7 +212,7 @@ export const resumeAsaasSubscription = async ({ subscriptionId }) => {
   try {
     const apiRes = await fetch('/api/payments/asaas-resume-subscription', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ subscriptionId })
     });
     const data = await apiRes.json();
@@ -210,7 +230,7 @@ export const cancelAsaasSubscription = async ({ subscriptionId, reason }) => {
   try {
     const apiRes = await fetch('/api/payments/asaas-cancel-subscription', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ subscriptionId, reason })
     });
     const data = await apiRes.json();

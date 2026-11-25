@@ -1,206 +1,66 @@
-// Vercel Serverless Function - Endpoint Backend Oficial Asaas API v3
-// Suporta PIX Instantâneo e Cartão de Crédito (Boleto Removido)
+// Vercel Serverless Function - Cobrança avulsa Asaas API v3 (PIX ou Cartão de Crédito)
+import {
+  applyCors, requireUser, asaasFetch, asaasErrorMessage, findOrCreateAsaasCustomer,
+  getAsaasConfig, sendError, HttpError
+} from '../_lib/server.js';
+import { buildCustomer, buildCreditCard } from '../_lib/payments.js';
+
+const MAX_AMOUNT = 10000;
 
 export default async function handler(req, res) {
-  // Headers de CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
+  if (applyCors(req, res)) return;
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Método não permitido' });
 
   try {
-    const { method, amount, description, customer, cardData, lessonsCount } = req.body;
+    const { user, profile } = await requireUser(req);
+    const body = req.body || {};
+    const { method, description, lessonsCount } = body;
 
-    const DEFAULT_ASAAS_KEY = '$' + 'aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmE1NGMzMTFkLTM5YTUtNDdjMC1iMzEyLWJiNTRhYjU4NDE4NDo6JGFhY2hfMzFiODk5ZjgtYmZmMy00YTU0LTg5YzEtOGEwZmVmOTBkYTBi';
-    const apiKey = process.env.VITE_ASAAS_API_KEY || process.env.ASAAS_API_KEY || DEFAULT_ASAAS_KEY;
-    const walletId = process.env.VITE_ASAAS_WALLET_ID || process.env.ASAAS_WALLET_ID || 'a985bddf-d92e-423b-881a-cf2d843d5ca9';
-    const baseUrl = process.env.VITE_ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3';
-
-    const numAmount = parseFloat(amount) || 1.0;
-    const cleanCpf = (customer?.document || customer?.cpfCnpj || '').replace(/\D/g, '');
-    const validCpf = (cleanCpf.length === 11) ? cleanCpf : '02209443008';
-    const customerEmail = customer?.email || 'aluno@lexy.com';
-    const customerName = customer?.name || 'Aluno Lexy';
-    const customerPhone = (customer?.phone || customer?.mobilePhone || '11999999999').replace(/\D/g, '');
-
-    const rawCep = (customer?.postalCode || customer?.cep || cardData?.postalCode || '').replace(/\D/g, '');
-    const validPostalCode = (rawCep.length === 8) ? rawCep : '01001000'; // 01001-000 Praça da Sé, SP (universal valid CEP)
-    const addressNumber = customer?.addressNumber || cardData?.addressNumber || '100';
-    const address = customer?.address || 'Praça da Sé';
-    const province = customer?.province || customer?.bairro || 'Centro';
-
-    const asaasHeaders = {
-      'Content-Type': 'application/json',
-      'access_token': apiKey,
-      'User-Agent': 'LexyIdiomas/1.0'
-    };
-
-    // 1. Buscar ou Criar/Atualizar Cliente no Asaas (/customers)
-    let asaasCustomerId = null;
-
-    try {
-      const searchRes = await fetch(`${baseUrl}/customers?cpfCnpj=${validCpf}`, {
-        method: 'GET',
-        headers: asaasHeaders
-      });
-      const searchData = await searchRes.json();
-
-      if (searchRes.ok && searchData.data && searchData.data.length > 0) {
-        asaasCustomerId = searchData.data[0].id;
-        // Atualizar o nome e dados do cliente no Asaas com o nome EXATO cadastrado no nosso site
-        try {
-          await fetch(`${baseUrl}/customers/${asaasCustomerId}`, {
-            method: 'PUT',
-            headers: asaasHeaders,
-            body: JSON.stringify({
-              name: customerName,
-              email: customerEmail,
-              mobilePhone: customerPhone,
-              postalCode: validPostalCode,
-              address: address,
-              addressNumber: addressNumber,
-              province: province
-            })
-          });
-        } catch (updErr) {
-          console.warn('[Asaas] Aviso ao sincronizar nome do cliente:', updErr);
-        }
-      }
-    } catch (e) {
-      console.warn('[Asaas] Falha ao buscar cliente existente por CPF, tentando criar novo...', e);
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) {
+      throw new HttpError(400, 'Valor da cobrança inválido.');
     }
-
-    if (!asaasCustomerId) {
-      const createCustPayload = {
-        name: customerName,
-        email: customerEmail,
-        cpfCnpj: validCpf,
-        mobilePhone: customerPhone,
-        postalCode: validPostalCode,
-        address: address,
-        addressNumber: addressNumber,
-        province: province,
-        notificationDisabled: true
-      };
-
-      const custRes = await fetch(`${baseUrl}/customers`, {
-        method: 'POST',
-        headers: asaasHeaders,
-        body: JSON.stringify(createCustPayload)
-      });
-      const custData = await custRes.json();
-
-      if (!custRes.ok) {
-        console.error('[Asaas Customer Error]:', custData);
-        return res.status(custRes.status).json({
-          success: false,
-          error: custData.errors?.[0]?.description || 'Erro ao registrar cliente no Asaas',
-          details: custData
-        });
-      }
-
-      asaasCustomerId = custData.id;
-    }
-
-    // 2. Definir Data de Vencimento Hoje (YYYY-MM-DD)
-    const today = new Date().toISOString().split('T')[0];
 
     const billingType = method === 'pix' ? 'PIX' : 'CREDIT_CARD';
+    const customer = buildCustomer(user, profile, body, { requireAddress: billingType === 'CREDIT_CARD' });
+    const asaasCustomerId = await findOrCreateAsaasCustomer(customer);
+    const { walletId } = getAsaasConfig();
 
-    // 3. Criar Ordem de Cobrança (/payments)
     const paymentPayload = {
       customer: asaasCustomerId,
-      billingType: billingType,
-      value: numAmount,
-      dueDate: today,
+      billingType,
+      value: Number(amount.toFixed(2)),
+      dueDate: new Date().toISOString().split('T')[0],
       description: description || `Lexy Idiomas - ${lessonsCount || 4} Aulas (45 min)`,
-      walletId: walletId,
-      externalReference: `lexy_${Date.now()}_${asaasCustomerId}`
+      // Vincula a cobrança ao usuário: usado para conferir o dono em asaas-status e no webhook
+      externalReference: `lexy_${user.id}_${Date.now()}`,
+      ...(walletId ? { walletId } : {})
     };
 
-    if (billingType === 'CREDIT_CARD' && cardData) {
-      const cleanCard = (cardData.number || '').replace(/\D/g, '');
-      const expMonth = String(cardData.expMonth || '12').padStart(2, '0');
-      let expYear = String(cardData.expYear || '2030');
-      if (expYear.length === 2) expYear = `20${expYear}`;
-
-      paymentPayload.creditCard = {
-        holderName: (cardData.holderName || customerName).toUpperCase(),
-        number: cleanCard,
-        expiryMonth: expMonth,
-        expiryYear: expYear,
-        ccv: cardData.cvv || '123'
-      };
-
-      paymentPayload.creditCardHolderInfo = {
-        name: (cardData.holderName || customerName).toUpperCase(),
-        email: customerEmail,
-        cpfCnpj: validCpf,
-        postalCode: validPostalCode,
-        addressNumber: addressNumber,
-        addressComplement: customer?.complement || null,
-        phone: customerPhone,
-        mobilePhone: customerPhone
-      };
+    if (billingType === 'CREDIT_CARD') {
+      Object.assign(paymentPayload, buildCreditCard(body.cardData || {}, customer));
     }
 
-    console.log(`[Asaas API] Criando Cobrança ${billingType} - R$ ${numAmount}:`, JSON.stringify({ ...paymentPayload, creditCard: paymentPayload.creditCard ? 'HIDDEN' : undefined }));
-
-    const payRes = await fetch(`${baseUrl}/payments`, {
-      method: 'POST',
-      headers: asaasHeaders,
-      body: JSON.stringify(paymentPayload)
-    });
-
-    const payData = await payRes.json();
-
+    const payRes = await asaasFetch('/payments', { method: 'POST', body: JSON.stringify(paymentPayload) });
     if (!payRes.ok) {
-      console.error('[Asaas Payment API Error]:', payData);
-      const errorMsg = payData.errors?.[0]?.description || 'Erro ao processar pagamento com Asaas';
-      return res.status(payRes.status).json({
-        success: false,
-        error: errorMsg,
-        details: payData
-      });
+      console.error('[Asaas Payment API Error]:', payRes.data);
+      throw new HttpError(payRes.status >= 500 ? 502 : 400, asaasErrorMessage(payRes.data, 'Erro ao processar pagamento com Asaas.'));
     }
+    const payData = payRes.data;
 
-    // 4. Se for PIX, buscar o QR Code & Copia e Cola (/payments/{id}/pixQrCode)
     let pixCode = null;
     let qrCodeUrl = null;
     let expirationDate = null;
-
     if (billingType === 'PIX' && payData.id) {
-      try {
-        const pixRes = await fetch(`${baseUrl}/payments/${payData.id}/pixQrCode`, {
-          method: 'GET',
-          headers: asaasHeaders
-        });
-        const pixResData = await pixRes.json();
-
-        if (pixRes.ok && pixResData.payload) {
-          pixCode = pixResData.payload;
-          expirationDate = pixResData.expirationDate;
-          if (pixResData.encodedImage) {
-            qrCodeUrl = `data:image/png;base64,${pixResData.encodedImage}`;
-          }
-        }
-      } catch (pixErr) {
-        console.warn('[Asaas PIX QR Fetch Warning]:', pixErr);
+      const pixRes = await asaasFetch(`/payments/${payData.id}/pixQrCode`);
+      if (pixRes.ok && pixRes.data.payload) {
+        pixCode = pixRes.data.payload;
+        expirationDate = pixRes.data.expirationDate;
+        if (pixRes.data.encodedImage) qrCodeUrl = `data:image/png;base64,${pixRes.data.encodedImage}`;
       }
     }
 
-    const isConfirmed = payData.status === 'RECEIVED' || payData.status === 'CONFIRMED';
+    const confirmed = payData.status === 'RECEIVED' || payData.status === 'CONFIRMED';
 
     return res.status(200).json({
       success: true,
@@ -208,22 +68,14 @@ export default async function handler(req, res) {
       status: payData.status,
       amount: payData.value,
       billingType: payData.billingType,
-      pixCode: pixCode,
-      qrCodeUrl: qrCodeUrl,
-      expirationDate: expirationDate,
+      pixCode,
+      qrCodeUrl,
+      expirationDate,
       invoiceUrl: payData.invoiceUrl,
-      bankSlipUrl: payData.bankSlipUrl,
-      confirmed: isConfirmed,
-      rawResponse: payData,
-      message: isConfirmed ? 'Cobrança aprovada com sucesso!' : 'Cobrança gerada com sucesso.'
+      confirmed,
+      message: confirmed ? 'Cobrança aprovada com sucesso!' : 'Cobrança gerada com sucesso.'
     });
-
-  } catch (error) {
-    console.error('[Asaas Server Exception]:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erro interno ao conectar com a plataforma Asaas.',
-      message: error.message
-    });
+  } catch (err) {
+    return sendError(res, err, 'Asaas Payment');
   }
 }
